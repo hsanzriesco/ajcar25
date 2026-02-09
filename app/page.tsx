@@ -7,12 +7,12 @@ export default function Home() {
       {/* HERO */}
       <section className="relative h-[90vh] w-full">
         <Image
-          src="/imagenes/Hombre_pintando_coc
-          alt="AJCAR 25 Taller de Chapa y Pintura"
-          fill
-          priority
-          className="object-cover opacity-60"
-        />
+          src="/imagenes/Hombre_pintando_coche.png"
+          alt="AJCAR25 Taller de Chapa y Pintura"
+        fill
+        priority
+        className="object-cover opacity-60"
+/>
         <div className="relative z-10 flex h-full flex-col justify-center px-8 md:px-20">
           <h1 className="text-4xl md:text-6xl font-bold">AJCAR 25</h1>
           <h2 className="mt-2 text-xl md:text-3xl text-gray-300">
