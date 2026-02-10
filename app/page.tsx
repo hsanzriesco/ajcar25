@@ -1,10 +1,9 @@
-// app/page.tsx
 import Image from "next/image";
 
 export default function Home() {
   return (
     <main className="bg-neutral-900 text-white">
-      {/* HERO */}
+      {}
       <section className="relative h-[90vh] w-full">
         <Image
           src="/imagenes/Hombre_pintando_coche.png"
