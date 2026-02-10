@@ -211,7 +211,7 @@ export default function Home() {
             <div className="flex justify-center lg:justify-end">
 
               <Image
-                src="/imagenes/logo_ajcar25.png"
+                src="/imagenes/prueba_logo.png"
                 alt="Logo AJCAR25"
                 width={320}
                 height={320}
