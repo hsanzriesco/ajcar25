@@ -112,7 +112,6 @@ export default function Home() {
         <div className="max-w-6xl mx-auto px-6">
           <div className="grid md:grid-cols-2 gap-6">
 
-            {/* ANTES */}
             <div className="relative h-64 sm:h-80 overflow-hidden rounded-lg">
               <Image
                 src="/imagenes/Coche_antes_1.png"
@@ -120,13 +119,8 @@ export default function Home() {
                 fill
                 className="object-cover transition duration-300 hover:scale-105"
               />
-
-              <span className="absolute top-3 left-3 bg-black/70 px-3 py-1 text-xs sm:text-sm rounded">
-                Antes
-              </span>
             </div>
 
-            {/* DESPUÉS */}
             <div className="relative h-64 sm:h-80 overflow-hidden rounded-lg">
               <Image
                 src="/imagenes/Coche_despues_1.png"
@@ -134,10 +128,6 @@ export default function Home() {
                 fill
                 className="object-cover transition duration-300 hover:scale-105"
               />
-
-              <span className="absolute top-3 left-3 bg-red-600 px-3 py-1 text-xs sm:text-sm rounded">
-                Después
-              </span>
             </div>
 
           </div>
@@ -160,8 +150,16 @@ export default function Home() {
             </p>
           </div>
 
+          {/* LOGO */}
           <div className="flex justify-center">
-            <div className="h-32 w-32 sm:h-40 sm:w-40 rounded-full bg-gray-700" />
+            <div className="relative w-44 h-44 sm:w-56 sm:h-56 opacity-80 hover:opacity-100 transition">
+              <Image
+                src="/imagenes/logo_ajcar25.png"
+                alt="Logo AJCAR25"
+                fill
+                className="object-contain"
+              />
+            </div>
           </div>
 
         </div>
