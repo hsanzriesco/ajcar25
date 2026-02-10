@@ -115,7 +115,7 @@ export default function Home() {
             {/* ANTES */}
             <div className="relative h-64 sm:h-80 overflow-hidden rounded-lg">
               <Image
-                src="/Coche_antes_1.png"
+                src="/imagenes/Coche_antes_1.png"
                 alt="Antes reparación coche"
                 fill
                 className="object-cover transition duration-300 hover:scale-105"
@@ -129,7 +129,7 @@ export default function Home() {
             {/* DESPUÉS */}
             <div className="relative h-64 sm:h-80 overflow-hidden rounded-lg">
               <Image
-                src="/Coche_despues_1.png"
+                src="/imagenes/Coche_despues_1.png"
                 alt="Después reparación coche"
                 fill
                 className="object-cover transition duration-300 hover:scale-105"
