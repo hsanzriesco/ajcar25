@@ -135,34 +135,35 @@ export default function Home() {
       </section>
 
       {/* SOBRE NOSOTROS */}
-      <section id="nosotros" className="bg-neutral-800 py-14 sm:py-16">
-        <div className="max-w-7xl mx-auto px-6 grid gap-10 lg:grid-cols-2 items-center">
+      <section id="nosotros" className="relative bg-neutral-800 py-20 overflow-hidden">
 
-          <div>
-            <h3 className="mb-4 text-xl sm:text-2xl font-semibold">
+        {/* LOGO WATERMARK */}
+        <div className="absolute right-0 bottom-0 translate-x-1/4 translate-y-1/4 opacity-20 pointer-events-none">
+          <Image
+            src="/imagenes/logo_ajcar25.png"
+            alt="Logo AJCAR25"
+            width={500}
+            height={500}
+            className="object-contain"
+          />
+        </div>
+
+        <div className="relative max-w-7xl mx-auto px-6">
+          <div className="max-w-xl">
+
+            <h3 className="mb-6 text-2xl sm:text-3xl font-semibold">
               Sobre Nosotros
             </h3>
 
-            <p className="text-sm sm:text-base text-gray-300 leading-relaxed">
+            <p className="text-gray-300 leading-relaxed text-sm sm:text-base">
               En Ajcar 25 somos un taller especializado en chapa y pintura,
               comprometidos con ofrecer resultados impecables y un trato cercano.
               Cada vehículo se trata como si fuera nuestro.
             </p>
-          </div>
 
-          {/* LOGO */}
-          <div className="flex justify-center">
-            <div className="relative w-44 h-44 sm:w-56 sm:h-56 opacity-80 hover:opacity-100 transition">
-              <Image
-                src="/imagenes/logo_ajcar25.png"
-                alt="Logo AJCAR25"
-                fill
-                className="object-contain"
-              />
-            </div>
           </div>
-
         </div>
+
       </section>
 
       {/* CONTACTO */}
