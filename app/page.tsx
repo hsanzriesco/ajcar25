@@ -20,11 +20,8 @@ export default function Home() {
         <div className="absolute inset-0 bg-black/60" />
 
         <div className="relative z-10 flex h-full flex-col justify-center px-6 sm:px-10 md:px-20 max-w-7xl mx-auto pt-16 sm:pt-20 md:pt-24">
-          
+
           <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold tracking-wide">
-
-
-
             AJCAR 25
           </h1>
 
@@ -72,28 +69,35 @@ export default function Home() {
         </div>
       </section>
 
-      {/* POR QUÉ ELEGIRNOS */}
-      <section className="bg-neutral-800 py-14 sm:py-16">
-        <h3 className="mb-10 text-center text-xl sm:text-2xl font-semibold px-4">
-          ¿Por qué elegir Ajcar 25?
-        </h3>
+      {/* POR QUÉ ELEGIRNOS — DISEÑO ROJO */}
+      <section className="relative py-12 bg-gradient-to-b from-red-700 via-red-600 to-red-800">
 
-        <div className="max-w-6xl mx-auto px-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {/* Glow superior */}
+        <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-transparent via-red-300 to-transparent opacity-80" />
 
-          {[
-            "Más de 20 años de experiencia",
-            "Cumplimos plazos",
-            "Garantía en nuestros trabajos",
-            "Materiales y pintura de alta calidad",
-            "Atención personalizada",
-            "Atención con aseguradoras",
-          ].map((item) => (
-            <div key={item} className="flex gap-3 text-sm sm:text-base text-gray-300">
-              <span className="text-green-400">✓</span>
-              <span>{item}</span>
-            </div>
-          ))}
+        <div className="max-w-6xl mx-auto px-6">
 
+          <h3 className="text-center text-lg sm:text-xl md:text-2xl font-semibold text-white mb-8">
+            ¿Por qué elegir Ajcar 25?
+          </h3>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-y-4 gap-x-8 text-white text-sm sm:text-base">
+
+            {[
+              "Más de 20 años de experiencia",
+              "Materiales y pintura de alta calidad",
+              "Atención personalizada",
+              "Materiales y pintura perfecta",
+              "Garantía en nuestros trabajos",
+              "Atención con aseguradoras",
+            ].map((item) => (
+              <div key={item} className="flex items-center gap-3">
+                <span className="text-red-200 text-lg">✔</span>
+                <span>{item}</span>
+              </div>
+            ))}
+
+          </div>
         </div>
       </section>
 
