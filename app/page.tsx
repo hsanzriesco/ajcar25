@@ -28,7 +28,6 @@ export default function Home() {
         <div className="absolute inset-0 bg-black/60" />
 
         <div className="relative z-10 flex h-full flex-col justify-center px-6 sm:px-10 md:px-20 max-w-7xl mx-auto pt-16 sm:pt-20 md:pt-24">
-
           <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold tracking-wide">
             AJCAR 25
           </h1>
@@ -44,7 +43,6 @@ export default function Home() {
           <button className="mt-6 w-fit rounded bg-gray-200 px-5 py-2.5 sm:px-6 sm:py-3 text-sm sm:text-base font-semibold text-black transition hover:bg-white">
             PIDE TU PRESUPUESTO
           </button>
-
         </div>
       </section>
 
@@ -54,7 +52,6 @@ export default function Home() {
         className="max-w-7xl mx-auto px-6 py-14 sm:py-16"
       >
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-8">
-
           {[
             { label: "Chapa y Pintura", icon: Paintbrush },
             { label: "Pintura Completa", icon: SprayCan },
@@ -76,28 +73,24 @@ export default function Home() {
               </span>
             </div>
           ))}
-
         </div>
       </section>
 
       {/* POR QUÉ ELEGIRNOS */}
       <section className="relative py-14 sm:py-16 bg-gradient-to-r from-red-900 via-red-700 to-red-900">
-
         <div className="absolute inset-0 bg-black/40" />
 
         <div className="relative z-10 max-w-6xl mx-auto px-6 text-center">
-
           <h3 className="mb-8 text-xl sm:text-2xl font-semibold">
             ¿Por qué elegir Ajcar 25?
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-y-4 gap-x-10 text-sm sm:text-base">
-
             {[
               "Más de 20 años de experiencia",
               "Materiales y pintura de alta calidad",
               "Atención personalizada",
-              "Materiales y pintura perfecta",
+              "Resultados de acabado perfecto",
               "Garantía en nuestros trabajos",
               "Cumplimos plazos",
             ].map((item) => (
@@ -106,9 +99,7 @@ export default function Home() {
                 <span>{item}</span>
               </div>
             ))}
-
           </div>
-
         </div>
       </section>
 
@@ -118,24 +109,38 @@ export default function Home() {
           Trabajos Realizados
         </h3>
 
-        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="grid md:grid-cols-2 gap-6">
 
-          {["antes1.jpg", "antes2.jpg", "despues1.jpg", "despues2.jpg"].map(
-            (img) => (
-              <div
-                key={img}
-                className="relative h-56 sm:h-64 overflow-hidden rounded-lg"
-              >
-                <Image
-                  src={`/${img}`}
-                  alt="Trabajo realizado"
-                  fill
-                  className="object-cover transition duration-300 hover:scale-105"
-                />
-              </div>
-            )
-          )}
+            {/* ANTES */}
+            <div className="relative h-64 sm:h-80 overflow-hidden rounded-lg">
+              <Image
+                src="/Coche_antes_1.png"
+                alt="Antes reparación coche"
+                fill
+                className="object-cover transition duration-300 hover:scale-105"
+              />
 
+              <span className="absolute top-3 left-3 bg-black/70 px-3 py-1 text-xs sm:text-sm rounded">
+                Antes
+              </span>
+            </div>
+
+            {/* DESPUÉS */}
+            <div className="relative h-64 sm:h-80 overflow-hidden rounded-lg">
+              <Image
+                src="/Coche_despues_1.png"
+                alt="Después reparación coche"
+                fill
+                className="object-cover transition duration-300 hover:scale-105"
+              />
+
+              <span className="absolute top-3 left-3 bg-red-600 px-3 py-1 text-xs sm:text-sm rounded">
+                Después
+              </span>
+            </div>
+
+          </div>
         </div>
       </section>
 
