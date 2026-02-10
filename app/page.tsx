@@ -81,57 +81,61 @@ export default function Home() {
           </div>
         </section>
 
-        {/* POR QUÉ ELEGIRNOS — VERSION PREMIUM */}
-        <section className="relative py-20 overflow-hidden">
+        {/* POR QUÉ ELEGIRNOS */}
+        <section className="relative py-12 sm:py-14 overflow-hidden">
 
-          {/* Degradado */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#2a0d0d] via-[#7a1c1c] to-[#2a0d0d]" />
+          {/* Degradado rojo suave */}
+          <div className="absolute inset-0 bg-gradient-to-b from-[#6b1a1a] via-[#3a0d0d] to-[#1b0505]" />
 
-          {/* Overlay */}
-          <div className="absolute inset-0 bg-black/40" />
+          {/* Overlay oscuro */}
+          <div className="absolute inset-0 bg-black/45" />
 
-          {/* Textura */}
-          <div className="absolute inset-0 opacity-20 bg-[url('/imagenes/fondo_pagina.png')] bg-cover bg-center" />
+          {/* Textura suelo / metal */}
+          <div className="absolute inset-0 opacity-25 bg-[url('/imagenes/fondo_pagina.png')] bg-cover bg-center" />
 
-          <div className="relative z-10 max-w-7xl mx-auto px-6">
+          {/* Linea superior */}
+          <div className="absolute top-0 left-0 w-full h-[2px] bg-white/20" />
 
-            {/* Titulo */}
-            <div className="flex items-center justify-center gap-6 mb-12">
+          {/* Linea inferior */}
+          <div className="absolute bottom-0 left-0 w-full h-[2px] bg-white/20" />
+
+          <div className="relative z-10 max-w-6xl mx-auto px-6">
+
+            {/* TITULO */}
+            <div className="flex items-center justify-center gap-6 mb-8">
+
               <div className="h-[1px] w-24 bg-white/30" />
 
-              <h3 className="text-xl sm:text-2xl font-semibold tracking-wide">
-                ¿Por qué elegir AJCAR 25?
+              <h3 className="text-lg sm:text-xl font-semibold tracking-wide text-gray-100">
+                ¿Por qué elegir Ajcar 25?
               </h3>
 
               <div className="h-[1px] w-24 bg-white/30" />
+
             </div>
 
-            {/* Beneficios */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-y-6 gap-x-12 text-sm sm:text-base">
+            {/* BENEFICIOS */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-y-4 gap-x-10 text-sm text-gray-200">
 
               {[
                 "Más de 20 años de experiencia",
                 "Materiales y pintura de alta calidad",
                 "Atención personalizada",
-                "Resultados de acabado perfecto",
+                "Materiales y pintura perfecta",
                 "Garantía en nuestros trabajos",
                 "Cumplimos plazos",
               ].map((item) => (
                 <div
                   key={item}
-                  className="flex items-center gap-3 group transition"
+                  className="flex items-center gap-2 hover:text-white transition"
                 >
-                  <span className="text-white text-lg group-hover:scale-110 transition">
-                    ✔
-                  </span>
-
-                  <span className="text-gray-200 group-hover:text-white transition">
-                    {item}
-                  </span>
+                  <span className="text-red-400">✔</span>
+                  <span>{item}</span>
                 </div>
               ))}
 
             </div>
+
           </div>
         </section>
 
