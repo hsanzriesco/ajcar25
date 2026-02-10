@@ -6,6 +6,10 @@ import {
   Sparkles,
   ShieldCheck,
   Gauge,
+  MapPin,
+  Phone,
+  Mail,
+  Clock,
 } from "lucide-react";
 
 export default function Home() {
@@ -65,7 +69,7 @@ export default function Home() {
               className="group flex flex-col items-center gap-3 text-xs sm:text-sm text-gray-300 hover:text-white transition"
             >
               <div className="flex items-center justify-center h-14 w-14 rounded-full bg-neutral-800 border border-white/10 shadow-md shadow-black/40 transition group-hover:bg-red-600">
-                <Icon size={26} className="text-white" />
+                <Icon size={26} />
               </div>
 
               <span className="text-center leading-tight">
@@ -134,53 +138,89 @@ export default function Home() {
         </div>
       </section>
 
-      {/* SOBRE NOSOTROS */}
-      <section id="nosotros" className="relative bg-neutral-800 py-20 overflow-hidden">
+      {/* SOBRE NOSOTROS — ESTILO MOCKUP REAL */}
+      <section
+        id="nosotros"
+        className="relative py-20 overflow-hidden"
+      >
 
-        {/* LOGO WATERMARK */}
-        <div className="absolute right-0 bottom-0 translate-x-1/4 translate-y-1/4 opacity-20 pointer-events-none">
-          <Image
-            src="/imagenes/logo_ajcar25.png"
-            alt="Logo AJCAR25"
-            width={500}
-            height={500}
-            className="object-contain"
-          />
-        </div>
+        {/* Fondo */}
+        <div className="absolute inset-0 bg-[#0e1a23]" />
 
-        <div className="relative max-w-7xl mx-auto px-6">
-          <div className="max-w-xl">
+        {/* Textura opcional */}
+        <div className="absolute inset-0 opacity-30 bg-[url('/imagenes/fondo-metal.jpg')] bg-cover bg-center" />
 
-            <h3 className="mb-6 text-2xl sm:text-3xl font-semibold">
+        <div className="relative z-10 max-w-7xl mx-auto px-6">
+
+          {/* TITULO */}
+          <div className="flex items-center justify-center gap-6 mb-12">
+            <div className="h-[1px] w-20 bg-white/30" />
+            <h3 className="text-xl sm:text-2xl font-semibold">
               Sobre Nosotros
             </h3>
-
-            <p className="text-gray-300 leading-relaxed text-sm sm:text-base">
-              En Ajcar 25 somos un taller especializado en chapa y pintura,
-              comprometidos con ofrecer resultados impecables y un trato cercano.
-              Cada vehículo se trata como si fuera nuestro.
-            </p>
-
-          </div>
-        </div>
-
-      </section>
-
-      {/* CONTACTO */}
-      <section id="contacto" className="py-14 sm:py-16">
-        <div className="max-w-4xl mx-auto px-6 text-center">
-
-          <h3 className="mb-6 text-xl sm:text-2xl font-semibold">
-            Contáctanos
-          </h3>
-
-          <div className="space-y-2 text-sm sm:text-base text-gray-300">
-            <p>Calle Ejemplo 123, Ciudad</p>
-            <p>123 455 789</p>
-            <p>info@ajcar25.com</p>
-            <p>Lun - Vie: 9:00 - 18:00</p>
+            <div className="h-[1px] w-20 bg-white/30" />
           </div>
 
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+
+            {/* TEXTO */}
+            <div className="space-y-8">
+
+              <p className="text-gray-300 text-sm sm:text-base leading-relaxed max-w-lg">
+                En Ajcar 25 somos un taller especializado en chapa y pintura,
+                comprometidos con ofrecer resultados impecables y un trato cercano.
+                Cada vehículo se trata como si fuera nuestro.
+              </p>
+
+              {/* CONTACTO */}
+              <div className="space-y-3">
+
+                <h4 className="font-semibold text-lg">
+                  Contáctanos
+                </h4>
+
+                <div className="space-y-2 text-gray-300 text-sm">
+
+                  <p className="flex items-center gap-2">
+                    <MapPin size={16} />
+                    Calle Ejemplo 123, Ciudad
+                  </p>
+
+                  <p className="flex items-center gap-2">
+                    <Phone size={16} />
+                    123 455 789
+                  </p>
+
+                  <p className="flex items-center gap-2">
+                    <Mail size={16} />
+                    info@ajcar25.com
+                  </p>
+
+                  <p className="flex items-center gap-2">
+                    <Clock size={16} />
+                    Lun - Vie: 9:00 - 18:00
+                  </p>
+
+                </div>
+
+              </div>
+
+            </div>
+
+            {/* LOGO DERECHO */}
+            <div className="flex justify-center lg:justify-end">
+
+              <Image
+                src="/imagenes/logo_ajcar25.png"
+                alt="Logo AJCAR25"
+                width={320}
+                height={320}
+                className="opacity-40"
+              />
+
+            </div>
+
+          </div>
         </div>
       </section>
 
