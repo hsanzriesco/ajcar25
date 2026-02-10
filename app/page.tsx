@@ -1,4 +1,12 @@
 import Image from "next/image";
+import {
+  Paintbrush,
+  SprayCan,
+  Hammer,
+  Sparkles,
+  ShieldCheck,
+  Gauge,
+} from "lucide-react";
 
 export default function Home() {
   return (
@@ -10,7 +18,7 @@ export default function Home() {
         className="relative min-h-[80vh] sm:min-h-[85vh] lg:min-h-[90vh] w-full"
       >
         <Image
-          src="/imagenes/Hombre_pintando_coche.jpg"
+          src="/imagenes/Hombre_pintando_coche.jpeg"
           alt="AJCAR25 Taller de Chapa y Pintura"
           fill
           priority
@@ -48,20 +56,23 @@ export default function Home() {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-8">
 
           {[
-            "Chapa y Pintura",
-            "Pintura Completa",
-            "Reparación de Golpes",
-            "Pulido y Detallado",
-            "Aseguradoras",
-            "Reparaciones Rápidas",
-          ].map((servicio) => (
+            { label: "Chapa y Pintura", icon: Paintbrush },
+            { label: "Pintura Completa", icon: SprayCan },
+            { label: "Reparación de Golpes", icon: Hammer },
+            { label: "Pulido y Detallado", icon: Sparkles },
+            { label: "Aseguradoras", icon: ShieldCheck },
+            { label: "Reparaciones Rápidas", icon: Gauge },
+          ].map(({ label, icon: Icon }) => (
             <div
-              key={servicio}
-              className="flex flex-col items-center gap-3 text-xs sm:text-sm text-gray-300 hover:text-white transition"
+              key={label}
+              className="group flex flex-col items-center gap-3 text-xs sm:text-sm text-gray-300 hover:text-white transition"
             >
-              <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-gray-700" />
+              <div className="flex items-center justify-center h-14 w-14 rounded-full bg-neutral-800 border border-white/10 shadow-md shadow-black/40 transition group-hover:bg-red-600">
+                <Icon size={26} className="text-white" />
+              </div>
+
               <span className="text-center leading-tight">
-                {servicio}
+                {label}
               </span>
             </div>
           ))}
@@ -69,19 +80,18 @@ export default function Home() {
         </div>
       </section>
 
-      {/* POR QUÉ ELEGIRNOS — DISEÑO ROJO */}
-      <section className="relative py-12 bg-gradient-to-b from-red-700 via-red-600 to-red-800">
+      {/* POR QUÉ ELEGIRNOS */}
+      <section className="relative py-14 sm:py-16 bg-gradient-to-r from-red-900 via-red-700 to-red-900">
 
-        {/* Glow superior */}
-        <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-transparent via-red-300 to-transparent opacity-80" />
+        <div className="absolute inset-0 bg-black/40" />
 
-        <div className="max-w-6xl mx-auto px-6">
+        <div className="relative z-10 max-w-6xl mx-auto px-6 text-center">
 
-          <h3 className="text-center text-lg sm:text-xl md:text-2xl font-semibold text-white mb-8">
+          <h3 className="mb-8 text-xl sm:text-2xl font-semibold">
             ¿Por qué elegir Ajcar 25?
           </h3>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-y-4 gap-x-8 text-white text-sm sm:text-base">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-y-4 gap-x-10 text-sm sm:text-base">
 
             {[
               "Más de 20 años de experiencia",
@@ -89,15 +99,16 @@ export default function Home() {
               "Atención personalizada",
               "Materiales y pintura perfecta",
               "Garantía en nuestros trabajos",
-              "Atención con aseguradoras",
+              "Cumplimos plazos",
             ].map((item) => (
-              <div key={item} className="flex items-center gap-3">
-                <span className="text-red-200 text-lg">✔</span>
+              <div key={item} className="flex items-center justify-center gap-2">
+                <span className="text-white">✔</span>
                 <span>{item}</span>
               </div>
             ))}
 
           </div>
+
         </div>
       </section>
 
