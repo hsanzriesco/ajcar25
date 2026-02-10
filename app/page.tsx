@@ -6,7 +6,7 @@ export default function Home() {
       {}
       <section className="relative h-[90vh] w-full">
         <Image
-          src="/imagenes/Hombre_pintando_coche.png"
+          src="/imagenes/Hombre_pintando_coche.jpeg"
           alt="AJCAR25 Taller de Chapa y Pintura"
         fill
         priority
