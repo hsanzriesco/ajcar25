@@ -18,7 +18,7 @@ export default function Home() {
         className="relative min-h-[80vh] sm:min-h-[85vh] lg:min-h-[90vh] w-full"
       >
         <Image
-          src="/imagenes/Hombre_pintando_coche.jpeg"
+          src="/imagenes/Hombre_pintando_coche.jpg"
           alt="AJCAR25 Taller de Chapa y Pintura"
           fill
           priority
