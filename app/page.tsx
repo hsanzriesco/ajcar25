@@ -22,6 +22,9 @@ export default function Home() {
         <div className="relative z-10 flex h-full flex-col justify-center px-6 sm:px-10 md:px-20 max-w-7xl mx-auto">
 
           <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold tracking-wide">
+
+
+            
             AJCAR 25
           </h1>
 
