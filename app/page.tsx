@@ -14,8 +14,44 @@ import {
 
 export default function Home() {
   return (
-    <main className="bg-ajcar text-white pt-20">
-      <div className="bg-ajcar-content">
+    <main className="bg-ajcar text-white">
+
+      {/* ================= NAVBAR ================= */}
+      <header className="fixed top-0 left-0 w-full z-50 backdrop-blur-md bg-black/70 border-b border-white/10">
+        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+
+          {/* LOGO */}
+          <div className="flex items-center">
+            <Image
+              src="/imagenes/prueba_logo_navbar.png"
+              alt="AJCAR25 Logo"
+              width={48}
+              height={48}
+              priority
+              className="object-contain"
+            />
+          </div>
+
+          {/* NAV LINKS */}
+          <nav className="hidden md:flex gap-8 text-sm text-gray-300">
+            <a href="#inicio" className="hover:text-white transition">
+              Inicio
+            </a>
+            <a href="#servicios" className="hover:text-white transition">
+              Servicios
+            </a>
+            <a href="#trabajos" className="hover:text-white transition">
+              Trabajos
+            </a>
+            <a href="#nosotros" className="hover:text-white transition">
+              Nosotros
+            </a>
+          </nav>
+
+        </div>
+      </header>
+
+      <div className="bg-ajcar-content pt-20">
 
         {/* HERO */}
         <section
@@ -84,26 +120,16 @@ export default function Home() {
         {/* POR QUÉ ELEGIRNOS */}
         <section className="relative py-12 sm:py-14 overflow-hidden">
 
-          {/* Degradado rojo suave */}
           <div className="absolute inset-0 bg-gradient-to-b from-[#6b1a1a] via-[#3a0d0d] to-[#1b0505]" />
-
-          {/* Overlay oscuro */}
           <div className="absolute inset-0 bg-black/45" />
-
-          {/* Textura suelo / metal */}
           <div className="absolute inset-0 opacity-25 bg-[url('/imagenes/fondo_pagina.png')] bg-cover bg-center" />
 
-          {/* Linea superior */}
           <div className="absolute top-0 left-0 w-full h-[2px] bg-white/20" />
-
-          {/* Linea inferior */}
           <div className="absolute bottom-0 left-0 w-full h-[2px] bg-white/20" />
 
           <div className="relative z-10 max-w-6xl mx-auto px-6">
 
-            {/* TITULO */}
             <div className="flex items-center justify-center gap-6 mb-8">
-
               <div className="h-[1px] w-24 bg-white/30" />
 
               <h3 className="text-lg sm:text-xl font-semibold tracking-wide text-gray-100">
@@ -111,12 +137,9 @@ export default function Home() {
               </h3>
 
               <div className="h-[1px] w-24 bg-white/30" />
-
             </div>
 
-            {/* BENEFICIOS */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-y-4 gap-x-10 text-sm text-gray-200">
-
               {[
                 "Más de 20 años de experiencia",
                 "Materiales y pintura de alta calidad",
@@ -133,7 +156,6 @@ export default function Home() {
                   <span>{item}</span>
                 </div>
               ))}
-
             </div>
 
           </div>
@@ -188,7 +210,6 @@ export default function Home() {
             <div className="grid lg:grid-cols-2 gap-12 items-center">
 
               <div className="space-y-8">
-
                 <p className="text-gray-300 text-sm sm:text-base leading-relaxed max-w-lg">
                   En Ajcar 25 somos un taller especializado en chapa y pintura,
                   comprometidos con ofrecer resultados impecables y un trato cercano.
@@ -196,7 +217,6 @@ export default function Home() {
                 </p>
 
                 <div className="space-y-3">
-
                   <h4 className="font-semibold text-lg">
                     Contáctanos
                   </h4>
@@ -225,7 +245,6 @@ export default function Home() {
 
                   </div>
                 </div>
-
               </div>
 
               <div className="flex justify-center lg:justify-end">
@@ -237,7 +256,6 @@ export default function Home() {
                   className="opacity-40"
                 />
               </div>
-
 
             </div>
           </div>
