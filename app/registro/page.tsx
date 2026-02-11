@@ -53,7 +53,7 @@ export default function RegistroPage() {
                 <div className="hidden lg:flex flex-col items-center justify-center text-center space-y-6">
 
                     <Image
-                        src="/imagenes/prueba_logo_navbar.png"
+                        src="/imagenes/prueba_logo_1.png"
                         alt="AJCAR25"
                         width={220}
                         height={220}
