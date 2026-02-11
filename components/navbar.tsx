@@ -55,12 +55,6 @@ export default function Navbar() {
               </a>
             ))}
 
-            <a
-              href="#contacto"
-              className="bg-red-700 px-4 py-2 rounded text-white hover:bg-red-600 transition"
-            >
-              Presupuesto
-            </a>
 
           </nav>
 
@@ -94,14 +88,6 @@ export default function Navbar() {
               {link.label}
             </a>
           ))}
-
-          <a
-            href="#contacto"
-            onClick={() => setIsOpen(false)}
-            className="bg-red-700 text-center py-2 rounded text-white hover:bg-red-600 transition"
-          >
-            Presupuesto
-          </a>
 
         </nav>
       </div>
