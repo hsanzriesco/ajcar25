@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
     User,
     Mail,
@@ -41,14 +42,24 @@ export default function RegistroPage() {
         setError("");
 
         console.log("Registro:", form);
-
-        // Aquí luego conectarás con backend / Prisma
     };
 
     return (
         <main className="min-h-screen flex items-center justify-center bg-ajcar text-white px-6 py-10">
 
             <div className="w-full max-w-xl bg-black/60 backdrop-blur-lg border border-white/10 rounded-xl p-8 shadow-xl">
+
+                {/* ===== LOGO ===== */}
+                <div className="flex justify-center mb-6">
+                    <Image
+                        src="/imagenes/prueba_logo_navbar.png"
+                        alt="AJCAR25"
+                        width={80}
+                        height={80}
+                        priority
+                        className="object-contain opacity-90"
+                    />
+                </div>
 
                 {/* TITULO */}
                 <div className="text-center mb-8">
@@ -63,7 +74,6 @@ export default function RegistroPage() {
 
                 <form onSubmit={handleSubmit} className="space-y-5">
 
-                    {/* NOMBRE */}
                     <InputField
                         icon={User}
                         placeholder="Nombre"
@@ -72,7 +82,6 @@ export default function RegistroPage() {
                         onChange={handleChange}
                     />
 
-                    {/* APELLIDOS */}
                     <div className="grid sm:grid-cols-2 gap-4">
                         <InputField
                             icon={User}
@@ -91,7 +100,6 @@ export default function RegistroPage() {
                         />
                     </div>
 
-                    {/* DNI */}
                     <InputField
                         icon={IdCard}
                         placeholder="DNI / NIF"
@@ -100,7 +108,6 @@ export default function RegistroPage() {
                         onChange={handleChange}
                     />
 
-                    {/* EMAIL */}
                     <InputField
                         icon={Mail}
                         placeholder="Correo electrónico"
@@ -110,7 +117,6 @@ export default function RegistroPage() {
                         onChange={handleChange}
                     />
 
-                    {/* TELEFONO */}
                     <InputField
                         icon={Phone}
                         placeholder="Número de teléfono"
@@ -119,7 +125,6 @@ export default function RegistroPage() {
                         onChange={handleChange}
                     />
 
-                    {/* PASSWORD */}
                     <InputField
                         icon={Lock}
                         placeholder="Contraseña"
@@ -129,7 +134,6 @@ export default function RegistroPage() {
                         onChange={handleChange}
                     />
 
-                    {/* CONFIRM PASSWORD */}
                     <InputField
                         icon={Lock}
                         placeholder="Repetir contraseña"
@@ -145,7 +149,6 @@ export default function RegistroPage() {
                         </p>
                     )}
 
-                    {/* BOTON */}
                     <button
                         type="submit"
                         className="w-full bg-gray-200 text-black font-semibold py-2.5 rounded-lg hover:bg-white transition"
@@ -155,7 +158,6 @@ export default function RegistroPage() {
 
                 </form>
 
-                {/* LOGIN LINK */}
                 <div className="text-center mt-6 text-sm text-gray-400">
                     ¿Ya tienes cuenta?{" "}
                     <Link
@@ -172,7 +174,7 @@ export default function RegistroPage() {
     );
 }
 
-/* ================= COMPONENTE INPUT ================= */
+/* ===== INPUT COMPONENT ===== */
 
 function InputField({
     icon: Icon,
