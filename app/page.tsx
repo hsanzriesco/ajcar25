@@ -15,26 +15,25 @@ import {
 export default function Home() {
   return (
     <main className="bg-ajcar text-white">
-
       <div className="bg-ajcar-content">
-
         {/* HERO */}
         <section
           id="inicio"
-          className="relative min-h-[80vh] sm:min-h-[85vh] lg:min-h-[90vh] w-full"
+          className="relative h-[75vh] sm:min-h-[85vh] lg:min-h-[90vh] w-full"
         >
           <Image
             src="/imagenes/Hombre_pintando_coche.jpg"
             alt="AJCAR25 Taller de Chapa y Pintura"
             fill
             priority
-            className="object-contain sm:object-cover"
+            className="object-cover object-[70%_center] sm:object-center"
           />
 
+          {/* Overlay oscuro */}
           <div className="absolute inset-0 bg-black/60" />
 
+          {/* Contenido HERO */}
           <div className="relative z-10 flex h-full flex-col justify-center px-6 sm:px-10 md:px-20 max-w-7xl mx-auto">
-
             <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold tracking-wide">
               AJCAR 25
             </h1>
@@ -50,15 +49,11 @@ export default function Home() {
             <button className="mt-6 w-fit rounded bg-gray-200 px-5 py-2.5 sm:px-6 sm:py-3 text-sm sm:text-base font-semibold text-black transition hover:bg-white">
               PIDE TU PRESUPUESTO
             </button>
-
           </div>
         </section>
 
         {/* SERVICIOS */}
-        <section
-          id="servicios"
-          className="max-w-7xl mx-auto px-6 py-14 sm:py-16"
-        >
+        <section id="servicios" className="max-w-7xl mx-auto px-6 py-14 sm:py-16">
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-8">
             {[
               { label: "Chapa y Pintura", icon: Paintbrush },
@@ -76,9 +71,7 @@ export default function Home() {
                   <Icon size={26} />
                 </div>
 
-                <span className="text-center leading-tight">
-                  {label}
-                </span>
+                <span className="text-center leading-tight">{label}</span>
               </div>
             ))}
           </div>
@@ -86,7 +79,6 @@ export default function Home() {
 
         {/* POR QUÉ ELEGIRNOS */}
         <section className="relative py-12 sm:py-14 overflow-hidden">
-
           <div className="absolute inset-0 bg-gradient-to-b from-[#6b1a1a] via-[#3a0d0d] to-[#1b0505]" />
           <div className="absolute inset-0 bg-black/45" />
           <div className="absolute inset-0 opacity-25 bg-[url('/imagenes/fondo_pagina.png')] bg-cover bg-center" />
@@ -95,7 +87,6 @@ export default function Home() {
           <div className="absolute bottom-0 left-0 w-full h-[2px] bg-white/20" />
 
           <div className="relative z-10 max-w-6xl mx-auto px-6">
-
             <div className="flex items-center justify-center gap-6 mb-8">
               <div className="h-[1px] w-24 bg-white/30" />
 
@@ -124,7 +115,6 @@ export default function Home() {
                 </div>
               ))}
             </div>
-
           </div>
         </section>
 
@@ -136,7 +126,6 @@ export default function Home() {
 
           <div className="max-w-6xl mx-auto px-6">
             <div className="grid md:grid-cols-2 gap-6">
-
               <div className="relative h-64 sm:h-80 overflow-hidden rounded-lg">
                 <Image
                   src="/imagenes/Coche_antes_1.png"
@@ -154,18 +143,13 @@ export default function Home() {
                   className="object-cover transition duration-300 hover:scale-105"
                 />
               </div>
-
             </div>
           </div>
         </section>
 
         {/* SOBRE NOSOTROS */}
-        <section
-          id="nosotros"
-          className="relative py-20 overflow-hidden"
-        >
+        <section id="nosotros" className="relative py-20 overflow-hidden">
           <div className="relative z-10 max-w-7xl mx-auto px-6">
-
             <div className="flex items-center justify-center gap-6 mb-12">
               <div className="h-[1px] w-20 bg-white/30" />
               <h3 className="text-xl sm:text-2xl font-semibold">
@@ -175,21 +159,17 @@ export default function Home() {
             </div>
 
             <div className="grid lg:grid-cols-2 gap-12 items-center">
-
               <div className="space-y-8">
                 <p className="text-gray-300 text-sm sm:text-base leading-relaxed max-w-lg">
                   En Ajcar 25 somos un taller especializado en chapa y pintura,
-                  comprometidos con ofrecer resultados impecables y un trato cercano.
-                  Cada vehículo se trata como si fuera nuestro.
+                  comprometidos con ofrecer resultados impecables y un trato
+                  cercano. Cada vehículo se trata como si fuera nuestro.
                 </p>
 
                 <div className="space-y-3">
-                  <h4 className="font-semibold text-lg">
-                    Contáctanos
-                  </h4>
+                  <h4 className="font-semibold text-lg">Contáctanos</h4>
 
                   <div className="space-y-2 text-gray-300 text-sm">
-
                     <p className="flex items-center gap-2">
                       <MapPin size={16} />
                       Calle Ejemplo 123, Ciudad
@@ -209,7 +189,6 @@ export default function Home() {
                       <Clock size={16} />
                       Lun - Vie: 9:00 - 18:00
                     </p>
-
                   </div>
                 </div>
               </div>
@@ -223,11 +202,9 @@ export default function Home() {
                   className="opacity-40"
                 />
               </div>
-
             </div>
           </div>
         </section>
-
       </div>
     </main>
   );
