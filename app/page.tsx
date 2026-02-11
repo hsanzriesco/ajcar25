@@ -17,44 +17,64 @@ export default function Home() {
     <main className="bg-ajcar text-white">
 
       {/* ================= NAVBAR ================= */}
-      <header className="fixed top-0 left-0 w-full z-50 backdrop-blur-md bg-black/70 border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+      <header className="fixed top-0 left-0 w-full z-50 h-20">
 
-          {/* LOGO */}
-          <div className="flex items-center">
-            <Image
-              src="/imagenes/prueba_logo_navbar.png"
-              alt="AJCAR25 Logo"
-              width={48}
-              height={48}
-              priority
-              className="object-contain"
-            />
+        {/* Línea roja */}
+        <div className="h-[2px] w-full bg-gradient-to-r from-red-900 via-red-600 to-red-900" />
+
+        {/* Fondo */}
+        <div className="h-full backdrop-blur-md bg-gradient-to-b from-black/90 via-black/70 to-black/40 border-b border-white/10">
+
+          <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
+
+            {/* LOGO */}
+            <div className="flex items-center gap-3">
+              <Image
+                src="/imagenes/prueba_logo_navbar.png"
+                alt="AJCAR25"
+                width={42}
+                height={42}
+                priority
+                className="object-contain"
+              />
+
+              <span className="text-lg font-semibold tracking-wider">
+                AJCAR25
+              </span>
+            </div>
+
+            {/* LINKS */}
+            <nav className="hidden md:flex items-center gap-8 text-sm text-gray-300">
+              <a href="#inicio" className="hover:text-white transition">
+                Inicio
+              </a>
+
+              <a href="#servicios" className="hover:text-white transition">
+                Servicios
+              </a>
+
+              <a href="#trabajos" className="hover:text-white transition">
+                Trabajos
+              </a>
+
+              <a href="#nosotros" className="hover:text-white transition">
+                Nosotros
+              </a>
+
+              <button className="bg-red-700 px-4 py-2 rounded text-white hover:bg-red-600 transition">
+                Presupuesto
+              </button>
+            </nav>
+
           </div>
-
-          {/* NAV LINKS */}
-          <nav className="hidden md:flex gap-8 text-sm text-gray-300">
-            <a href="#inicio" className="hover:text-white transition">
-              Inicio
-            </a>
-            <a href="#servicios" className="hover:text-white transition">
-              Servicios
-            </a>
-            <a href="#trabajos" className="hover:text-white transition">
-              Trabajos
-            </a>
-            <a href="#nosotros" className="hover:text-white transition">
-              Nosotros
-            </a>
-          </nav>
-
         </div>
       </header>
 
-      <div className="bg-ajcar-content pt-20">
+      {/* ================= CONTENIDO ================= */}
+      <div className="pt-20">
 
         {/* HERO */}
-        {/* <section
+        <section
           id="inicio"
           className="relative min-h-[80vh] sm:min-h-[85vh] lg:min-h-[90vh] w-full"
         >
@@ -68,7 +88,8 @@ export default function Home() {
 
           <div className="absolute inset-0 bg-black/60" />
 
-          <div className="relative z-10 flex h-full flex-col justify-center px-6 sm:px-10 md:px-20 max-w-7xl mx-auto pt-16 sm:pt-20 md:pt-24">
+          <div className="relative z-10 flex h-full flex-col justify-center px-6 sm:px-10 md:px-20 max-w-7xl mx-auto">
+
             <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold tracking-wide">
               AJCAR 25
             </h1>
@@ -84,8 +105,9 @@ export default function Home() {
             <button className="mt-6 w-fit rounded bg-gray-200 px-5 py-2.5 sm:px-6 sm:py-3 text-sm sm:text-base font-semibold text-black transition hover:bg-white">
               PIDE TU PRESUPUESTO
             </button>
+
           </div>
-        </section> */}
+        </section>
 
         {/* SERVICIOS */}
         <section
@@ -148,10 +170,7 @@ export default function Home() {
                 "Garantía en nuestros trabajos",
                 "Cumplimos plazos",
               ].map((item) => (
-                <div
-                  key={item}
-                  className="flex items-center gap-2 hover:text-white transition"
-                >
+                <div key={item} className="flex items-center gap-2">
                   <span className="text-red-400">✔</span>
                   <span>{item}</span>
                 </div>
