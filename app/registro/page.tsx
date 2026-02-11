@@ -1,4 +1,11 @@
 import Image from "next/image";
+import {
+    User,
+    IdCard,
+    Mail,
+    Phone,
+    Lock,
+} from "lucide-react";
 
 export default function RegistroPage() {
     return (
@@ -6,7 +13,7 @@ export default function RegistroPage() {
 
             <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-12 items-center">
 
-                {/* ================= PANEL IZQUIERDO (LOGO) ================= */}
+                {/* ================= LOGO IZQUIERDA ================= */}
                 <div className="hidden lg:flex flex-col items-center justify-center text-center space-y-6">
 
                     <Image
@@ -16,15 +23,6 @@ export default function RegistroPage() {
                         height={260}
                         className="opacity-90"
                     />
-
-                    <h2 className="text-2xl font-semibold tracking-wide">
-                        Bienvenido a AJCAR 25
-                    </h2>
-
-                    <p className="text-gray-300 text-sm leading-relaxed max-w-sm">
-                        Regístrate para gestionar tus reparaciones, presupuestos y
-                        seguimiento de tu vehículo.
-                    </p>
 
                 </div>
 
@@ -38,60 +36,84 @@ export default function RegistroPage() {
                     <form className="space-y-4">
 
                         {/* Nombre */}
-                        <input
-                            type="text"
-                            placeholder="Nombre"
-                            className="w-full px-4 py-2 rounded bg-neutral-800 border border-white/10 focus:outline-none focus:border-red-600"
-                        />
+                        <div className="relative">
+                            <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <input
+                                type="text"
+                                placeholder="Nombre"
+                                className="w-full pl-10 pr-4 py-2 rounded bg-neutral-800 border border-white/10 focus:outline-none focus:border-red-600"
+                            />
+                        </div>
 
                         {/* Primer Apellido */}
-                        <input
-                            type="text"
-                            placeholder="Primer Apellido"
-                            className="w-full px-4 py-2 rounded bg-neutral-800 border border-white/10 focus:outline-none focus:border-red-600"
-                        />
+                        <div className="relative">
+                            <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <input
+                                type="text"
+                                placeholder="Primer Apellido"
+                                className="w-full pl-10 pr-4 py-2 rounded bg-neutral-800 border border-white/10 focus:outline-none focus:border-red-600"
+                            />
+                        </div>
 
                         {/* Segundo Apellido */}
-                        <input
-                            type="text"
-                            placeholder="Segundo Apellido"
-                            className="w-full px-4 py-2 rounded bg-neutral-800 border border-white/10 focus:outline-none focus:border-red-600"
-                        />
+                        <div className="relative">
+                            <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <input
+                                type="text"
+                                placeholder="Segundo Apellido"
+                                className="w-full pl-10 pr-4 py-2 rounded bg-neutral-800 border border-white/10 focus:outline-none focus:border-red-600"
+                            />
+                        </div>
 
                         {/* DNI */}
-                        <input
-                            type="text"
-                            placeholder="DNI / NIF"
-                            className="w-full px-4 py-2 rounded bg-neutral-800 border border-white/10 focus:outline-none focus:border-red-600"
-                        />
+                        <div className="relative">
+                            <IdCard className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <input
+                                type="text"
+                                placeholder="DNI / NIF"
+                                className="w-full pl-10 pr-4 py-2 rounded bg-neutral-800 border border-white/10 focus:outline-none focus:border-red-600"
+                            />
+                        </div>
 
                         {/* Email */}
-                        <input
-                            type="email"
-                            placeholder="Correo electrónico"
-                            className="w-full px-4 py-2 rounded bg-neutral-800 border border-white/10 focus:outline-none focus:border-red-600"
-                        />
+                        <div className="relative">
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <input
+                                type="email"
+                                placeholder="Correo electrónico"
+                                className="w-full pl-10 pr-4 py-2 rounded bg-neutral-800 border border-white/10 focus:outline-none focus:border-red-600"
+                            />
+                        </div>
 
                         {/* Teléfono */}
-                        <input
-                            type="tel"
-                            placeholder="Número de teléfono"
-                            className="w-full px-4 py-2 rounded bg-neutral-800 border border-white/10 focus:outline-none focus:border-red-600"
-                        />
+                        <div className="relative">
+                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <input
+                                type="tel"
+                                placeholder="Número de teléfono"
+                                className="w-full pl-10 pr-4 py-2 rounded bg-neutral-800 border border-white/10 focus:outline-none focus:border-red-600"
+                            />
+                        </div>
 
                         {/* Contraseña */}
-                        <input
-                            type="password"
-                            placeholder="Contraseña"
-                            className="w-full px-4 py-2 rounded bg-neutral-800 border border-white/10 focus:outline-none focus:border-red-600"
-                        />
+                        <div className="relative">
+                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <input
+                                type="password"
+                                placeholder="Contraseña"
+                                className="w-full pl-10 pr-4 py-2 rounded bg-neutral-800 border border-white/10 focus:outline-none focus:border-red-600"
+                            />
+                        </div>
 
-                        {/* Repetir Contraseña */}
-                        <input
-                            type="password"
-                            placeholder="Repetir Contraseña"
-                            className="w-full px-4 py-2 rounded bg-neutral-800 border border-white/10 focus:outline-none focus:border-red-600"
-                        />
+                        {/* Repetir contraseña */}
+                        <div className="relative">
+                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <input
+                                type="password"
+                                placeholder="Repetir Contraseña"
+                                className="w-full pl-10 pr-4 py-2 rounded bg-neutral-800 border border-white/10 focus:outline-none focus:border-red-600"
+                            />
+                        </div>
 
                         {/* Botón */}
                         <button
@@ -103,7 +125,6 @@ export default function RegistroPage() {
 
                     </form>
 
-                    {/* Login link */}
                     <p className="text-center text-gray-400 text-sm mt-6">
                         ¿Ya tienes cuenta?{" "}
                         <a href="/login" className="text-red-500 hover:underline">
