@@ -17,13 +17,13 @@ export default function Home() {
     <main className="bg-ajcar text-white">
 
       {/* ================= NAVBAR ================= */}
-      <header className="fixed top-0 left-0 w-full z-50 h-20">
+      <header className="fixed top-0 left-0 w-full z-50">
 
-        {/* Línea roja */}
-        <div className="h-[2px] w-full bg-gradient-to-r from-red-900 via-red-600 to-red-900" />
+        {/* Línea roja única */}
+        <div className="h-[3px] w-full bg-gradient-to-r from-red-900 via-red-600 to-red-900" />
 
-        {/* Fondo */}
-        <div className="h-full backdrop-blur-md bg-gradient-to-b from-black/90 via-black/70 to-black/40 border-b border-white/10">
+        {/* Navbar */}
+        <div className="h-[72px] backdrop-blur-md bg-black/85">
 
           <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
 
@@ -32,10 +32,10 @@ export default function Home() {
               <Image
                 src="/imagenes/prueba_logo_navbar.png"
                 alt="AJCAR25"
-                width={42}
-                height={42}
-                priority
+                width={40}
+                height={40}
                 className="object-contain"
+                priority
               />
 
               <span className="text-lg font-semibold tracking-wider">
@@ -45,21 +45,10 @@ export default function Home() {
 
             {/* LINKS */}
             <nav className="hidden md:flex items-center gap-8 text-sm text-gray-300">
-              <a href="#inicio" className="hover:text-white transition">
-                Inicio
-              </a>
-
-              <a href="#servicios" className="hover:text-white transition">
-                Servicios
-              </a>
-
-              <a href="#trabajos" className="hover:text-white transition">
-                Trabajos
-              </a>
-
-              <a href="#nosotros" className="hover:text-white transition">
-                Nosotros
-              </a>
+              <a href="#inicio" className="hover:text-white transition">Inicio</a>
+              <a href="#servicios" className="hover:text-white transition">Servicios</a>
+              <a href="#trabajos" className="hover:text-white transition">Trabajos</a>
+              <a href="#nosotros" className="hover:text-white transition">Nosotros</a>
 
               <button className="bg-red-700 px-4 py-2 rounded text-white hover:bg-red-600 transition">
                 Presupuesto
