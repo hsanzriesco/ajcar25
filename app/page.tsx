@@ -54,7 +54,7 @@ export default function Home() {
       <div className="bg-ajcar-content pt-20">
 
         {/* HERO */}
-        <section
+        {/* <section
           id="inicio"
           className="relative min-h-[80vh] sm:min-h-[85vh] lg:min-h-[90vh] w-full"
         >
@@ -85,7 +85,7 @@ export default function Home() {
               PIDE TU PRESUPUESTO
             </button>
           </div>
-        </section>
+        </section> */}
 
         {/* SERVICIOS */}
         <section
