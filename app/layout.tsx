@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import Navbar from "@/components/navbar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,8 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "AJCAR 25 | Taller de Chapa y Pintura",
   description:
-    "Taller especializado en chapa y pintura. Más de 20 años ofreciendo reparaciones de calidad, precisión y confianza.",
-  keywords: ["taller chapa y pintura", "reparación coches", "AJCAR 25"],
+    "Taller especializado en chapa y pintura. Más de 20 años ofreciendo reparaciones de calidad.",
 };
 
 export default function RootLayout({
@@ -29,7 +29,8 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-neutral-900 text-white`}
       >
-        {children}
+        <Navbar />
+        <main className="pt-20">{children}</main>
       </body>
     </html>
   );
