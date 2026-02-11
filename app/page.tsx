@@ -16,7 +16,7 @@ export default function Home() {
   return (
     <main className="bg-ajcar text-white">
 
-      <div className="bg-ajcar-content pt-20">
+      <div className="bg-ajcar-content">
 
         {/* HERO */}
         <section
@@ -33,7 +33,8 @@ export default function Home() {
 
           <div className="absolute inset-0 bg-black/60" />
 
-          <div className="relative z-10 flex h-full flex-col justify-center px-6 sm:px-10 md:px-20 max-w-7xl mx-auto pt-16 sm:pt-20 md:pt-24">
+          <div className="relative z-10 flex h-full flex-col justify-center px-6 sm:px-10 md:px-20 max-w-7xl mx-auto">
+
             <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold tracking-wide">
               AJCAR 25
             </h1>
@@ -49,6 +50,7 @@ export default function Home() {
             <button className="mt-6 w-fit rounded bg-gray-200 px-5 py-2.5 sm:px-6 sm:py-3 text-sm sm:text-base font-semibold text-black transition hover:bg-white">
               PIDE TU PRESUPUESTO
             </button>
+
           </div>
         </section>
 
