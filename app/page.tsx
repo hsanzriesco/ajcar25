@@ -28,7 +28,7 @@ export default function Home() {
             alt="AJCAR25 Taller de Chapa y Pintura"
             fill
             priority
-            className="object-cover"
+            className="object-contain sm:object-cover"
           />
 
           <div className="absolute inset-0 bg-black/60" />
