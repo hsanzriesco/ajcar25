@@ -1,10 +1,5 @@
 import "./globals.css"
-import type { Metadata } from "next"
-
-export const metadata: Metadata = {
-  title: "AJCAR 25",
-  description: "Taller de chapa y pintura",
-}
+import Navbar from "@/components/navbar"
 
 export default function RootLayout({
   children,
@@ -13,7 +8,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
-      <body>{children}</body>
+      <body className="bg-black text-white">
+        <Navbar />
+        <main className="pt-20">{children}</main>
+      </body>
     </html>
   )
 }
