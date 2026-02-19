@@ -1,0 +1,23 @@
+[
+  {
+    "code": "ES",
+    "name": "España",
+    "dialCode": "+34",
+    "regex": "^[6-9]\\d{8}$",
+    "maxLength": 9
+  },
+  {
+    "code": "FR",
+    "name": "Francia",
+    "dialCode": "+33",
+    "regex": "^[1-9]\\d{8}$",
+    "maxLength": 9
+  },
+  {
+    "code": "PT",
+    "name": "Portugal",
+    "dialCode": "+351",
+    "regex": "^[2-9]\\d{8}$",
+    "maxLength": 9
+  }
+]
