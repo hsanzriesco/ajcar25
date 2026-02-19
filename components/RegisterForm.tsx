@@ -1,6 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import PhoneInput, {
+  isValidPhoneNumber,
+} from "react-phone-number-input";
+import "react-phone-number-input/style.css";
 
 export default function RegisterForm() {
   const [form, setForm] = useState({
@@ -9,10 +13,12 @@ export default function RegisterForm() {
     apellido2: "",
     dni: "",
     email: "",
-    telefono: "",
     password: "",
     repeatPassword: "",
   });
+
+  const [phone, setPhone] = useState<string | undefined>();
+  const [phoneError, setPhoneError] = useState("");
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({
@@ -29,7 +35,19 @@ export default function RegisterForm() {
       return;
     }
 
-    console.log(form);
+    if (!phone || !isValidPhoneNumber(phone)) {
+      setPhoneError("Número de teléfono no válido");
+      return;
+    }
+
+    setPhoneError("");
+
+    const finalData = {
+      ...form,
+      telefono: phone,
+    };
+
+    console.log(finalData);
 
     // Aquí conectarás backend
   };
@@ -45,7 +63,47 @@ export default function RegisterForm() {
         { label: "Segundo Apellido", name: "apellido2" },
         { label: "DNI/NIF", name: "dni" },
         { label: "Correo Electrónico", name: "email", type: "email" },
-        { label: "Número de Teléfono", name: "telefono" },
+      ].map((field) => (
+        <div key={field.name}>
+          <label className="block text-sm mb-1">
+            {field.label}
+          </label>
+
+          <input
+            type={field.type || "text"}
+            name={field.name}
+            required
+            onChange={handleChange}
+            className="w-full p-3 rounded bg-neutral-800 border border-white/10 focus:border-red-500 outline-none"
+          />
+        </div>
+      ))}
+
+      {/* TELÉFONO PROFESIONAL INTERNACIONAL */}
+      <div>
+        <label className="block text-sm mb-1">
+          Número de Teléfono
+        </label>
+
+        <div className="bg-neutral-800 border border-white/10 rounded p-2 focus-within:border-red-500">
+          <PhoneInput
+            defaultCountry="ES"
+            value={phone}
+            onChange={setPhone}
+            international
+            countryCallingCodeEditable={false}
+            className="text-white"
+          />
+        </div>
+
+        {phoneError && (
+          <p className="text-red-500 text-sm mt-1">
+            {phoneError}
+          </p>
+        )}
+      </div>
+
+      {[
         { label: "Contraseña", name: "password", type: "password" },
         { label: "Repetir Contraseña", name: "repeatPassword", type: "password" },
       ].map((field) => (
@@ -55,7 +113,7 @@ export default function RegisterForm() {
           </label>
 
           <input
-            type={field.type || "text"}
+            type={field.type}
             name={field.name}
             required
             onChange={handleChange}
