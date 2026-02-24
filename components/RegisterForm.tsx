@@ -29,7 +29,7 @@ export default function RegisterForm() {
   const dynamicMaxLength = useMemo(() => {
     const countryMatch = countries.find((c) => c.iso2 === selectedCountry);
     // Retornamos el maxLength del JSON o un valor estándar (15) si no existe
-    return countryMatch ? countryMatch.maxLength : 16;
+    return countryMatch ? countryMatch.maxLength : 15;
   }, [selectedCountry]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -91,7 +91,7 @@ export default function RegisterForm() {
             className="text-white"
             // Pasamos el maxLength al input interno
             numberInputProps={{
-              maxLength: dynamicMaxLength + 5, // Margen extra para el prefijo (+34, etc.)
+              maxLength: dynamicMaxLength + 6, // Margen extra para el prefijo (+34, etc.)
               className: "bg-transparent outline-none w-full ml-2"
             }}
           />
