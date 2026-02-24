@@ -29,7 +29,7 @@ export default function RegisterForm() {
   const dynamicMaxLength = useMemo(() => {
     const countryMatch = countries.find((c) => c.iso2 === selectedCountry);
     // Retornamos el maxLength del JSON o un valor estándar (15) si no existe
-    return countryMatch ? countryMatch.maxLength : 15;
+    return countryMatch ? countryMatch.maxLength : 16;
   }, [selectedCountry]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
