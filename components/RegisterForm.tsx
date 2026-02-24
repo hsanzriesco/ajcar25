@@ -91,7 +91,7 @@ export default function RegisterForm() {
             className="text-white"
             // Pasamos el maxLength al input interno
             numberInputProps={{
-              maxLength: dynamicMaxLength + 6, // Margen extra para el prefijo (+34, etc.)
+              maxLength: dynamicMaxLength + 10, // Margen extra para el prefijo (+34, etc.)
               className: "bg-transparent outline-none w-full ml-2"
             }}
           />
