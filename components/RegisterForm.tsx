@@ -1,14 +1,12 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import PhoneInput, {
-  isValidPhoneNumber,
-  Country,
-} from "react-phone-number-input";
+import PhoneInput, { isValidPhoneNumber } from "react-phone-number-input";
 import "react-phone-number-input/style.css";
+import { CountryCode } from "libphonenumber-js";
 
-// IMPORTANTE: Asegúrate de que la ruta a tu JSON sea correcta
-import countriesData from "@/data/countries-full.json"; 
+// Importación del archivo externo
+import countries from "@/data/countries-full.json"; 
 
 export default function RegisterForm() {
   const [form, setForm] = useState({
@@ -22,40 +20,20 @@ export default function RegisterForm() {
   });
 
   const [phone, setPhone] = useState<string | undefined>();
-  const [country, setCountry] = useState<Country>("ES");
   const [phoneError, setPhoneError] = useState("");
+  
+  // Estado para controlar el país seleccionado (por defecto España 'ES')
+  const [selectedCountry, setSelectedCountry] = useState<CountryCode>("ES");
 
-  // Buscamos la configuración del país seleccionado en tu JSON
-  const countryConfig = useMemo(() => {
-    return (
-      countriesData.find((c: any) => c.iso2 === country) || {
-        maxLength: 15,
-        dialCode: "",
-      }
-    );
-  }, [country]);
+  // Buscamos el maxLength correspondiente al país seleccionado en el JSON
+  const dynamicMaxLength = useMemo(() => {
+    const countryMatch = countries.find((c) => c.iso2 === selectedCountry);
+    // Retornamos el maxLength del JSON o un valor estándar (15) si no existe
+    return countryMatch ? countryMatch.maxLength : 15;
+  }, [selectedCountry]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value,
-    });
-  };
-
-  // Función controlada para el cambio de teléfono (Bloqueo de escritura)
-  const handlePhoneChange = (value: string | undefined) => {
-    if (!value) {
-      setPhone(undefined);
-      return;
-    }
-
-    // Eliminamos el prefijo y caracteres no numéricos para contar solo los dígitos reales
-    const digitsOnly = value.replace(countryConfig.dialCode, "").replace(/\D/g, "");
-
-    // Solo actualizamos si no supera el límite de tu JSON
-    if (digitsOnly.length <= countryConfig.maxLength) {
-      setPhone(value);
-    }
+    setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -67,23 +45,16 @@ export default function RegisterForm() {
     }
 
     if (!phone || !isValidPhoneNumber(phone)) {
-      setPhoneError("Número de teléfono no válido para el país seleccionado");
+      setPhoneError("Número de teléfono no válido");
       return;
     }
 
     setPhoneError("");
-
-    const finalData = {
-      ...form,
-      telefono: phone,
-    };
-
-    console.log("Datos para el backend:", finalData);
+    console.log({ ...form, telefono: phone });
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 w-full max-w-md text-white">
-      {/* CAMPOS BÁSICOS */}
+    <form onSubmit={handleSubmit} className="space-y-4 w-full max-w-md">
       {[
         { label: "Nombre", name: "nombre" },
         { label: "Primer Apellido", name: "apellido1" },
@@ -98,37 +69,40 @@ export default function RegisterForm() {
             name={field.name}
             required
             onChange={handleChange}
-            className="w-full p-3 rounded bg-neutral-800 border border-white/10 focus:border-red-500 outline-none transition-colors"
+            className="w-full p-3 rounded bg-neutral-800 border border-white/10 focus:border-red-500 outline-none"
           />
         </div>
       ))}
 
-      {/* TELÉFONO PROFESIONAL INTERNACIONAL */}
+      {/* TELÉFONO CON LÓGICA DE MAXLENGTH */}
       <div>
         <label className="block text-sm mb-1">Número de Teléfono</label>
-        <div className="bg-neutral-800 border border-white/10 rounded p-2 focus-within:border-red-500 transition-colors">
+        <div className="bg-neutral-800 border border-white/10 rounded p-2 focus-within:border-red-500">
           <PhoneInput
             defaultCountry="ES"
             value={phone}
-            onChange={handlePhoneChange}
-            onCountryChange={(c) => {
-              setCountry(c as Country);
-              setPhone(undefined); // Resetear al cambiar país
+            onChange={setPhone}
+            // Actualizamos el país cada vez que el usuario lo cambia en el select
+            onCountryChange={(country) => {
+              if (country) setSelectedCountry(country as CountryCode);
             }}
             international
             countryCallingCodeEditable={false}
-            className="phone-input-custom"
+            className="text-white"
+            // Pasamos el maxLength al input interno
+            numberInputProps={{
+              maxLength: dynamicMaxLength + 5, // Margen extra para el prefijo (+34, etc.)
+              className: "bg-transparent outline-none w-full ml-2"
+            }}
           />
         </div>
-
-        {phoneError && <p className="text-red-500 text-xs mt-1">{phoneError}</p>}
-        
-        <p className="text-neutral-500 text-[10px] mt-1 italic">
-          Máximo permitido para {country}: {countryConfig.maxLength} dígitos (sin contar prefijo ni espacios).
+        <p className="text-[10px] text-neutral-500 mt-1 uppercase">
+          Límite para {selectedCountry}: {dynamicMaxLength} dígitos
         </p>
+
+        {phoneError && <p className="text-red-500 text-sm mt-1">{phoneError}</p>}
       </div>
 
-      {/* CONTRASEÑAS */}
       {[
         { label: "Contraseña", name: "password", type: "password" },
         { label: "Repetir Contraseña", name: "repeatPassword", type: "password" },
@@ -140,31 +114,17 @@ export default function RegisterForm() {
             name={field.name}
             required
             onChange={handleChange}
-            className="w-full p-3 rounded bg-neutral-800 border border-white/10 focus:border-red-500 outline-none transition-colors"
+            className="w-full p-3 rounded bg-neutral-800 border border-white/10 focus:border-red-500 outline-none"
           />
         </div>
       ))}
 
       <button
         type="submit"
-        className="w-full bg-red-600 hover:bg-red-700 transition p-3 rounded font-semibold mt-4 shadow-md active:scale-[0.98]"
+        className="w-full bg-red-600 hover:bg-red-700 transition p-3 rounded font-semibold"
       >
         Registrarse
       </button>
-
-      {/* Estilos para limpiar el componente externo */}
-      <style jsx global>{`
-        .phone-input-custom input {
-          background: transparent;
-          border: none;
-          color: white;
-          outline: none;
-          width: 100%;
-        }
-        .PhoneInputCountrySelect {
-          color: black; /* Para que el menú de países sea legible */
-        }
-      `}</style>
     </form>
   );
 }
