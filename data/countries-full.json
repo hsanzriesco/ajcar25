@@ -159,7 +159,7 @@
     { "name": "South Africa", "iso2": "ZA", "dialCode": "+27", "maxLength": 9 },
     { "name": "South Korea", "iso2": "KR", "dialCode": "+82", "maxLength": 10 },
     { "name": "South Sudan", "iso2": "SS", "dialCode": "+211", "maxLength": 9 },
-    { "name": "Spain", "iso2": "ES", "dialCode": "+34", "maxLength": 9 },
+    { "name": "Spain", "iso2": "ES", "dialCode": "+34", "maxLength": 11 },
     { "name": "Sri Lanka", "iso2": "LK", "dialCode": "+94", "maxLength": 9 },
     { "name": "Sudan", "iso2": "SD", "dialCode": "+249", "maxLength": 9 },
     { "name": "Suriname", "iso2": "SR", "dialCode": "+597", "maxLength": 7 },
