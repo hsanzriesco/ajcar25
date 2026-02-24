@@ -2,7 +2,8 @@
     {
         "name": "Afghanistan",
         "iso2": "AF",
-        "dialCode": "+93"
+        "dialCode": "+93",
+        "maxLength": "9"
     },
     {
         "name": "Albania",
