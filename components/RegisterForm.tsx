@@ -1,9 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import PhoneInput, {
-  isValidPhoneNumber,
-} from "react-phone-number-input";
+import PhoneInput, { isValidPhoneNumber } from "react-phone-number-input";
 import "react-phone-number-input/style.css";
 
 export default function RegisterForm() {
@@ -30,11 +28,13 @@ export default function RegisterForm() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Validar contraseñas
     if (form.password !== form.repeatPassword) {
       alert("Las contraseñas no coinciden");
       return;
     }
 
+    // Validar teléfono internacional
     if (!phone || !isValidPhoneNumber(phone)) {
       setPhoneError("Número de teléfono no válido");
       return;
@@ -53,10 +53,9 @@ export default function RegisterForm() {
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="space-y-4 w-full max-w-md"
-    >
+    <form onSubmit={handleSubmit} className="space-y-4 w-full max-w-md">
+
+      {/* Campos básicos */}
       {[
         { label: "Nombre", name: "nombre" },
         { label: "Primer Apellido", name: "apellido1" },
@@ -79,7 +78,7 @@ export default function RegisterForm() {
         </div>
       ))}
 
-      {/* TELÉFONO PROFESIONAL INTERNACIONAL */}
+      {/* Teléfono internacional */}
       <div>
         <label className="block text-sm mb-1">
           Número de Teléfono
@@ -92,7 +91,7 @@ export default function RegisterForm() {
             onChange={setPhone}
             international
             countryCallingCodeEditable={false}
-            className="text-white"
+            className="text-black"
           />
         </div>
 
@@ -103,6 +102,7 @@ export default function RegisterForm() {
         )}
       </div>
 
+      {/* Contraseña */}
       {[
         { label: "Contraseña", name: "password", type: "password" },
         { label: "Repetir Contraseña", name: "repeatPassword", type: "password" },
@@ -122,12 +122,14 @@ export default function RegisterForm() {
         </div>
       ))}
 
+      {/* Botón */}
       <button
         type="submit"
         className="w-full bg-red-600 hover:bg-red-700 transition p-3 rounded font-semibold"
       >
         Registrarse
       </button>
+
     </form>
   );
 }
