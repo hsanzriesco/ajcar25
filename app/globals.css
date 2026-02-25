@@ -49,3 +49,22 @@ body {
   position: relative;
   z-index: 1;
 }
+
+/* Esto afecta al select de la librería */
+.PhoneInputCountrySelect {
+    appearance: none; /* Quita el diseño nativo del sistema */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    
+    background-color: #262626 !important; /* Color neutral-800 */
+    color: white !important;
+    padding: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+/* Importante para que las letras dentro de la lista se vean en Windows/Linux */
+.PhoneInputCountrySelect option {
+    background-color: #262626;
+    color: white;
+}
