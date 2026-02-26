@@ -9,11 +9,11 @@ export default function Navbar() {
     const [isOpen, setIsOpen] = useState(false);
 
     const links = [
-        { label: "Inicio", href: "#inicio" },
-        { label: "Servicios", href: "#servicios" },
-        { label: "Trabajos", href: "#trabajos" },
-        { label: "Sobre Nosotros", href: "#nosotros" },
-        { label: "Contacto", href: "#contacto" },
+        { label: "Inicio", href: "/#inicio" }, // Añadimos / antes de #
+        { label: "Servicios", href: "/#servicios" },
+        { label: "Trabajos", href: "/#trabajos" },
+        { label: "Sobre Nosotros", href: "/#nosotros" },
+        { label: "Contacto", href: "/#contacto" },
     ];
 
     return (
@@ -26,8 +26,9 @@ export default function Navbar() {
             <div className="backdrop-blur-md bg-black/70 border-b border-white/10">
                 <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
 
-                    {/* LOGO */}
-                    <a href="#inicio" className="flex items-center gap-3">
+                    {/* LOGO MODIFICADO */}
+                    {/* Cambiamos <a> por <Link> y href="#inicio" por "/" */}
+                    <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
                         <Image
                             src="/imagenes/prueba_logo_navbar.png"
                             alt="AJCAR25"
@@ -39,19 +40,19 @@ export default function Navbar() {
                         <span className="text-lg font-semibold tracking-wider">
                             AJCAR25
                         </span>
-                    </a>
+                    </Link>
 
                     {/* ================= DESKTOP MENU ================= */}
                     <nav className="hidden md:flex items-center gap-8 text-sm text-gray-300">
 
                         {links.map((link) => (
-                            <a
+                            <Link // Usamos Link para navegación interna más suave
                                 key={link.href}
                                 href={link.href}
                                 className="hover:text-white transition"
                             >
                                 {link.label}
-                            </a>
+                            </Link>
                         ))}
 
                         {/* ICONO USUARIO */}
@@ -85,14 +86,14 @@ export default function Navbar() {
                 <nav className="flex flex-col px-6 py-4 space-y-4 text-gray-300">
 
                     {links.map((link) => (
-                        <a
+                        <Link
                             key={link.href}
                             href={link.href}
                             onClick={() => setIsOpen(false)}
                             className="hover:text-white transition"
                         >
                             {link.label}
-                        </a>
+                        </Link>
                     ))}
 
                     {/* LOGIN MOBILE */}

@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link"; // Importamos Link para la navegación
 import {
   Paintbrush,
   SprayCan,
@@ -46,9 +47,13 @@ export default function Home() {
               Calidad, precisión y confianza en cada reparación
             </p>
 
-            <button className="mt-6 w-fit rounded bg-gray-200 px-5 py-2.5 sm:px-6 sm:py-3 text-sm sm:text-base font-semibold text-black transition hover:bg-white">
+            {/* BOTÓN MODIFICADO PARA IR A PRESUPUESTO */}
+            <Link 
+              href="/presupuesto" 
+              className="mt-6 w-fit rounded bg-gray-200 px-5 py-2.5 sm:px-6 sm:py-3 text-sm sm:text-base font-semibold text-black transition hover:bg-white inline-block"
+            >
               PIDE TU PRESUPUESTO
-            </button>
+            </Link>
           </div>
         </section>
 
@@ -105,6 +110,7 @@ export default function Home() {
                 "Materiales y pintura perfecta",
                 "Garantía en nuestros trabajos",
                 "Cumplimos plazos",
+                "Muchos clientes satisfechos",
               ].map((item) => (
                 <div
                   key={item}
@@ -126,7 +132,7 @@ export default function Home() {
 
           <div className="max-w-6xl mx-auto px-6">
             <div className="grid md:grid-cols-2 gap-6">
-              <div className="relative h-64 sm:h-80 overflow-hidden rounded-lg">
+              <div className="relative h-64 sm:h-80 overflow-hidden rounded-lg border border-white/5">
                 <Image
                   src="/imagenes/Coche_antes_1.png"
                   alt="Antes reparación coche"
@@ -135,7 +141,7 @@ export default function Home() {
                 />
               </div>
 
-              <div className="relative h-64 sm:h-80 overflow-hidden rounded-lg">
+              <div className="relative h-64 sm:h-80 overflow-hidden rounded-lg border border-white/5">
                 <Image
                   src="/imagenes/Coche_despues_1.png"
                   alt="Después reparación coche"
@@ -167,26 +173,26 @@ export default function Home() {
                 </p>
 
                 <div className="space-y-3">
-                  <h4 className="font-semibold text-lg">Contáctanos</h4>
+                  <h4 className="font-semibold text-lg border-l-2 border-red-600 pl-3">Contáctanos</h4>
 
                   <div className="space-y-2 text-gray-300 text-sm">
                     <p className="flex items-center gap-2">
-                      <MapPin size={16} />
+                      <MapPin size={16} className="text-red-500" />
                       Calle Ejemplo 123, Ciudad
                     </p>
 
                     <p className="flex items-center gap-2">
-                      <Phone size={16} />
+                      <Phone size={16} className="text-red-500" />
                       123 455 789
                     </p>
 
                     <p className="flex items-center gap-2">
-                      <Mail size={16} />
+                      <Mail size={16} className="text-red-500" />
                       info@ajcar25.com
                     </p>
 
                     <p className="flex items-center gap-2">
-                      <Clock size={16} />
+                      <Clock size={16} className="text-red-500" />
                       Lun - Vie: 9:00 - 18:00
                     </p>
                   </div>
@@ -199,7 +205,7 @@ export default function Home() {
                   alt="Logo AJCAR25"
                   width={320}
                   height={320}
-                  className="opacity-40"
+                  className="opacity-40 grayscale hover:grayscale-0 transition duration-500"
                 />
               </div>
             </div>
