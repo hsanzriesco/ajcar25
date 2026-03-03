@@ -112,7 +112,7 @@ export default function LoginForm() {
       <div className="text-center mt-6 space-y-4 border-t border-white/10 pt-6">
         <p className="text-sm text-gray-400">
           ¿No tienes cuenta?{" "}
-          <Link href="/register" className="text-white font-bold hover:text-red-500 transition-colors underline underline-offset-4">
+          <Link href="/registro" className="text-white font-bold hover:text-red-500 transition-colors underline underline-offset-4">
             Regístrate aquí
           </Link>
         </p>
