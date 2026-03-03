@@ -1,15 +1,41 @@
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 
+// --- FUNCIÓN PARA LEER (Lo que usa tu tabla de Gestión) ---
+export async function GET() {
+  try {
+    const sql = neon(process.env.DATABASE_URL!);
+
+    const data = await sql`
+      SELECT 
+        id, 
+        nombre, 
+        email, 
+        telefono, 
+        vehiculo, 
+        anio, 
+        TO_CHAR(fecha_cita, 'DD/MM/YYYY') AS fecha_cita, 
+        hora_cita, 
+        mensaje, 
+        estado, 
+        creado_en 
+      FROM presupuestos_pedidos 
+      ORDER BY creado_en DESC
+    `;
+
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error("Error al obtener datos:", error);
+    return NextResponse.json({ error: "Error de base de datos" }, { status: 500 });
+  }
+}
+
+// --- FUNCIÓN PARA GUARDAR (Lo que usa tu Formulario de contacto) ---
 export async function POST(request: Request) {
   try {
-    // Conexión a Neon usando tu variable de entorno
     const sql = neon(process.env.DATABASE_URL!);
-    
-    // Obtenemos los datos del cuerpo de la petición
     const body = await request.json();
 
-    // Insertamos en la tabla con los nombres de columna exactos de tu SQL
     await sql`
       INSERT INTO presupuestos_pedidos (
         nombre, 
@@ -30,7 +56,7 @@ export async function POST(request: Request) {
         ${body.fecha_cita}, 
         ${body.hora_cita}, 
         ${body.mensaje},
-        'pendiente'
+        'Pendiente'
       )
     `;
 
@@ -40,16 +66,7 @@ export async function POST(request: Request) {
     );
 
   } catch (error: any) {
-    console.error("Error en Neon:", error);
-    
-    // Si el error es por falta de la extensión UUID en Neon
-    if (error.message?.includes("gen_random_uuid")) {
-      return NextResponse.json(
-        { message: "Error de configuración de base de datos (UUID)." },
-        { status: 500 }
-      );
-    }
-
+    console.error("Error en Neon POST:", error);
     return NextResponse.json(
       { message: "Error al procesar el presupuesto." }, 
       { status: 500 }
