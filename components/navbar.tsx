@@ -12,7 +12,6 @@ export default function Navbar() {
     const [name, setName] = useState<string | null>(null);
     const router = useRouter();
 
-    // Leer el localStorage al cargar el componente
     useEffect(() => {
         const storedRole = localStorage.getItem("user_role");
         const storedName = localStorage.getItem("user_name");
@@ -26,17 +25,8 @@ export default function Navbar() {
         setName(null);
         setIsOpen(false);
         router.push("/");
-        // Forzamos recarga para limpiar cualquier estado residual
         window.location.reload();
     };
-
-    const links = [
-        { label: "Inicio", href: "/#inicio" },
-        { label: "Servicios", href: "/#servicios" },
-        { label: "Trabajos", href: "/#trabajos" },
-        { label: "Sobre Nosotros", href: "/#nosotros" },
-        { label: "Contacto", href: "/#contacto" },
-    ];
 
     return (
         <header className="fixed top-0 left-0 w-full z-50">
@@ -62,18 +52,9 @@ export default function Navbar() {
                         </span>
                     </Link>
 
-                    {/* ================= DESKTOP MENU ================= */}
+                    {/* ================= DESKTOP MENU (SOLO DINÁMICOS Y LOGIN) ================= */}
                     <nav className="hidden md:flex items-center gap-8 text-sm text-gray-300">
-                        {links.map((link) => (
-                            <Link
-                                key={link.href}
-                                href={link.href}
-                                className="hover:text-white transition"
-                            >
-                                {link.label}
-                            </Link>
-                        ))}
-
+                        
                         {/* LINKS DINÁMICOS POR ROL */}
                         {role === "Jefe" && (
                             <Link href="/admin/dashboard" className="text-red-500 font-bold hover:text-red-400">
@@ -126,31 +107,20 @@ export default function Navbar() {
                 </div>
             </div>
 
-            {/* ================= MOBILE MENU ================= */}
+            {/* ================= MOBILE MENU (SOLO DINÁMICOS Y LOGIN) ================= */}
             <div
-                className={`md:hidden bg-black/95 backdrop-blur-lg border-b border-white/10 transition-all duration-300 ${isOpen ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0 overflow-hidden"
+                className={`md:hidden bg-black/95 backdrop-blur-lg border-b border-white/10 transition-all duration-300 ${isOpen ? "max-h-[300px] opacity-100" : "max-h-0 opacity-0 overflow-hidden"
                     }`}
             >
                 <nav className="flex flex-col px-6 py-6 space-y-4 text-gray-300">
-                    {links.map((link) => (
-                        <Link
-                            key={link.href}
-                            href={link.href}
-                            onClick={() => setIsOpen(false)}
-                            className="text-lg hover:text-white transition"
-                        >
-                            {link.label}
-                        </Link>
-                    ))}
-
                     {/* LINKS MÓVIL POR ROL */}
                     {role === "Jefe" && (
-                        <Link href="/admin/dashboard" onClick={() => setIsOpen(false)} className="text-red-500 font-bold">
+                        <Link href="/admin/dashboard" onClick={() => setIsOpen(false)} className="text-red-500 font-bold text-lg">
                             Panel Jefe
                         </Link>
                     )}
                     {role === "Empleado" && (
-                        <Link href="/gestion/tareas" onClick={() => setIsOpen(false)} className="text-blue-400 font-bold">
+                        <Link href="/gestion/tareas" onClick={() => setIsOpen(false)} className="text-blue-400 font-bold text-lg">
                             Tareas
                         </Link>
                     )}

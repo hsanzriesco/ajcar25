@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { 
-  ClipboardList, Settings, LogOut, User, FileText, Mail, 
-  Phone, Plus, Trash2, Send, Loader2 
+  ClipboardList, LogOut, User, FileText, Mail, 
+  Phone, Plus, Trash2, Send, Loader2, MessageSquare, Calendar, Clock 
 } from "lucide-react";
 
 // --- IMPORTACIONES PARA PDF ---
@@ -22,15 +22,15 @@ interface Mantenimiento {
 }
 
 interface PresupuestoPedido {
-  id: string; 
+  id: string | number; 
   nombre: string;
   email: string;
   telefono: string;
   vehiculo: string;
   anio: number;
-  fecha_cita: string;
+  fecha_cita: string; // Columna específica solicitada
   hora_cita: string;
-  mensaje: string;
+  mensaje: string; 
   estado: string;
   creado_en: string;
 }
@@ -61,6 +61,28 @@ export default function EmpleadoPage() {
   
   const router = useRouter();
 
+  // --- FUNCIÓN CRÍTICA PARA MOSTRAR LA FECHA CORRECTAMENTE ---
+  const formatearFechaParaInput = (fechaRaw: string | null | undefined) => {
+    if (!fechaRaw) return "";
+    
+    // 1. Si ya es YYYY-MM-DD lo devolvemos tal cual
+    if (/^\d{4}-\d{2}-\d{2}$/.test(fechaRaw)) return fechaRaw;
+
+    // 2. Si viene de la DB con hora (ISOString o similar)
+    try {
+      const d = new Date(fechaRaw);
+      if (isNaN(d.getTime())) return "";
+      
+      // Extraemos solo YYYY-MM-DD sin desfase horario
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    } catch (e) {
+      return "";
+    }
+  };
+
   useEffect(() => {
     const role = localStorage.getItem("user_role");
     if (!role || (role.toLowerCase() !== "empleado" && role.toLowerCase() !== "jefe")) {
@@ -69,7 +91,11 @@ export default function EmpleadoPage() {
       setNombreUsuario(localStorage.getItem("user_name") || "Trabajador");
       cargarTodo();
     }
-  }, [router, view]);
+  }, [router]);
+
+  useEffect(() => {
+    cargarTodo();
+  }, [view]);
 
   const cargarTodo = async () => {
     try {
@@ -78,8 +104,10 @@ export default function EmpleadoPage() {
         fetch("/api/presupuestos") 
       ]);
       if (!resMant.ok || !resPres.ok) throw new Error("Error en servidor al cargar datos");
+      
       const dataMant = await resMant.json();
       const dataPres = await resPres.json();
+      
       setMantenimientos(Array.isArray(dataMant) ? dataMant : []);
       setPresupuestos(Array.isArray(dataPres) ? dataPres : []);
     } catch (error) {
@@ -89,10 +117,39 @@ export default function EmpleadoPage() {
     }
   };
 
-  const buscarYAñadirArticulo = async () => {
-    if (!codigoBusqueda.trim()) return;
+  const actualizarCita = async (nuevaFecha: string, nuevaHora: string) => {
+    if (!seleccionado || !seleccionado.id || view !== "presupuestos") return;
+
     try {
-      const res = await fetch(`/api/articulos/${codigoBusqueda.toUpperCase().trim()}`);
+      const res = await fetch(`/api/presupuestos/${seleccionado.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          fecha_cita: nuevaFecha,
+          hora_cita: nuevaHora 
+        })
+      });
+
+      if (!res.ok) throw new Error("No se pudo actualizar la cita");
+
+      const idStr = seleccionado.id.toString();
+      setPresupuestos(prev => prev.map(p => 
+        p.id.toString() === idStr ? { ...p, fecha_cita: nuevaFecha, hora_cita: nuevaHora } : p
+      ));
+      setSeleccionado((prev: any) => ({ ...prev, fecha_cita: nuevaFecha, hora_cita: nuevaHora }));
+
+    } catch (error) {
+      console.error("Error al actualizar cita:", error);
+      alert("Error al guardar el cambio de cita");
+    }
+  };
+
+  const buscarYAñadirArticulo = async () => {
+    const codigoLimpio = codigoBusqueda.toUpperCase().trim();
+    if (!codigoLimpio) return;
+    
+    try {
+      const res = await fetch(`/api/articulos/${codigoLimpio}`);
       if (res.ok) {
         const articulo: Articulo = await res.json();
         setLineas(prev => {
@@ -107,7 +164,7 @@ export default function EmpleadoPage() {
         });
         setCodigoBusqueda("");
       } else {
-        alert("El código no existe en la base de datos.");
+        alert("El código no existe en el inventario.");
       }
     } catch (error) {
       alert("Error al conectar con el inventario.");
@@ -119,22 +176,18 @@ export default function EmpleadoPage() {
   );
 
   const enviarPresupuestoPDF = async () => {
-    // 0. VERIFICACIÓN DE SEGURIDAD
     if (!seleccionado || !seleccionado.id) {
-      console.error("Datos del seleccionado:", seleccionado);
-      alert("Error: No se encuentra el ID del registro seleccionado.");
+      alert("Error: Selecciona un presupuesto válido.");
       return;
     }
-
     if (lineas.length === 0) {
       alert("Añade artículos antes de enviar.");
       return;
     }
-
+    
     setEnviandoEmail(true);
 
     try {
-      // 1. GENERAR PDF
       const doc = new jsPDF();
       doc.setFontSize(22);
       doc.setTextColor(30, 58, 138);
@@ -164,9 +217,6 @@ export default function EmpleadoPage() {
 
       const pdfBase64 = doc.output('datauristring');
 
-      // 2. ENVIAR EMAIL (IMPORTANTE: Se envía el ID explícitamente)
-      console.log("Enviando presupuesto para ID:", seleccionado.id);
-
       const resEmail = await fetch("/api/enviar-presupuesto", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -180,33 +230,28 @@ export default function EmpleadoPage() {
         })
       });
 
-      if (!resEmail.ok) throw new Error("No se pudo enviar el email. Revisa la consola del servidor.");
+      if (!resEmail.ok) throw new Error("Error al enviar el correo al cliente.");
 
-      // 3. ACTUALIZAR ESTADO EN BD
-      const idParaActualizar = seleccionado.id.toString().trim();
+      const idStr = seleccionado.id.toString();
       const estadoFinal = "Presupuesto enviado";
-
-      const resUpdate = await fetch(`/api/presupuestos/${idParaActualizar}`, {
+      
+      const resUpdate = await fetch(`/api/presupuestos/${idStr}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ estado: estadoFinal })
       });
 
-      if (!resUpdate.ok) {
-        throw new Error("El email se envió pero no se pudo actualizar el estado en la base de datos.");
-      }
+      if (!resUpdate.ok) throw new Error("Email enviado pero no se pudo actualizar el estado.");
 
-      // Sincronizar UI
       setPresupuestos(prev => 
-        prev.map(p => p.id === idParaActualizar ? { ...p, estado: estadoFinal } : p)
+        prev.map(p => p.id.toString() === idStr ? { ...p, estado: estadoFinal } : p)
       );
       setSeleccionado((prev: any) => prev ? { ...prev, estado: estadoFinal } : null);
       
-      alert("✅ Presupuesto enviado correctamente.");
-
+      alert("✅ Presupuesto enviado y estado actualizado.");
+      setLineas([]);
     } catch (error: any) {
-      console.error("ERROR EN PROCESO:", error);
-      alert("❌ Error: " + error.message);
+      alert("❌ " + error.message);
     } finally {
       setEnviandoEmail(false);
     }
@@ -239,6 +284,7 @@ export default function EmpleadoPage() {
 
   return (
     <div className="flex min-h-screen bg-[#0f1218] text-gray-300 font-sans">
+      {/* SIDEBAR */}
       <aside className="hidden md:flex w-64 bg-[#161b24] border-r border-white/5 flex-col sticky top-0 h-screen">
         <div className="p-6">
           <div className="flex items-center gap-2 mb-8">
@@ -279,6 +325,7 @@ export default function EmpleadoPage() {
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* TABLA PRINCIPAL */}
           <div className="lg:col-span-2 space-y-4">
             <div className="bg-[#161b24] rounded-2xl border border-white/5 overflow-hidden shadow-2xl">
               <table className="w-full text-left text-sm">
@@ -304,7 +351,7 @@ export default function EmpleadoPage() {
                     presupuestos.map((p) => (
                       <tr key={p.id} onClick={() => { setSeleccionado(p); setLineas([]); }} className={`hover:bg-white/[0.02] transition cursor-pointer ${seleccionado?.id === p.id ? 'bg-blue-500/10' : ''}`}>
                         <td className="p-4 text-white font-medium">{p.nombre}</td>
-                        <td className="p-4 text-gray-400">{p.fecha_cita}</td>
+                        <td className="p-4 text-gray-400">{p.fecha_cita} {p.hora_cita}</td>
                         <td className="p-4 text-xs">
                           <span className={`px-3 py-1 rounded-full border ${getEstadoColor(p.estado)}`}>{p.estado}</span>
                         </td>
@@ -313,9 +360,13 @@ export default function EmpleadoPage() {
                   )}
                 </tbody>
               </table>
+              {(view === "tareas" ? mantenimientos.length : presupuestos.length) === 0 && (
+                <div className="p-10 text-center text-gray-600 italic text-sm">No hay registros para mostrar.</div>
+              )}
             </div>
           </div>
 
+          {/* PANEL DE DETALLE / GESTIÓN */}
           <aside className="space-y-6">
             <div className="bg-[#1c222d] p-6 rounded-2xl border border-white/10 shadow-2xl sticky top-8">
               {seleccionado ? (
@@ -329,6 +380,50 @@ export default function EmpleadoPage() {
                     </div>
                   </div>
 
+                  {view === "presupuestos" && seleccionado.mensaje && (
+                    <div className="bg-blue-500/5 border border-blue-500/20 p-4 rounded-xl">
+                      <h4 className="text-[10px] text-blue-400 font-black uppercase tracking-widest flex items-center gap-2 mb-2">
+                        <MessageSquare size={12} /> Solicitud del Cliente
+                      </h4>
+                      <p className="text-xs text-gray-300 italic leading-relaxed">
+                        "{seleccionado.mensaje}"
+                      </p>
+                    </div>
+                  )}
+
+                  {view === "presupuestos" && (
+                    <div className="space-y-3 pt-4 border-t border-white/5">
+                      <h4 className="text-[10px] text-blue-400 font-black uppercase tracking-widest">Programación de Cita</h4>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <label className="text-[9px] text-gray-500 uppercase">Fecha</label>
+                          <div className="relative">
+                            <Calendar className="absolute left-2 top-2.5 text-gray-400" size={14} />
+                            <input 
+                              type="date" 
+                              // USANDO LA FUNCIÓN DE FORMATEO PARA LA TABLA presupuestos_pedidos
+                              value={formatearFechaParaInput(seleccionado.fecha_cita)}
+                              onChange={(e) => actualizarCita(e.target.value, seleccionado.hora_cita)}
+                              className="w-full bg-black/40 border border-white/10 rounded-lg pl-8 pr-2 py-2 text-xs text-white outline-none focus:border-blue-500"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] text-gray-500 uppercase">Hora</label>
+                          <div className="relative">
+                            <Clock className="absolute left-2 top-2.5 text-gray-400" size={14} />
+                            <input 
+                              type="time" 
+                              value={seleccionado.hora_cita || ""}
+                              onChange={(e) => actualizarCita(seleccionado.fecha_cita, e.target.value)}
+                              className="w-full bg-black/40 border border-white/10 rounded-lg pl-8 pr-2 py-2 text-xs text-white outline-none focus:border-blue-500"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {view === "presupuestos" && (
                     <div className="space-y-4 pt-4 border-t border-white/5">
                       <h4 className="text-[10px] text-blue-400 font-black uppercase tracking-widest">Añadir Artículos</h4>
@@ -337,15 +432,16 @@ export default function EmpleadoPage() {
                           type="text" 
                           value={codigoBusqueda}
                           onChange={(e) => setCodigoBusqueda(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && buscarYAñadirArticulo()}
                           placeholder="Código"
                           className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none focus:border-blue-500"
                         />
-                        <button onClick={buscarYAñadirArticulo} className="bg-blue-600 hover:bg-blue-500 p-2 rounded-lg text-white">
+                        <button onClick={buscarYAñadirArticulo} className="bg-blue-600 hover:bg-blue-500 p-2 rounded-lg text-white transition-colors">
                           <Plus size={16}/>
                         </button>
                       </div>
 
-                      <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
+                      <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
                         {lineas.map((item, idx) => (
                           <div key={idx} className="bg-black/20 border border-white/5 p-2 rounded-lg flex justify-between items-center group">
                             <div className="flex flex-col">
@@ -395,6 +491,20 @@ export default function EmpleadoPage() {
           </aside>
         </div>
       </main>
+      
+      {/* ESTILO PARA LA SCROLLBAR PERSONALIZADA */}
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.02);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(59, 130, 246, 0.5);
+          border-radius: 10px;
+        }
+      `}</style>
     </div>
   );
 }
