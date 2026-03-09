@@ -2,63 +2,41 @@ import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 
 export async function PATCH(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> | { id: string } } 
+  req: Request,
+  { params }: { params: { id: string } }
 ) {
+  const { id } = params;
+  const { estado, articulos } = await req.json(); // 'articulos' es el array de lineas del presupuesto
+
   try {
-    // 1. Resolver parámetros (maneja tanto Promise como objeto plano)
-    const resolvedParams = await params;
-    const id = resolvedParams.id;
-    const body = await request.json();
-    const { estado } = body;
-
-    // 2. Validaciones básicas
-    if (!id || id === "undefined") {
-      return NextResponse.json({ error: "ID no válido" }, { status: 400 });
-    }
-
-    if (!estado) {
-      return NextResponse.json({ error: "El estado es requerido" }, { status: 400 });
-    }
-
     const sql = neon(process.env.DATABASE_URL!);
 
-    // 3. Ejecutar actualización con el nombre de tabla CORRECTO
-    // Se cambia 'presupuestos' por 'presupuestos_pedidos'
+    // INICIO DE OPERACIÓN ATÓMICA (Lógica de negocio)
+    if (estado === "Aceptado por el cliente" && articulos && articulos.length > 0) {
+      
+      // Usamos un bucle para actualizar el stock de cada artículo incluido
+      for (const item of articulos) {
+        await sql`
+          UPDATE articulos 
+          SET 
+            stock = stock - ${item.cantidad},
+            stock_reservado = stock_reservado + ${item.cantidad}
+          WHERE codigo = ${item.codigo}
+        `;
+      }
+    }
+
+    // Finalmente actualizamos el estado del presupuesto
     const resultado = await sql`
-      UPDATE presupuestos_pedidos 
+      UPDATE presupuestos 
       SET estado = ${estado} 
       WHERE id = ${id}
-      RETURNING *;
+      RETURNING *
     `;
 
-    // 4. Verificar si se encontró el registro
-    if (resultado.length === 0) {
-      return NextResponse.json({ 
-        error: `No se encontró el presupuesto con ID: ${id}` 
-      }, { status: 404 });
-    }
-
-    return NextResponse.json({ 
-      success: true, 
-      message: "Estado actualizado correctamente",
-      data: resultado[0] 
-    });
-
+    return NextResponse.json(resultado[0]);
   } catch (error: any) {
-    console.error("ERROR EN API PATCH:", error.message);
-    
-    // Error específico si la tabla no existe (por seguridad)
-    if (error.message.includes("relation") && error.message.includes("does not exist")) {
-      return NextResponse.json({ 
-        error: "Error de configuración: La tabla 'presupuestos_pedidos' no fue encontrada en la base de datos.",
-        details: error.message 
-      }, { status: 500 });
-    }
-
-    return NextResponse.json({ 
-      error: "Error interno del servidor", 
-      details: error.message 
-    }, { status: 500 });
+    console.error("Error al actualizar y mover stock:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

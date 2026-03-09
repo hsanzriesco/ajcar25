@@ -12,13 +12,23 @@ export default function PaginaAceptarPresupuesto() {
   useEffect(() => {
     if (!id) return;
 
-    const actualizarEstado = async () => {
+    const procesarAceptacion = async () => {
       try {
-        // Llamamos a tu API de presupuestos que ya arreglamos antes
+        // 1. OBTENER LOS DATOS DEL PRESUPUESTO (Para saber qué artículos tiene)
+        const resDatos = await fetch(`/api/presupuestos/${id}`);
+        if (!resDatos.ok) throw new Error("No se pudo obtener el presupuesto");
+        
+        const presupuestoActual = await resDatos.json();
+
+        // 2. ENVIAR LA ACEPTACIÓN CON LOS ARTÍCULOS
+        // 'presupuestoActual.articulos' debe ser el array que guardaste al crear el presupuesto
         const res = await fetch(`/api/presupuestos/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ estado: "Aceptado por el cliente" }),
+          body: JSON.stringify({ 
+            estado: "Aceptado por el cliente",
+            articulos: presupuestoActual.articulos // <--- Esto es lo que activa la resta de stock en la API
+          }),
         });
 
         if (res.ok) {
@@ -32,14 +42,13 @@ export default function PaginaAceptarPresupuesto() {
       }
     };
 
-    actualizarEstado();
+    procesarAceptacion();
   }, [id]);
 
   return (
     <div className="min-h-screen bg-[#0f1218] flex items-center justify-center p-4 font-sans text-white">
       <div className="max-w-md w-full bg-[#161b24] p-10 rounded-3xl border border-white/10 shadow-2xl text-center">
         
-        {/* LOGO O ICONO DEL TALLER */}
         <div className="flex justify-center mb-8">
           <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-white italic shadow-lg shadow-blue-500/20">
             AJ
@@ -50,7 +59,7 @@ export default function PaginaAceptarPresupuesto() {
           <div className="space-y-4">
             <Loader2 className="animate-spin text-blue-500 mx-auto" size={48} />
             <h1 className="text-xl font-bold uppercase tracking-widest">Procesando...</h1>
-            <p className="text-gray-400 text-sm">Estamos registrando su aprobación en nuestro sistema.</p>
+            <p className="text-gray-400 text-sm">Estamos registrando su aprobación y reservando el material en stock.</p>
           </div>
         )}
 
@@ -60,7 +69,7 @@ export default function PaginaAceptarPresupuesto() {
             <h1 className="text-2xl font-black uppercase tracking-tight">¡Presupuesto Aceptado!</h1>
             <p className="text-gray-400 leading-relaxed">
               Gracias por confiar en <span className="text-white font-bold">AJCAR 25</span>. 
-              Hemos recibido su confirmación y comenzaremos con los trabajos programados.
+              Hemos recibido su confirmación y el material ha sido reservado para su vehículo.
             </p>
             <div className="pt-6">
               <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 text-green-500 text-xs flex items-center gap-3">
@@ -77,7 +86,7 @@ export default function PaginaAceptarPresupuesto() {
             <h1 className="text-2xl font-black uppercase tracking-tight">Hubo un problema</h1>
             <p className="text-gray-400">
               No hemos podido procesar la aceptación automáticamente. 
-              Por favor, contacte con el taller por teléfono o responda al correo.
+              Es posible que el presupuesto ya haya sido aceptado o haya un error de conexión.
             </p>
             <button 
               onClick={() => window.location.reload()}
