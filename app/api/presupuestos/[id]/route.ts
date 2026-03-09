@@ -1,21 +1,23 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 
 export async function PATCH(
-  req: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params;
-  const { estado, articulos } = await req.json(); // 'articulos' es el array de lineas del presupuesto
+  const { id } = await context.params;
 
   try {
+    const { estado, articulos } = await req.json();
+
     const sql = neon(process.env.DATABASE_URL!);
 
     // INICIO DE OPERACIÓN ATÓMICA (Lógica de negocio)
     if (estado === "Aceptado por el cliente" && articulos && articulos.length > 0) {
-      
-      // Usamos un bucle para actualizar el stock de cada artículo incluido
+
+      // Actualizamos el stock de cada artículo incluido
       for (const item of articulos) {
+
         await sql`
           UPDATE articulos 
           SET 
@@ -23,10 +25,12 @@ export async function PATCH(
             stock_reservado = stock_reservado + ${item.cantidad}
           WHERE codigo = ${item.codigo}
         `;
+
       }
+
     }
 
-    // Finalmente actualizamos el estado del presupuesto
+    // Actualizamos el estado del presupuesto
     const resultado = await sql`
       UPDATE presupuestos 
       SET estado = ${estado} 
@@ -35,8 +39,15 @@ export async function PATCH(
     `;
 
     return NextResponse.json(resultado[0]);
+
   } catch (error: any) {
+
     console.error("Error al actualizar y mover stock:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+
+    return NextResponse.json(
+      { error: error.message || "Error interno del servidor" },
+      { status: 500 }
+    );
+
   }
 }
