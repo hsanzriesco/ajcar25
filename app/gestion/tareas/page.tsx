@@ -70,6 +70,7 @@ export default function EmpleadoPage() {
 
   const [codigoBusqueda, setCodigoBusqueda] = useState("");
   const [filtroStock, setFiltroStock] = useState("");
+  const [filtroFacturas, setFiltroFacturas] = useState(""); // NUEVO ESTADO
   const [lineas, setLineas] = useState<LineaPresupuesto[]>([]);
   const [enviandoEmail, setEnviandoEmail] = useState(false);
 
@@ -208,42 +209,55 @@ export default function EmpleadoPage() {
     } catch (e) { alert("Error al procesar el envío."); } finally { setEnviandoEmail(false); }
   };
 
-  // --- NUEVA FUNCIÓN: PROCESAR FACTURACIÓN FINAL ---
+  // --- PROCESAR FACTURACIÓN FINAL ---
   const procesarFactura = async () => {
+    const articulosAFacturar = view === "mantenimientos" ? seleccionado?.articulos : lineas;
+
     if (!seleccionado || lineas.length === 0) {
       alert("No hay artículos cargados para facturar.");
       return;
     }
+
     setFacturando(true);
     try {
-      // 1. Generar el PDF de la factura automáticamente
       const doc = new jsPDF();
-      doc.setFontSize(22); doc.setTextColor(126, 34, 206); // Color púrpura para facturas
+      doc.setFontSize(22);
+      doc.setTextColor(126, 34, 206);
       doc.text("AJCAR 25 - FACTURA OFICIAL", 14, 20);
+
+      const totalCalculado = articulosAFacturar.reduce(
+        (acc: number, item: any) => acc + (Number(item.precio_unitario) * item.cantidad),
+        0
+      );
 
       autoTable(doc, {
         startY: 50,
         head: [['Ref', 'Descripción', 'Cant.', 'Precio', 'Subtotal']],
-        body: lineas.map(l => [l.codigo, l.descripcion, l.cantidad, `${Number(l.precio_unitario).toFixed(2)}€`, `${(l.cantidad * Number(l.precio_unitario)).toFixed(2)}€`]),
-        foot: [['', '', '', 'TOTAL FACTURA', `${totalPresupuesto.toFixed(2)}€`]],
+        body: articulosAFacturar.map((l: any) => [
+          l.codigo,
+          l.descripcion,
+          l.cantidad,
+          `${Number(l.precio_unitario).toFixed(2)}€`,
+          `${(l.cantidad * Number(l.precio_unitario)).toFixed(2)}€`
+        ]),
+        foot: [['', '', '', 'TOTAL FACTURA', `${totalCalculado.toFixed(2)}€`]],
         theme: 'grid',
         headStyles: { fillColor: [126, 34, 206] }
       });
 
       const pdfBase64 = doc.output('datauristring');
 
-      // 2. Enviar a la API de facturas (que ahora también enviará el email)
       const res = await fetch("/api/facturas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           presupuesto_id: seleccionado.id,
           cliente_nombre: seleccionado.nombre,
-          email: seleccionado.email, // Importante para el envío
+          email: seleccionado.email,
           vehiculo: seleccionado.vehiculo,
-          total: totalPresupuesto,
-          articulos: lineas,
-          pdfBase64: pdfBase64 // Adjuntamos el PDF generado
+          total: totalCalculado,
+          articulos: articulosAFacturar,
+          pdfBase64: pdfBase64
         })
       });
 
@@ -273,10 +287,24 @@ export default function EmpleadoPage() {
     return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
   }
 
-  const articulosFiltrados = articulos.filter(art =>
-    art.codigo.toLowerCase().includes(filtroStock.toLowerCase()) ||
-    art.descripcion.toLowerCase().includes(filtroStock.toLowerCase())
-  );
+  // --- FILTROS ---
+  const articulosFiltrados = articulos.filter(art => {
+    const termino = filtroStock.toLowerCase().trim();
+    return (
+      art.codigo.toLowerCase().includes(termino) ||
+      art.descripcion.toLowerCase().includes(termino)
+    );
+  });
+
+  // NUEVA LÓGICA DE FILTRADO DE FACTURAS
+  const facturasFiltradas = facturas.filter(f => {
+    const termino = filtroFacturas.toLowerCase().trim();
+    return (
+      f.cliente_nombre.toLowerCase().includes(termino) ||
+      f.numero_factura.toLowerCase().includes(termino) ||
+      f.vehiculo.toLowerCase().includes(termino)
+    );
+  });
 
   if (loading) return (
     <div className="min-h-screen bg-[#0f1218] flex flex-col items-center justify-center gap-4">
@@ -397,29 +425,43 @@ export default function EmpleadoPage() {
                 </div>
               </div>
             ) : view === "facturas" ? (
-              <div className="bg-[#161b24] rounded-3xl border border-white/5 overflow-hidden shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-black/40 text-gray-500 uppercase text-[10px] tracking-[0.2em] font-black">
-                    <tr>
-                      <th className="p-5">Nº Factura</th>
-                      <th className="p-5">Cliente</th>
-                      <th className="p-5">Vehículo</th>
-                      <th className="p-5">Fecha Emisión</th>
-                      <th className="p-5 text-right">Importe Total</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {facturas.map((f) => (
-                      <tr key={f.id} className="hover:bg-white/[0.02] transition-colors group">
-                        <td className="p-5 font-mono text-purple-400 font-bold uppercase">{f.numero_factura}</td>
-                        <td className="p-5 text-white font-bold">{f.cliente_nombre}</td>
-                        <td className="p-5 text-xs text-gray-400 uppercase font-medium">{f.vehiculo}</td>
-                        <td className="p-5 text-gray-500">{new Date(f.fecha_emision).toLocaleDateString()}</td>
-                        <td className="p-5 text-right font-black text-green-400 text-base">{f.total}€</td>
+              <div className="space-y-6">
+                {/* BUSCADOR DE FACTURAS - MISMA ESTÉTICA QUE STOCK */}
+                <div className="relative group">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-purple-500 transition-colors" size={20} />
+                  <input
+                    type="text"
+                    placeholder="Buscar por cliente, Nº factura o vehículo..."
+                    className="w-full bg-[#161b24] border border-white/10 rounded-2xl py-4 pl-12 pr-6 text-sm outline-none focus:border-purple-500/50 focus:ring-4 focus:ring-purple-500/5 transition-all"
+                    value={filtroFacturas}
+                    onChange={(e) => setFiltroFacturas(e.target.value)}
+                  />
+                </div>
+
+                <div className="bg-[#161b24] rounded-3xl border border-white/5 overflow-hidden shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-black/40 text-gray-500 uppercase text-[10px] tracking-[0.2em] font-black">
+                      <tr>
+                        <th className="p-5">Nº Factura</th>
+                        <th className="p-5">Cliente</th>
+                        <th className="p-5">Vehículo</th>
+                        <th className="p-5">Fecha Emisión</th>
+                        <th className="p-5 text-right">Importe Total</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {facturasFiltradas.map((f) => (
+                        <tr key={f.id} className="hover:bg-white/[0.02] transition-colors group">
+                          <td className="p-5 font-mono text-purple-400 font-bold uppercase">{f.numero_factura}</td>
+                          <td className="p-5 text-white font-bold">{f.cliente_nombre}</td>
+                          <td className="p-5 text-xs text-gray-400 uppercase font-medium">{f.vehiculo}</td>
+                          <td className="p-5 text-gray-500">{new Date(f.fecha_emision).toLocaleDateString()}</td>
+                          <td className="p-5 text-right font-black text-green-400 text-base">{f.total}€</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             ) : (
               <div className="bg-[#161b24] rounded-3xl border border-white/5 overflow-hidden shadow-2xl">
@@ -437,7 +479,10 @@ export default function EmpleadoPage() {
                       .map((p) => (
                         <tr
                           key={p.id}
-                          onClick={() => { setSeleccionado(p); setLineas([]); }}
+                          onClick={() => {
+                            setSeleccionado(p);
+                            setLineas(p.articulos || []);
+                          }}
                           className={`hover:bg-white/[0.03] transition-all cursor-pointer group ${seleccionado?.id === p.id ? 'bg-blue-600/10' : ''}`}
                         >
                           <td className="p-5 relative">
