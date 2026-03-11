@@ -63,6 +63,8 @@ export async function PATCH(
       // Actualizamos el stock de cada artículo incluido
       for (const item of articulos) {
 
+        console.log("item");
+        
         await sql`
           UPDATE articulos 
           SET 
