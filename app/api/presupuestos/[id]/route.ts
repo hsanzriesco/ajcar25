@@ -1,3 +1,5 @@
+console.log("id");
+
 import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 
