@@ -64,7 +64,7 @@ export async function PATCH(
       for (const item of articulos) {
 
         console.log("item");
-        
+
         await sql`
           UPDATE articulos 
           SET 
@@ -79,7 +79,7 @@ export async function PATCH(
 
     // Actualizamos el estado del presupuesto
     const resultado = await sql`
-      UPDATE presupuestos_pedidos_pedidos 
+      UPDATE presupuestos_pedidos
       SET estado = ${estado} 
       WHERE id = ${id}
       RETURNING *
