@@ -264,7 +264,6 @@ export default function EmpleadoPage() {
 
       if (res.ok) {
         alert(`✅ Factura ${data.numero || ""} generada y enviada.`);
-        // Refrescamos todo para que el presupuesto cambie de estado y desaparezca de la lista actual
         await cargarTodo();
         setSeleccionado(null);
         setLineas([]);
@@ -343,61 +342,18 @@ export default function EmpleadoPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#0a0a0c] text-gray-400 font-sans selection:bg-blue-500/30">
-      <aside className="hidden lg:flex w-[320px] bg-[#0f0f12] border-r border-white/5 flex-col sticky top-0 h-screen z-50">
-        <div className="p-10">
-          <div className="flex items-center gap-4 mb-16">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-900/20">
-              <span className="text-white font-black italic text-xl">AJ</span>
-            </div>
-            <div>
-              <h2 className="text-white font-black italic text-xl tracking-tighter uppercase">AJCAR 25</h2>
-              <p className="text-[9px] text-gray-500 font-black uppercase tracking-[0.3em]">Management System</p>
-            </div>
-          </div>
+    <div className="min-h-screen bg-[#0a0a0c] text-gray-400 font-sans selection:bg-blue-500/30">
+      {/* --- SE HA ELIMINADO EL ASIDE CON EL LOGOTIPO Y MENÚ LATERAL --- */}
 
-          <nav className="space-y-2">
-            {[
-              { id: 'presupuestos', label: 'Presupuestos', icon: FileText },
-              { id: 'mantenimientos', label: 'Taller / Aceptados', icon: ClipboardList },
-              { id: 'stock', label: 'Control Almacén', icon: Package },
-              { id: 'facturas', label: 'Historial Facturas', icon: CheckCircle }
-            ].map(item => (
-              <button
-                key={item.id}
-                onClick={() => { setView(item.id as any); setSeleccionado(null); }}
-                className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl transition-all duration-300 group ${view === item.id ? 'bg-white/5 text-white border border-white/10 shadow-xl' : 'hover:bg-white/[0.02] text-gray-500'}`}
-              >
-                <item.icon size={18} className={view === item.id ? 'text-blue-500' : 'group-hover:text-gray-300'} />
-                <span className="text-[11px] font-black uppercase tracking-[0.2em]">{item.label}</span>
-              </button>
-            ))}
-          </nav>
-        </div>
-
-        <div className="mt-auto p-10 border-t border-white/5 bg-black/20">
-          <div className="flex items-center gap-4 mb-8">
-            <div className="w-10 h-10 bg-white/5 rounded-full flex items-center justify-center border border-white/10 text-white">
-              <User size={18} />
-            </div>
-            <div className="flex-1 overflow-hidden">
-              <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Operador Logueado</p>
-              <p className="text-white font-bold truncate text-sm">{nombreUsuario}</p>
-            </div>
-          </div>
-          <button onClick={handleLogout} className="w-full flex items-center justify-center gap-3 py-4 rounded-xl border border-white/5 hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-500 transition-all text-[10px] font-black uppercase tracking-widest text-gray-500">
-            <LogOut size={14} /> Desconectar Sistema
-          </button>
-        </div>
-      </aside>
-
-      <main className="flex-1 flex flex-col min-h-screen">
-        <div className="flex-1 p-8 lg:p-16 max-w-7xl w-full mx-auto">
+      <main className="w-full flex flex-col min-h-screen">
+        <div className="p-8 lg:p-16 max-w-7xl w-full mx-auto">
+          
           <header className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16">
-            <div className="space-y-2">
+            <div className="space-y-4">
+              {/* Nuevo indicador de usuario (ya que quitamos el del sidebar) */}
               <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
-                <span className="text-[10px] text-blue-500 font-black uppercase tracking-[0.4em]">Panel de Control en Vivo</span>
+                 <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white text-xs font-bold italic">AJ</div>
+                 <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">{nombreUsuario} • Sesión Activa</p>
               </div>
               <h1 className="text-white text-5xl lg:text-7xl font-black italic tracking-tighter uppercase leading-none">
                 {view === 'presupuestos' && "Presupuestos"}
@@ -406,6 +362,22 @@ export default function EmpleadoPage() {
                 {view === 'facturas' && "Facturas"}
               </h1>
             </div>
+
+            {/* Menú de navegación rápido (opcional, por si necesitas cambiar de vista) */}
+            <nav className="flex gap-4">
+                {['presupuestos', 'mantenimientos', 'stock', 'facturas'].map((v) => (
+                    <button 
+                        key={v}
+                        onClick={() => setView(v as any)}
+                        className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${view === v ? 'bg-blue-600 text-white' : 'bg-white/5 text-gray-500 hover:text-white'}`}
+                    >
+                        {v}
+                    </button>
+                ))}
+                <button onClick={handleLogout} className="px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all">
+                    Salir
+                </button>
+            </nav>
           </header>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
@@ -464,11 +436,9 @@ export default function EmpleadoPage() {
                   {presupuestos
                     .filter(p => {
                       if (view === "presupuestos") {
-                        // Ocultar si está aceptado o facturado
                         return p.estado !== "Aceptado por el cliente" && p.estado !== "Facturado";
                       }
                       if (view === "mantenimientos") {
-                        // Mostrar SOLO si está aceptado (pero no facturado)
                         return p.estado === "Aceptado por el cliente";
                       }
                       return true;
