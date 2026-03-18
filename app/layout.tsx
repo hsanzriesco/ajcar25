@@ -11,19 +11,21 @@ export default function RootLayout({
 }) {
   const pathname = usePathname();
 
-  // Array de rutas donde NO queremos que aparezca el Navbar
-  const rutasSinNavbar = ["/gestion/tareas", "/forgot-password"];
+  // Lista de rutas sin Navbar
+  const rutasSinNavbar = [
+    "/gestion/tareas", 
+    "/forgot-password", 
+    "/reset-password"
+  ];
   
-  // Comprobamos si la ruta actual está en la lista
   const ocultarNavbar = rutasSinNavbar.includes(pathname);
 
   return (
     <html lang="es">
       <body className="bg-black text-white">
-        {/* Renderizado condicional del Navbar */}
         {!ocultarNavbar && <Navbar />}
         
-        {/* Quitamos el pt-20 si el navbar está oculto para evitar el hueco superior */}
+        {/* El padding top (pt-20) solo se aplica si el Navbar es visible */}
         <main className={ocultarNavbar ? "" : "pt-20"}>
           {children}
         </main>
