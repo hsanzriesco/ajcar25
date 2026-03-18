@@ -55,14 +55,14 @@ function ResetPasswordForm() {
 
   if (!token) {
     return (
-      <div className="text-center p-8 bg-red-500/10 border border-red-500 rounded-xl text-red-500">
+      <div className="max-w-md mx-auto text-center p-8 bg-red-500/10 border border-red-500 rounded-xl text-red-500 backdrop-blur-md">
         Token inválido o ausente. Solicita un nuevo enlace.
       </div>
     );
   }
 
   return (
-    <div className="max-w-md mx-auto mt-20 p-8 bg-neutral-900 border border-white/10 rounded-2xl shadow-2xl">
+    <div className="max-w-md mx-auto p-8 bg-neutral-900/90 border border-white/10 rounded-2xl shadow-2xl backdrop-blur-sm">
       <h2 className="text-2xl font-bold text-white mb-6 text-center">Nueva Contraseña</h2>
       
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -117,10 +117,18 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <main className="min-h-screen bg-black pt-20 px-4">
-      <Suspense fallback={<div className="text-white text-center">Cargando...</div>}>
-        <ResetPasswordForm />
-      </Suspense>
+    <main 
+      className="min-h-screen w-full flex items-center justify-center px-4 bg-cover bg-center bg-no-repeat relative"
+      style={{ backgroundImage: "url('/imagenes/fondo_pagina.png')" }}
+    >
+      {/* Capa de oscurecimiento para mejorar la visibilidad del formulario */}
+      <div className="absolute inset-0 bg-black/60 z-0"></div>
+
+      <div className="relative z-10 w-full">
+        <Suspense fallback={<div className="text-white text-center">Cargando...</div>}>
+          <ResetPasswordForm />
+        </Suspense>
+      </div>
     </main>
   );
 }
