@@ -1,15 +1,48 @@
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
+import { neon } from "@neondatabase/serverless"; // Importamos Neon
 
 export async function POST(req: Request) {
   try {
-    const { id, email, nombre, pdfBase64, total, vehiculo } = await req.json();
+    const { id, email, nombre, pdfBase64, total, vehiculo, articulos } = await req.json();
 
-    // Seguridad extra: Si no hay ID, lanzamos error antes de enviar un correo roto
+    // 1. Validaciones de seguridad
     if (!id) {
       return NextResponse.json({ error: "El ID del presupuesto es obligatorio" }, { status: 400 });
     }
 
+    const sql = neon(process.env.DATABASE_URL!);
+
+    // --- BLOQUE DE BASE DE DATOS: GUARDAR LÍNEAS ---
+    // Borramos líneas previas para evitar duplicados si se envía varias veces
+    await sql`DELETE FROM lineas_presupuestos WHERE presupuesto_id = ${id}`;
+
+    // Insertamos las líneas una a una (Línea 1, Línea 2...)
+    if (articulos && Array.isArray(articulos)) {
+      for (const art of articulos) {
+        await sql`
+          INSERT INTO lineas_presupuestos (
+            presupuesto_id, 
+            articulo_codigo, 
+            descripcion, 
+            cantidad, 
+            precio_unitario
+          ) VALUES (
+            ${id}, 
+            ${art.codigo}, 
+            ${art.descripcion}, 
+            ${art.cantidad}, 
+            ${art.precio_unitario}
+          )
+        `;
+      }
+    }
+
+    // Actualizamos el estado del presupuesto a "Enviado" en la tabla principal
+    await sql`UPDATE presupuestos_pedidos SET estado = 'Presupuesto enviado' WHERE id = ${id}`;
+    // ----------------------------------------------
+
+    // 2. Configuración de Email (Nodemailer)
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
@@ -19,12 +52,8 @@ export async function POST(req: Request) {
     });
 
     const base64Data = pdfBase64.split(",")[1];
-
-    // --- CORRECCIÓN AQUÍ ---
-    // Eliminamos "/app" de la URL. Next.js resuelve las rutas desde la raíz de la carpeta app.
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
     const acceptUrl = `${baseUrl}/presupuesto/aceptar/${id}`; 
-    // ------------------------
 
     const mailOptions = {
       from: `"AJCAR 25" <${process.env.EMAIL_USER}>`,
@@ -62,9 +91,9 @@ export async function POST(req: Request) {
 
     await transporter.sendMail(mailOptions);
 
-    return NextResponse.json({ message: "Correo enviado con éxito" });
+    return NextResponse.json({ message: "Guardado en DB y Correo enviado" });
   } catch (error: any) {
-    console.error("Error en Nodemailer:", error);
+    console.error("Error en el proceso:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

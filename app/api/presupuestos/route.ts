@@ -43,15 +43,34 @@ export async function GET() {
   }
 }
 
-// El POST se mantiene igual
 export async function POST(request: Request) {
   try {
     const sql = neon(process.env.DATABASE_URL!);
     const body = await request.json();
-    await sql`
+    const { nombre, email, telefono, vehiculo, anio, fecha_cita, hora_cita, mensaje, articulos } = body;
+
+    // 1. Insertamos la cabecera del presupuesto
+    const resultadoPresupuesto = await sql`
       INSERT INTO presupuestos_pedidos (nombre, email, telefono, vehiculo, anio, fecha_cita, hora_cita, mensaje, estado) 
-      VALUES (${body.nombre}, ${body.email}, ${body.telefono}, ${body.vehiculo}, ${body.anio}, ${body.fecha_cita}, ${body.hora_cita}, ${body.mensaje}, 'Pendiente')
+      VALUES (${nombre}, ${email}, ${telefono}, ${vehiculo}, ${anio}, ${fecha_cita}, ${hora_cita}, ${mensaje}, 'Pendiente')
+      RETURNING id
     `;
-    return NextResponse.json({ message: "Guardado" }, { status: 200 });
-  } catch (error: any) { return NextResponse.json({ message: "Error" }, { status: 500 }); }
+
+    const nuevoId = resultadoPresupuesto[0].id;
+
+    // 2. Si hay artículos, los insertamos uno por uno en la tabla de líneas
+    if (articulos && Array.isArray(articulos) && articulos.length > 0) {
+      for (const item of articulos) {
+        await sql`
+          INSERT INTO lineas_presupuestos (presupuesto_id, articulo_codigo, descripcion, cantidad, precio_unitario)
+          VALUES (${nuevoId}, ${item.codigo}, ${item.descripcion}, ${item.cantidad}, ${item.precio_unitario})
+        `;
+      }
+    }
+
+    return NextResponse.json({ message: "Presupuesto y líneas guardados", id: nuevoId }, { status: 200 });
+  } catch (error: any) {
+    console.error("Error al guardar:", error);
+    return NextResponse.json({ message: "Error al procesar el guardado" }, { status: 500 });
+  }
 }
