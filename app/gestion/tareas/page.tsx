@@ -21,6 +21,8 @@ import {
   Calendar,
   ChevronRight,
   MessageSquare,
+  CheckSquare,
+  Wrench
 } from "lucide-react";
 
 import jsPDF from "jspdf";
@@ -58,7 +60,8 @@ interface PresupuestoPedido {
 export default function EmpleadoPage() {
   const [nombreUsuario, setNombreUsuario] = useState("");
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<"mantenimientos" | "presupuestos" | "stock" | "facturas">("presupuestos");
+  // AÑADIDO: "aceptados" a los tipos de vista
+  const [view, setView] = useState<"mantenimientos" | "presupuestos" | "aceptados" | "stock" | "facturas">("presupuestos");
 
   const [presupuestos, setPresupuestos] = useState<PresupuestoPedido[]>([]);
   const [articulos, setArticulos] = useState<Articulo[]>([]);
@@ -70,6 +73,7 @@ export default function EmpleadoPage() {
   const [enviandoEmail, setEnviandoEmail] = useState(false);
 
   const [facturando, setFacturando] = useState(false);
+  const [cambiandoEstado, setCambiandoEstado] = useState(false);
   const [facturas, setFacturas] = useState<any[]>([]);
 
   const router = useRouter();
@@ -112,6 +116,26 @@ export default function EmpleadoPage() {
       cargarTodo();
     }
   }, [router, cargarTodo]);
+
+  // FUNCIÓN PARA CAMBIAR ESTADOS (Ej: De Aceptado a Taller)
+  const cambiarEstado = async (id: string, nuevoEstado: string) => {
+    setCambiandoEstado(true);
+    try {
+      const res = await fetch(`/api/presupuestos/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ estado: nuevoEstado })
+      });
+      if (res.ok) {
+        await cargarTodo();
+        setSeleccionado(null);
+      }
+    } catch (e) {
+      alert("Error al actualizar el estado");
+    } finally {
+      setCambiandoEstado(false);
+    }
+  };
 
   const buscarYAñadirArticulo = async () => {
     const cod = codigoBusqueda.toUpperCase().trim();
@@ -204,7 +228,7 @@ export default function EmpleadoPage() {
   };
 
   const procesarFactura = async () => {
-    const articulosAFacturar = view === "mantenimientos" ? seleccionado?.articulos : lineas;
+    const articulosAFacturar = (view === "mantenimientos" || view === "aceptados") ? seleccionado?.articulos : lineas;
 
     if (!seleccionado || !articulosAFacturar || articulosAFacturar.length === 0) {
       alert("Error: No hay datos suficientes para facturar.");
@@ -358,6 +382,7 @@ export default function EmpleadoPage() {
               </div>
               <h1 className="text-white text-5xl lg:text-7xl font-black italic tracking-tighter uppercase leading-none">
                 {view === 'presupuestos' && "Presupuestos"}
+                {view === 'aceptados' && "Aceptados"}
                 {view === 'mantenimientos' && "Taller"}
                 {view === 'stock' && "Almacén"}
                 {view === 'facturas' && "Facturas"}
@@ -366,7 +391,8 @@ export default function EmpleadoPage() {
 
             <nav className="flex items-center gap-2 bg-white/5 p-2 rounded-2xl border border-white/5">
                 {[
-                  { id: 'presupuestos', label: 'Presupuestos' },
+                  { id: 'presupuestos', label: 'Nuevos' },
+                  { id: 'aceptados', label: 'Aceptados' }, // PESTAÑA AÑADIDA
                   { id: 'mantenimientos', label: 'Taller' },
                   { id: 'stock', label: 'Stock' },
                   { id: 'facturas', label: 'Facturas' }
@@ -441,8 +467,9 @@ export default function EmpleadoPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {presupuestos
                     .filter(p => {
-                      if (view === "presupuestos") return p.estado !== "Aceptado por el cliente" && p.estado !== "Facturado";
-                      if (view === "mantenimientos") return p.estado === "Aceptado por el cliente";
+                      if (view === "presupuestos") return p.estado === "Pendiente" || p.estado === "Enviado";
+                      if (view === "aceptados") return p.estado === "Aceptado por el cliente";
+                      if (view === "mantenimientos") return p.estado === "En Taller";
                       return true;
                     })
                     .map(p => (
@@ -488,7 +515,6 @@ export default function EmpleadoPage() {
                       </div>
                     </div>
 
-                    {/* MENSAJE DEL CLIENTE */}
                     <div className="bg-amber-500/5 border border-amber-500/10 p-6 rounded-[32px] relative group">
                       <MessageSquare className="absolute top-4 right-4 text-amber-500/20" size={24} />
                       <p className="text-[9px] font-black uppercase text-amber-500/60 mb-2 tracking-widest">Lo que dice el cliente:</p>
@@ -530,6 +556,19 @@ export default function EmpleadoPage() {
                           <button onClick={enviarPresupuestoPDF} disabled={enviandoEmail || lineas.length === 0} className="bg-white text-blue-600 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-gray-100 disabled:opacity-50 transition-all">
                             {enviandoEmail ? <Loader2 className="animate-spin" size={14}/> : <Send size={14}/>} Enviar PDF
                           </button>
+                        </div>
+                      </div>
+                    ) : view === "aceptados" ? (
+                      <div className="space-y-6">
+                        <div className="p-6 bg-green-500/10 border border-green-500/20 rounded-[32px]">
+                           <p className="text-[10px] text-green-500 font-black uppercase text-center tracking-widest mb-4">Confirmar Entrada</p>
+                           <button 
+                            onClick={() => cambiarEstado(seleccionado.id, "En Taller")}
+                            disabled={cambiandoEstado}
+                            className="w-full bg-green-600 text-white py-5 rounded-[24px] font-black text-[10px] uppercase tracking-[0.3em] flex items-center justify-center gap-3 hover:bg-green-500 transition-all"
+                           >
+                            {cambiandoEstado ? <Loader2 className="animate-spin" size={16}/> : <Wrench size={16}/>} El coche ha entrado
+                           </button>
                         </div>
                       </div>
                     ) : (
