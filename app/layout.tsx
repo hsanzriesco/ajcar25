@@ -11,18 +11,20 @@ export default function RootLayout({
 }) {
   const pathname = usePathname();
 
-  // Definimos la ruta donde queremos ocultar el navbar
-  // He añadido "/gestion/tareas" que es la que me has mencionado
-  const esGestion = pathname === "/gestion/tareas";
+  // Array de rutas donde NO queremos que aparezca el Navbar
+  const rutasSinNavbar = ["/gestion/tareas", "/forgot-password"];
+  
+  // Comprobamos si la ruta actual está en la lista
+  const ocultarNavbar = rutasSinNavbar.includes(pathname);
 
   return (
     <html lang="es">
       <body className="bg-black text-white">
-        {/* Si NO es gestión, muestra el Navbar */}
-        {!esGestion && <Navbar />}
+        {/* Renderizado condicional del Navbar */}
+        {!ocultarNavbar && <Navbar />}
         
-        {/* Si es gestión, quitamos el padding superior (pt-20) para que no quede un hueco vacío */}
-        <main className={esGestion ? "" : "pt-20"}>
+        {/* Quitamos el pt-20 si el navbar está oculto para evitar el hueco superior */}
+        <main className={ocultarNavbar ? "" : "pt-20"}>
           {children}
         </main>
       </body>
