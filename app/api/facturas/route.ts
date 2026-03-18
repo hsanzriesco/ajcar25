@@ -5,6 +5,7 @@ import nodemailer from "nodemailer";
 export async function GET() {
   try {
     const sql = neon(process.env.DATABASE_URL!);
+    // Obtenemos el historial de facturas
     const data = await sql`SELECT * FROM facturas ORDER BY fecha_emision DESC`;
     return NextResponse.json(data);
   } catch (error: any) {
@@ -28,19 +29,19 @@ export async function POST(req: Request) {
       pdfBase64 
     } = body;
 
-    // 1. VALIDACIONES CRÍTICAS
+    // 1. VALIDACIONES DE SEGURIDAD
     if (!presupuesto_id || !email || !pdfBase64) {
-      return NextResponse.json({ error: "Faltan datos obligatorios (ID, Email o PDF)" }, { status: 400 });
+      return NextResponse.json({ error: "Faltan datos críticos (ID, Email o PDF)" }, { status: 400 });
     }
 
     if (!articulos || !Array.isArray(articulos)) {
-      return NextResponse.json({ error: "Artículos no válidos" }, { status: 400 });
+      return NextResponse.json({ error: "La lista de artículos no es válida" }, { status: 400 });
     }
 
-    // Generamos un número de factura único
+    // Generación de número de factura único (FAC-AÑO-RANDOM)
     const numero_factura = `FAC-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
-    // 2. GUARDAR EN BASE DE DATOS
+    // 2. TRANSACCIÓN DE BASE DE DATOS (Guardar Factura)
     await sql`
       INSERT INTO facturas (numero_factura, presupuesto_id, cliente_nombre, vehiculo, total, articulos)
       VALUES (
@@ -53,7 +54,8 @@ export async function POST(req: Request) {
       )
     `;
 
-    // 3. ACTUALIZAR STOCK Y ESTADO DEL PRESUPUESTO
+    // 3. ACTUALIZAR STOCK Y ESTADO DEL EXPEDIENTE
+    // Recorremos los artículos para descontar stock real y liberar el reservado
     for (const item of articulos) {
       const cant = Number(item.cantidad);
       if (!isNaN(cant) && item.codigo) {
@@ -66,10 +68,10 @@ export async function POST(req: Request) {
       }
     }
 
-    // Cambiamos el estado del presupuesto original a 'Facturado'
+    // CRUCIAL: Cambiamos el estado para que desaparezca de la vista de "Mantenimientos/Taller"
     await sql`UPDATE presupuestos_pedidos SET estado = 'Facturado' WHERE id = ${presupuesto_id}`;
 
-    // 4. ENVÍO DE EMAIL CON NODEMAILER (Igual que el presupuesto)
+    // 4. CONFIGURACIÓN Y ENVÍO DE EMAIL (Nodemailer)
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
@@ -78,7 +80,7 @@ export async function POST(req: Request) {
       },
     });
 
-    // Limpiamos el base64 para el adjunto
+    // Limpieza de la cadena Base64 por si incluye el prefijo de datos
     const base64Clean = pdfBase64.includes(",") ? pdfBase64.split(",")[1] : pdfBase64;
 
     const mailOptions = {
@@ -87,23 +89,29 @@ export async function POST(req: Request) {
       subject: `Factura Oficial ${numero_factura} - AJCAR 25`,
       html: `
         <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: auto; border: 1px solid #eee; padding: 20px; border-radius: 12px; border-top: 8px solid #7e22ce;">
-          <h2 style="color: #7e22ce;">Factura Generada con Éxito</h2>
-          <p>Hola, <strong>${cliente_nombre}</strong>.</p>
-          <p>Le adjuntamos la factura oficial correspondiente a los trabajos realizados en su vehículo <strong>${vehiculo}</strong>.</p>
+          <div style="text-align: center; margin-bottom: 20px;">
+             <h2 style="color: #7e22ce; margin: 0;">FACTURA DE SERVICIO</h2>
+             <p style="text-transform: uppercase; font-size: 10px; letter-spacing: 2px; color: #999;">AJCAR 25 Taller Mecánico</p>
+          </div>
           
-          <div style="background-color: #f3e8ff; padding: 20px; border-radius: 8px; margin: 25px 0; text-align: center;">
-            <p style="margin: 0; font-size: 14px; color: #6b21a8; font-weight: bold;">NÚMERO DE FACTURA</p>
-            <p style="margin: 5px 0; font-size: 22px; color: #7e22ce; font-weight: 900;">${numero_factura}</p>
-            <p style="margin: 15px 0 0 0; font-size: 14px; color: #6b21a8;">TOTAL A PAGAR</p>
-            <p style="margin: 0; font-size: 28px; color: #16a34a; font-weight: 900;">${Number(total).toFixed(2)}€</p>
+          <p>Estimado/a <strong>${cliente_nombre}</strong>,</p>
+          <p>Le informamos que el servicio para su vehículo <strong>${vehiculo}</strong> ha finalizado satisfactoriamente. Adjunto encontrará la factura oficial.</p>
+          
+          <div style="background-color: #f3e8ff; padding: 25px; border-radius: 15px; margin: 25px 0; text-align: center; border: 1px dashed #7e22ce;">
+            <p style="margin: 0; font-size: 12px; color: #6b21a8; font-weight: bold; text-transform: uppercase;">Referencia Factura</p>
+            <p style="margin: 5px 0; font-size: 24px; color: #7e22ce; font-weight: 900;">${numero_factura}</p>
+            <div style="margin-top: 15px; border-top: 1px solid rgba(126, 34, 206, 0.2); pt-15px">
+               <p style="margin: 10px 0 0 0; font-size: 12px; color: #6b21a8;">IMPORTE TOTAL (IVA INC.)</p>
+               <p style="margin: 0; font-size: 32px; color: #16a34a; font-weight: 900;">${Number(total).toFixed(2)}€</p>
+            </div>
           </div>
 
-          <p style="font-size: 14px; color: #666;">El documento PDF adjunto contiene el desglose detallado de piezas y mano de obra.</p>
-          <p style="font-size: 13px; color: #888; margin-top: 30px;">Gracias por confiar en nuestros servicios. Guarde este documento para su garantía.</p>
+          <p style="font-size: 14px; color: #555; line-height: 1.5;">Este documento sirve como comprobante de pago y garantía de las piezas instaladas y la mano de obra realizada.</p>
           
-          <br/>
-          <hr style="border: 0; border-top: 1px solid #eee;" />
-          <p style="font-size: 11px; color: #aaa; text-align: center;">AJCAR 25 - Taller de Mecánica Avanzada</p>
+          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #888; text-align: center;">
+            <p>Si tiene cualquier duda sobre esta factura, por favor contacte con nosotros respondiendo a este email.</p>
+            <p style="font-weight: bold; color: #333; margin-top: 10px;">Gracias por su confianza.</p>
+          </div>
         </div>
       `,
       attachments: [
@@ -120,7 +128,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ 
       success: true, 
       numero: numero_factura,
-      message: "Factura guardada, stock actualizado y email enviado." 
+      message: "Proceso completado: DB actualizada y Email enviado." 
     });
 
   } catch (error: any) {

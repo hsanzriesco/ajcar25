@@ -13,14 +13,12 @@ import {
   Trash2,
   Send,
   Loader2,
-  MessageSquare,
   Car,
   Package,
   Search,
   CheckCircle,
   Printer,
   Calendar,
-  Clock,
   ChevronRight,
 } from "lucide-react";
 
@@ -151,7 +149,7 @@ export default function EmpleadoPage() {
     try {
       const doc = new jsPDF();
       doc.setFontSize(22);
-      doc.setTextColor(37, 99, 235); // Azul para presupuestos
+      doc.setTextColor(37, 99, 235);
       doc.text("AJCAR 25 - PRESUPUESTO", 14, 20);
       doc.setFontSize(10);
       doc.setTextColor(50);
@@ -216,7 +214,7 @@ export default function EmpleadoPage() {
     try {
       const doc = new jsPDF();
       doc.setFontSize(22);
-      doc.setTextColor(126, 34, 206); // Púrpura para Facturas
+      doc.setTextColor(126, 34, 206);
       doc.text("AJCAR 25 - FACTURA OFICIAL", 14, 20);
 
       doc.setFontSize(10);
@@ -266,6 +264,7 @@ export default function EmpleadoPage() {
 
       if (res.ok) {
         alert(`✅ Factura ${data.numero || ""} generada y enviada.`);
+        // Refrescamos todo para que el presupuesto cambie de estado y desaparezca de la lista actual
         await cargarTodo();
         setSeleccionado(null);
         setLineas([]);
@@ -280,7 +279,6 @@ export default function EmpleadoPage() {
     }
   };
 
-  // FUNCIÓN PARA VER PDF DESDE EL HISTORIAL (Solución about:blank)
   const verPDFFactura = (f: any) => {
     try {
       const doc = new jsPDF();
@@ -464,7 +462,17 @@ export default function EmpleadoPage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {presupuestos
-                    .filter(p => view === "presupuestos" ? p.estado !== "Aceptado por el cliente" : p.estado === "Aceptado por el cliente")
+                    .filter(p => {
+                      if (view === "presupuestos") {
+                        // Ocultar si está aceptado o facturado
+                        return p.estado !== "Aceptado por el cliente" && p.estado !== "Facturado";
+                      }
+                      if (view === "mantenimientos") {
+                        // Mostrar SOLO si está aceptado (pero no facturado)
+                        return p.estado === "Aceptado por el cliente";
+                      }
+                      return true;
+                    })
                     .map(p => (
                       <div
                         key={p.id}
@@ -553,17 +561,17 @@ export default function EmpleadoPage() {
                         </div>
                       ) : (
                         <div className="space-y-6">
-                           <div className="space-y-2">
-                            {seleccionado.articulos?.map((a, i) => (
-                              <div key={i} className="flex justify-between text-[11px] border-b border-white/5 pb-2">
-                                <span className="text-gray-500 uppercase">{a.descripcion} x{a.cantidad}</span>
-                                <span className="text-white font-bold">{ (a.cantidad * a.precio_unitario).toFixed(2) }€</span>
-                              </div>
-                            ))}
-                           </div>
-                           <button onClick={procesarFactura} disabled={facturando} className="w-full bg-white text-black py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] flex items-center justify-center gap-3">
+                            <div className="space-y-2">
+                             {seleccionado.articulos?.map((a, i) => (
+                               <div key={i} className="flex justify-between text-[11px] border-b border-white/5 pb-2">
+                                 <span className="text-gray-500 uppercase">{a.descripcion} x{a.cantidad}</span>
+                                 <span className="text-white font-bold">{ (a.cantidad * a.precio_unitario).toFixed(2) }€</span>
+                               </div>
+                             ))}
+                            </div>
+                            <button onClick={procesarFactura} disabled={facturando} className="w-full bg-white text-black py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] flex items-center justify-center gap-3">
                               {facturando ? <Loader2 className="animate-spin" size={16}/> : <Printer size={16}/>} Finalizar y Facturar
-                           </button>
+                            </button>
                         </div>
                       )}
                     </div>
