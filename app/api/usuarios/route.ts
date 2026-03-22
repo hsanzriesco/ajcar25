@@ -6,34 +6,28 @@ export async function POST(request: Request) {
     const sql = neon(process.env.DATABASE_URL!);
     const body = await request.json();
     
-    // Extraemos y limpiamos los datos
-    const nombre = body.nombre?.toUpperCase().trim() || "SIN NOMBRE";
-    const apellidos = body.apellidos?.toUpperCase().trim() || "SIN APELLIDO";
-    const email = body.email || `temporal_${Date.now()}@ajcar25.com`;
+    // Extraemos con valores por defecto por si el front no los envía
+    const nombre = (body.nombre || "NUEVO").toUpperCase().trim();
+    const apellidos = (body.apellidos || "CLIENTE").toUpperCase().trim();
+    const email = body.email || `user_${Date.now()}@ajcar.com`;
     const telefono = body.telefono || "";
-    const rol = body.rol || 'cliente';
-
-    console.log("Intentando insertar usuario:", { nombre, apellidos, email });
-
-    // La consulta SQL debe coincidir EXACTAMENTE con tus columnas de Neon
+    
+    // IMPORTANTE: Verifica si tu tabla usa 'role' o 'rol'
+    // Aquí usamos 'role' que es el estándar de NextAuth/Prisma
     const resultado = await sql`
       INSERT INTO usuarios (nombre, apellidos, email, telefono, role, password)
-      VALUES (${nombre}, ${apellidos}, ${email}, ${telefono}, ${rol}, 'ajcar2024')
+      VALUES (${nombre}, ${apellidos}, ${email}, ${telefono}, 'cliente', '123456')
       RETURNING id
     `;
 
-    return NextResponse.json({ 
-      success: true, 
-      id: resultado[0].id 
-    }, { status: 201 });
+    return NextResponse.json({ success: true, id: resultado[0].id }, { status: 201 });
 
   } catch (error: any) {
-    // ESTO ES CLAVE: Imprime el error real en la terminal de VS Code o Logs de Vercel
-    console.error("ERROR EN POST USUARIOS:", error.message);
-    
+    console.error("ERROR CRÍTICO EN USUARIOS:", error.message);
+    // Devolvemos el mensaje de error real para verlo en la consola del navegador
     return NextResponse.json({ 
-      error: "Error interno", 
-      detalle: error.message 
+      error: "Fallo en BD", 
+      message: error.message 
     }, { status: 500 });
   }
 }
