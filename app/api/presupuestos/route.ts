@@ -1,6 +1,3 @@
-console.log("route");
-
-
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 
@@ -8,7 +5,6 @@ export async function GET() {
   try {
     const sql = neon(process.env.DATABASE_URL!);
 
-    // Intentamos traer todo de forma segura
     const data = await sql`
       SELECT 
         p.*, 
@@ -17,13 +13,12 @@ export async function GET() {
       ORDER BY p.creado_en DESC
     `;
 
-    // Ahora buscamos las líneas por separado para evitar el error 500 del JOIN
     const presupuestosConArticulos = await Promise.all(data.map(async (presu) => {
       try {
         const lineas = await sql`
           SELECT 
             articulo_codigo AS codigo, 
-            articulo_codigo AS descripcion, 
+            descripcion, 
             cantidad, 
             precio_unitario 
           FROM lineas_presupuestos 
@@ -31,7 +26,6 @@ export async function GET() {
         `;
         return { ...presu, fecha_cita: presu.fecha_formateada, articulos: lineas || [] };
       } catch (e) {
-        // Si fallan las líneas, devolvemos el presupuesto sin artículos en lugar de un Error 500
         return { ...presu, fecha_cita: presu.fecha_formateada, articulos: [] };
       }
     }));
@@ -47,18 +41,23 @@ export async function POST(request: Request) {
   try {
     const sql = neon(process.env.DATABASE_URL!);
     const body = await request.json();
-    const { nombre, email, telefono, vehiculo, anio, fecha_cita, hora_cita, mensaje, articulos } = body;
+    // AÑADIDO: apellidos
+    const { nombre, apellidos, email, telefono, vehiculo, anio, mensaje, articulos } = body;
 
-    // 1. Insertamos la cabecera del presupuesto
+    // Valores por defecto para evitar nulos en SQL si no vienen del front
+    const fecha = new Date().toISOString().split('T')[0];
+    const hora = "10:00";
+
+    // 1. Insertamos la cabecera (Incluyendo apellidos)
     const resultadoPresupuesto = await sql`
-      INSERT INTO presupuestos_pedidos (nombre, email, telefono, vehiculo, anio, fecha_cita, hora_cita, mensaje, estado) 
-      VALUES (${nombre}, ${email}, ${telefono}, ${vehiculo}, ${anio}, ${fecha_cita}, ${hora_cita}, ${mensaje}, 'Pendiente')
+      INSERT INTO presupuestos_pedidos (nombre, apellidos, email, telefono, vehiculo, anio, fecha_cita, hora_cita, mensaje, estado) 
+      VALUES (${nombre}, ${apellidos}, ${email}, ${telefono}, ${vehiculo}, ${anio}, ${fecha}, ${hora}, ${mensaje}, 'Pendiente')
       RETURNING id
     `;
 
     const nuevoId = resultadoPresupuesto[0].id;
 
-    // 2. Si hay artículos, los insertamos uno por uno en la tabla de líneas
+    // 2. Insertar líneas si existen
     if (articulos && Array.isArray(articulos) && articulos.length > 0) {
       for (const item of articulos) {
         await sql`
@@ -68,9 +67,21 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({ message: "Presupuesto y líneas guardados", id: nuevoId }, { status: 200 });
+    // Retornamos el objeto completo para que el Front lo añada a la lista sin recargar
+    return NextResponse.json({ 
+        id: nuevoId, 
+        nombre, 
+        apellidos, 
+        email, 
+        telefono, 
+        vehiculo, 
+        anio, 
+        estado: 'Pendiente', 
+        articulos: articulos || [] 
+    }, { status: 200 });
+    
   } catch (error: any) {
-    console.error("Error al guardar:", error);
+    console.error("Error al guardar presupuesto:", error);
     return NextResponse.json({ message: "Error al procesar el guardado" }, { status: 500 });
   }
 }
