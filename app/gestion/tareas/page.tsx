@@ -17,7 +17,8 @@ import {
   MessageSquare,
   Wrench,
   X,
-  FilePlus2
+  FilePlus2,
+  UserPlus
 } from "lucide-react";
 
 import jsPDF from "jspdf";
@@ -40,6 +41,7 @@ interface LineaPresupuesto extends Articulo {
 interface PresupuestoPedido {
   id: string;
   nombre: string;
+  apellidos: string; // AÑADIDO
   email: string;
   telefono: string;
   vehiculo: string;
@@ -70,10 +72,12 @@ export default function EmpleadoPage() {
   const [cambiandoEstado, setCambiandoEstado] = useState(false);
   const [facturas, setFacturas] = useState<any[]>([]);
 
-  // --- ESTADOS PARA NUEVO PRESUPUESTO ---
+  // --- ESTADOS PARA NUEVO PRESUPUESTO Y VERIFICACIÓN ---
   const [showNuevoPresupuesto, setShowNuevoPresupuesto] = useState(false);
+  const [verificando, setVerificando] = useState(false);
   const [nuevoCliente, setNuevoCliente] = useState({
     nombre: "",
+    apellidos: "", // AÑADIDO
     email: "",
     telefono: "",
     vehiculo: "",
@@ -122,27 +126,51 @@ export default function EmpleadoPage() {
     }
   }, [router, cargarTodo]);
 
-  const crearPresupuestoManual = async () => {
-    if (!nuevoCliente.nombre || !nuevoCliente.vehiculo) {
-      alert("Nombre y Vehículo son campos obligatorios.");
+  // --- LÓGICA DE VERIFICACIÓN Y CREACIÓN ---
+  const manejarCreacionPresupuesto = async () => {
+    if (!nuevoCliente.nombre || !nuevoCliente.apellidos || !nuevoCliente.vehiculo) {
+      alert("Nombre, Apellidos y Vehículo son obligatorios.");
       return;
     }
 
-    const mockup: PresupuestoPedido = {
-      id: "MANUAL-" + Date.now(),
-      ...nuevoCliente,
-      fecha_cita: new Date().toISOString().split('T')[0],
-      hora_cita: "10:00",
-      estado: "Pendiente",
-      creado_en: new Date().toISOString(),
-      articulos: []
-    };
+    setVerificando(true);
 
-    setPresupuestos([mockup, ...presupuestos]);
-    setSeleccionado(mockup);
-    setLineas([]);
-    setShowNuevoPresupuesto(false);
-    setView("presupuestos");
+    try {
+      // 1. Verificar si el usuario existe
+      const res = await fetch(`/api/usuarios/verificar?nombre=${nuevoCliente.nombre}&apellidos=${nuevoCliente.apellidos}`);
+      const data = await res.json();
+
+      if (!data.existe) {
+        const confirmar = confirm(`El usuario "${nuevoCliente.nombre} ${nuevoCliente.apellidos}" no existe en la base de datos. ¿Desearía crear el usuario?`);
+        if (!confirmar) {
+          setVerificando(false);
+          return;
+        }
+        // Aquí podrías añadir una llamada opcional para registrar al usuario en tu DB de clientes
+      }
+
+      // 2. Crear el presupuesto (Mockup/Local)
+      const mockup: PresupuestoPedido = {
+        id: "MANUAL-" + Date.now(),
+        ...nuevoCliente,
+        fecha_cita: new Date().toISOString().split('T')[0],
+        hora_cita: "10:00",
+        estado: "Pendiente",
+        creado_en: new Date().toISOString(),
+        articulos: []
+      };
+
+      setPresupuestos([mockup, ...presupuestos]);
+      setSeleccionado(mockup);
+      setLineas([]);
+      setShowNuevoPresupuesto(false);
+      setView("presupuestos");
+
+    } catch (error) {
+      alert("Error al verificar el usuario.");
+    } finally {
+      setVerificando(false);
+    }
   };
 
   const cambiarEstado = async (id: string, nuevoEstado: string) => {
@@ -202,7 +230,15 @@ export default function EmpleadoPage() {
       const res = await fetch("/api/enviar-presupuesto", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: seleccionado.id, email: seleccionado.email, nombre: seleccionado.nombre, vehiculo: seleccionado.vehiculo, total: totalPresupuesto.toFixed(2), pdfBase64, articulos: lineas })
+        body: JSON.stringify({ 
+            id: seleccionado.id, 
+            email: seleccionado.email, 
+            nombre: `${seleccionado.nombre} ${seleccionado.apellidos}`, 
+            vehiculo: seleccionado.vehiculo, 
+            total: totalPresupuesto.toFixed(2), 
+            pdfBase64, 
+            articulos: lineas 
+        })
       });
       if (res.ok) {
         alert("Enviado con éxito.");
@@ -220,7 +256,14 @@ export default function EmpleadoPage() {
       const res = await fetch("/api/facturas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ presupuesto_id: seleccionado.id, cliente_nombre: seleccionado.nombre, email: seleccionado.email, vehiculo: seleccionado.vehiculo, total: totalPresupuesto, articulos: articulosAFacturar })
+        body: JSON.stringify({ 
+            presupuesto_id: seleccionado.id, 
+            cliente_nombre: `${seleccionado.nombre} ${seleccionado.apellidos}`, 
+            email: seleccionado.email, 
+            vehiculo: seleccionado.vehiculo, 
+            total: totalPresupuesto, 
+            articulos: articulosAFacturar 
+        })
       });
       if (res.ok) { alert("Factura generada"); await cargarTodo(); setSeleccionado(null); }
     } catch (e) { console.error(e); } finally { setFacturando(false); }
@@ -273,7 +316,6 @@ export default function EmpleadoPage() {
               </h1>
             </div>
 
-            {/* BARRA DE NAVEGACIÓN ESTILO CÁPSULA */}
             <nav className="flex items-center gap-1 bg-white/[0.03] p-1.5 rounded-3xl border border-white/5 shadow-2xl backdrop-blur-md">
                 {[
                   { id: 'presupuestos', label: 'Nuevos' },
@@ -291,7 +333,6 @@ export default function EmpleadoPage() {
                     </button>
                 ))}
                 
-                {/* BOTÓN NUEVA ACCIÓN */}
                 <button 
                   onClick={() => setShowNuevoPresupuesto(true)}
                   className="px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-blue-400 hover:bg-blue-600/10 transition-all flex items-center gap-2 border border-blue-500/20 ml-1"
@@ -378,7 +419,7 @@ export default function EmpleadoPage() {
                           </div>
                           <div>
                             <p className={`text-[10px] font-black uppercase tracking-[0.3em] mb-2 ${seleccionado?.id === p.id ? 'text-blue-100/60' : 'text-gray-500'}`}>{p.vehiculo} • {p.anio}</p>
-                            <h3 className={`text-2xl font-black italic tracking-tighter uppercase leading-none ${seleccionado?.id === p.id ? 'text-white' : 'text-gray-200'}`}>{p.nombre}</h3>
+                            <h3 className={`text-2xl font-black italic tracking-tighter uppercase leading-none ${seleccionado?.id === p.id ? 'text-white' : 'text-gray-200'}`}>{p.nombre} {p.apellidos}</h3>
                           </div>
                         </div>
                       </div>
@@ -396,7 +437,7 @@ export default function EmpleadoPage() {
                       <button onClick={() => setSeleccionado(null)} className="text-gray-600 hover:text-white transition-colors"><X size={20} /></button>
                     </div>
                     <div className="space-y-4">
-                      <h3 className="text-3xl font-black italic uppercase text-white leading-none">{seleccionado.nombre}</h3>
+                      <h3 className="text-3xl font-black italic uppercase text-white leading-none">{seleccionado.nombre} {seleccionado.apellidos}</h3>
                       <div className="flex flex-wrap gap-4">
                         <span className="text-[10px] text-gray-500 font-bold flex items-center gap-1"><Mail size={12}/>{seleccionado.email}</span>
                         <span className="text-[10px] text-gray-500 font-bold flex items-center gap-1"><Phone size={12}/>{seleccionado.telefono}</span>
@@ -467,31 +508,49 @@ export default function EmpleadoPage() {
         </div>
       </main>
 
-      {/* MODAL CREAR PRESUPUESTO MANUAL */}
+      {/* MODAL CREAR PRESUPUESTO ACTUALIZADO */}
       {showNuevoPresupuesto && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-xl p-6">
           <div className="bg-[#0f0f12] border border-white/10 w-full max-w-xl rounded-[50px] overflow-hidden shadow-2xl animate-in zoom-in duration-300">
             <div className="p-10 border-b border-white/5 flex justify-between items-center bg-gradient-to-r from-blue-600/10 to-transparent">
               <div>
                 <h2 className="text-white text-2xl font-black italic uppercase tracking-tighter leading-none">Nuevo Presupuesto</h2>
-                <p className="text-[10px] text-blue-500 font-bold uppercase tracking-[0.2em] mt-2">Cliente Presencial</p>
+                <p className="text-[10px] text-blue-500 font-bold uppercase tracking-[0.2em] mt-2">Verificación de Cliente</p>
               </div>
               <button onClick={() => setShowNuevoPresupuesto(false)} className="bg-white/5 p-4 rounded-full text-gray-500 hover:text-white transition-all hover:rotate-90"><X size={20} /></button>
             </div>
             
-            <div className="p-10 space-y-6">
+            <div className="p-10 space-y-5">
               <div className="grid grid-cols-2 gap-5">
-                <input placeholder="NOMBRE CLIENTE" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white uppercase outline-none focus:border-blue-500 transition-all" onChange={(e) => setNuevoCliente({...nuevoCliente, nombre: e.target.value})} />
-                <input placeholder="TELÉFONO" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white outline-none focus:border-blue-500 transition-all" onChange={(e) => setNuevoCliente({...nuevoCliente, telefono: e.target.value})} />
+                <div className="space-y-2">
+                   <p className="text-[9px] font-black text-gray-600 uppercase ml-2 tracking-widest">Nombre</p>
+                   <input placeholder="EJ: JUAN" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white uppercase outline-none focus:border-blue-500 transition-all" onChange={(e) => setNuevoCliente({...nuevoCliente, nombre: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                   <p className="text-[9px] font-black text-gray-600 uppercase ml-2 tracking-widest">Apellidos</p>
+                   <input placeholder="EJ: GARCÍA PÉREZ" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white uppercase outline-none focus:border-blue-500 transition-all" onChange={(e) => setNuevoCliente({...nuevoCliente, apellidos: e.target.value})} />
+                </div>
               </div>
-              <input placeholder="EMAIL DE CONTACTO" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white outline-none focus:border-blue-500 transition-all" onChange={(e) => setNuevoCliente({...nuevoCliente, email: e.target.value})} />
+
+              <div className="grid grid-cols-2 gap-5">
+                <input placeholder="TELÉFONO" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white outline-none focus:border-blue-500 transition-all" onChange={(e) => setNuevoCliente({...nuevoCliente, telefono: e.target.value})} />
+                <input placeholder="EMAIL" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white outline-none focus:border-blue-500 transition-all" onChange={(e) => setNuevoCliente({...nuevoCliente, email: e.target.value})} />
+              </div>
+
               <div className="grid grid-cols-2 gap-5">
                 <input placeholder="VEHÍCULO (MARCA/MOD)" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white uppercase outline-none focus:border-blue-500 transition-all" onChange={(e) => setNuevoCliente({...nuevoCliente, vehiculo: e.target.value})} />
                 <input type="number" placeholder="AÑO" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white outline-none focus:border-blue-500 transition-all" onChange={(e) => setNuevoCliente({...nuevoCliente, anio: parseInt(e.target.value) || 2024})} />
               </div>
-              <textarea placeholder="DESCRIPCIÓN DE LA AVERÍA..." className="w-full bg-white/5 border border-white/10 rounded-[32px] p-6 text-xs text-white outline-none focus:border-blue-500 h-32 resize-none transition-all" onChange={(e) => setNuevoCliente({...nuevoCliente, mensaje: e.target.value})} />
-              <button onClick={crearPresupuestoManual} className="w-full bg-blue-600 text-white font-black py-5 rounded-[28px] uppercase text-[10px] tracking-[0.3em] hover:bg-blue-500 transition-all shadow-xl shadow-blue-600/20">
-                Empezar Presupuesto
+
+              <textarea placeholder="DESCRIPCIÓN DE LA AVERÍA..." className="w-full bg-white/5 border border-white/10 rounded-[32px] p-6 text-xs text-white outline-none focus:border-blue-500 h-28 resize-none transition-all" onChange={(e) => setNuevoCliente({...nuevoCliente, mensaje: e.target.value})} />
+              
+              <button 
+                onClick={manejarCreacionPresupuesto} 
+                disabled={verificando}
+                className="w-full bg-blue-600 text-white font-black py-5 rounded-[28px] uppercase text-[10px] tracking-[0.3em] hover:bg-blue-500 transition-all shadow-xl shadow-blue-600/20 flex items-center justify-center gap-3"
+              >
+                {verificando ? <Loader2 className="animate-spin" size={16} /> : <UserPlus size={16} />}
+                Verificar y Empezar
               </button>
             </div>
           </div>
