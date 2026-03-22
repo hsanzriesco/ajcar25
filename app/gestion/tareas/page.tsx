@@ -41,7 +41,7 @@ interface LineaPresupuesto extends Articulo {
 interface PresupuestoPedido {
   id: string;
   nombre: string;
-  apellidos: string; // AÑADIDO
+  apellidos: string;
   email: string;
   telefono: string;
   vehiculo: string;
@@ -77,7 +77,7 @@ export default function EmpleadoPage() {
   const [verificando, setVerificando] = useState(false);
   const [nuevoCliente, setNuevoCliente] = useState({
     nombre: "",
-    apellidos: "", // AÑADIDO
+    apellidos: "",
     email: "",
     telefono: "",
     vehiculo: "",
@@ -126,9 +126,12 @@ export default function EmpleadoPage() {
     }
   }, [router, cargarTodo]);
 
-  // --- LÓGICA DE VERIFICACIÓN Y CREACIÓN ---
+  // --- LÓGICA DE VERIFICACIÓN Y CREACIÓN INTEGRADA ---
   const manejarCreacionPresupuesto = async () => {
-    if (!nuevoCliente.nombre || !nuevoCliente.apellidos || !nuevoCliente.vehiculo) {
+    const nom = nuevoCliente.nombre.trim();
+    const ape = nuevoCliente.apellidos.trim();
+
+    if (!nom || !ape || !nuevoCliente.vehiculo) {
       alert("Nombre, Apellidos y Vehículo son obligatorios.");
       return;
     }
@@ -136,38 +139,61 @@ export default function EmpleadoPage() {
     setVerificando(true);
 
     try {
-      // 1. Verificar si el usuario existe
-      const res = await fetch(`/api/usuarios/verificar?nombre=${nuevoCliente.nombre}&apellidos=${nuevoCliente.apellidos}`);
-      const data = await res.json();
+      // 1. Verificar existencia del usuario
+      const resVerif = await fetch(`/api/usuarios/verificar?nombre=${encodeURIComponent(nom)}&apellidos=${encodeURIComponent(ape)}`);
+      if (!resVerif.ok) throw new Error("Error al conectar con la API de verificación");
+      
+      const dataVerif = await resVerif.json();
 
-      if (!data.existe) {
-        const confirmar = confirm(`El usuario "${nuevoCliente.nombre} ${nuevoCliente.apellidos}" no existe en la base de datos. ¿Desearía crear el usuario?`);
-        if (!confirmar) {
+      if (!dataVerif.existe) {
+        const confirmar = confirm(`El usuario "${nom} ${ape}" no existe. ¿Deseas darlo de alta como nuevo cliente antes de continuar?`);
+        if (confirmar) {
+          // 2. Crear el usuario en la DB
+          const resCrearU = await fetch("/api/usuarios", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              nombre: nom,
+              apellidos: ape,
+              email: nuevoCliente.email || `cliente_${Date.now()}@taller.com`,
+              telefono: nuevoCliente.telefono,
+              rol: "cliente"
+            })
+          });
+          if (!resCrearU.ok) alert("Aviso: No se pudo crear el perfil de usuario, pero procederemos con el presupuesto.");
+        } else {
           setVerificando(false);
           return;
         }
-        // Aquí podrías añadir una llamada opcional para registrar al usuario en tu DB de clientes
       }
 
-      // 2. Crear el presupuesto (Mockup/Local)
-      const mockup: PresupuestoPedido = {
-        id: "MANUAL-" + Date.now(),
-        ...nuevoCliente,
-        fecha_cita: new Date().toISOString().split('T')[0],
-        hora_cita: "10:00",
-        estado: "Pendiente",
-        creado_en: new Date().toISOString(),
-        articulos: []
-      };
+      // 3. Crear el presupuesto real en la base de datos
+      const resPres = await fetch("/api/presupuestos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...nuevoCliente,
+          nombre: nom,
+          apellidos: ape,
+          estado: "Pendiente"
+        })
+      });
 
-      setPresupuestos([mockup, ...presupuestos]);
-      setSeleccionado(mockup);
-      setLineas([]);
-      setShowNuevoPresupuesto(false);
-      setView("presupuestos");
+      if (resPres.ok) {
+        const presupuestoGuardado = await resPres.json();
+        setPresupuestos([presupuestoGuardado, ...presupuestos]);
+        setSeleccionado(presupuestoGuardado);
+        setLineas([]);
+        setShowNuevoPresupuesto(false);
+        setView("presupuestos");
+        alert("Presupuesto iniciado y guardado correctamente.");
+      } else {
+        alert("Error al guardar el presupuesto en la base de datos.");
+      }
 
     } catch (error) {
-      alert("Error al verificar el usuario.");
+      console.error(error);
+      alert("Hubo un error en el proceso. Revisa la consola.");
     } finally {
       setVerificando(false);
     }
