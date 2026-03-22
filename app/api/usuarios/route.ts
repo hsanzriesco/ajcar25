@@ -6,13 +6,13 @@ export async function POST(request: Request) {
     const sql = neon(process.env.DATABASE_URL!);
     const body = await request.json();
     
-    // Normalizamos datos
+    // 1. Normalización de datos
     const nombre = (body.nombre || "NUEVO").toUpperCase().trim();
     const apellidos = (body.apellidos || "CLIENTE").toUpperCase().trim();
-    const email = body.email?.toLowerCase().trim() || `temp_${Date.now()}@ajcar25.com`;
+    const email = body.email?.toLowerCase().trim() || `cliente_${Date.now()}@ajcar25.com`;
     const telefono = body.telefono || "";
 
-    // 1. PRIMERO: Verificamos si ya existe por nombre/apellidos para evitar el 500
+    // 2. Verificación previa para evitar duplicados y errores 500
     const existe = await sql`
       SELECT id FROM usuarios 
       WHERE UPPER(nombre) = ${nombre} AND UPPER(apellidos) = ${apellidos}
@@ -23,11 +23,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ 
         success: true, 
         id: existe[0].id, 
-        mensaje: "El usuario ya existía, usamos el ID actual" 
+        mensaje: "Usuario ya existente recuperado" 
       }, { status: 200 });
     }
 
-    // 2. SEGUNDO: Si no existe, lo insertamos con los campos de tu imagen
+    // 3. Inserción con el valor de ENUM corregido
+    // Basado en tu error, el ENUM 'user_role' espera mayúsculas o un término específico.
+    // Probamos con 'CLIENTE' que coincide con el estilo de tus otros campos.
     const nuevo = await sql`
       INSERT INTO usuarios (
         nombre, 
@@ -44,8 +46,8 @@ export async function POST(request: Request) {
         ${apellidos}, 
         ${email}, 
         ${telefono}, 
-        'cliente', 
-        'hash_provisional', 
+        'CLIENTE', 
+        'provisional_hash_123', 
         true,
         'particular'
       )
@@ -58,7 +60,17 @@ export async function POST(request: Request) {
     }, { status: 201 });
 
   } catch (error: any) {
-    console.error("ERROR SQL EN USUARIOS:", error.message);
+    console.error("DETALLE ERROR SQL:", error.message);
+
+    // Si el error persiste por el ENUM, lo capturamos para informarte
+    if (error.message.includes("user_role")) {
+      return NextResponse.json({ 
+        error: "Error de Rol (ENUM)", 
+        detalle: "El valor 'CLIENTE' no es aceptado por el ENUM user_role. Revisa los valores permitidos en Neon.",
+        sugerencia: "Ejecuta en Neon: SELECT enumlabel FROM pg_enum JOIN pg_type ON pg_enum.enum_typid = pg_type.oid WHERE pg_type.typname = 'user_role';"
+      }, { status: 500 });
+    }
+
     return NextResponse.json({ 
       error: "Error en base de datos", 
       detalle: error.message 
