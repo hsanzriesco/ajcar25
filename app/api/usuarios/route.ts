@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     const email = body.email?.toLowerCase().trim() || `user_${Date.now()}@ajcar25.com`;
     const telefono = body.telefono || "";
 
-    // 2. Verificar si ya existe para no duplicar
+    // 2. Verificar si ya existe para no duplicar (Evita errores de Unique Constraint)
     const existe = await sql`
       SELECT id FROM usuarios 
       WHERE UPPER(nombre) = ${nombre} AND UPPER(apellidos) = ${apellidos}
@@ -23,12 +23,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ 
         success: true, 
         id: existe[0].id,
-        mensaje: "Usuario recuperado" 
+        mensaje: "Usuario recuperado de la base de datos" 
       }, { status: 200 });
     }
 
     // 3. Insertar el nuevo usuario
-    // Usamos 'cliente' (en minúsculas) que es lo más habitual
+    // Hemos añadido 'documento_identidad' porque tu DB lo exige como NOT NULL
     const nuevo = await sql`
       INSERT INTO usuarios (
         nombre, 
@@ -38,7 +38,8 @@ export async function POST(request: Request) {
         role, 
         password_hash, 
         esta_activo, 
-        tipo_cliente
+        tipo_cliente,
+        documento_identidad
       )
       VALUES (
         ${nombre}, 
@@ -48,7 +49,8 @@ export async function POST(request: Request) {
         'cliente', 
         'hash_default_123', 
         true, 
-        'particular'
+        'particular',
+        'PENDIENTE' 
       )
       RETURNING id
     `;
@@ -60,6 +62,8 @@ export async function POST(request: Request) {
 
   } catch (error: any) {
     console.error("ERROR FINAL USUARIOS:", error.message);
+    
+    // Si el error persiste, devolvemos el detalle exacto para corregirlo
     return NextResponse.json({ 
       error: "Error en la operación", 
       detalle: error.message 
