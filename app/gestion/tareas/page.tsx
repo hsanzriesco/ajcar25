@@ -3,10 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
-  ClipboardList,
   LogOut,
-  User,
-  FileText,
   Mail,
   Phone,
   Plus,
@@ -14,16 +11,13 @@ import {
   Send,
   Loader2,
   Car,
-  Package,
   Search,
   CheckCircle,
   Printer,
-  Calendar,
-  ChevronRight,
   MessageSquare,
-  CheckSquare,
   Wrench,
-  X
+  X,
+  FilePlus2
 } from "lucide-react";
 
 import jsPDF from "jspdf";
@@ -76,7 +70,7 @@ export default function EmpleadoPage() {
   const [cambiandoEstado, setCambiandoEstado] = useState(false);
   const [facturas, setFacturas] = useState<any[]>([]);
 
-  // --- ESTADOS PARA CREAR PRESUPUESTO MANUAL ---
+  // --- ESTADOS PARA NUEVO PRESUPUESTO ---
   const [showNuevoPresupuesto, setShowNuevoPresupuesto] = useState(false);
   const [nuevoCliente, setNuevoCliente] = useState({
     nombre: "",
@@ -128,6 +122,29 @@ export default function EmpleadoPage() {
     }
   }, [router, cargarTodo]);
 
+  const crearPresupuestoManual = async () => {
+    if (!nuevoCliente.nombre || !nuevoCliente.vehiculo) {
+      alert("Nombre y Vehículo son campos obligatorios.");
+      return;
+    }
+
+    const mockup: PresupuestoPedido = {
+      id: "MANUAL-" + Date.now(),
+      ...nuevoCliente,
+      fecha_cita: new Date().toISOString().split('T')[0],
+      hora_cita: "10:00",
+      estado: "Pendiente",
+      creado_en: new Date().toISOString(),
+      articulos: []
+    };
+
+    setPresupuestos([mockup, ...presupuestos]);
+    setSeleccionado(mockup);
+    setLineas([]);
+    setShowNuevoPresupuesto(false);
+    setView("presupuestos");
+  };
+
   const cambiarEstado = async (id: string, nuevoEstado: string) => {
     setCambiandoEstado(true);
     try {
@@ -157,9 +174,7 @@ export default function EmpleadoPage() {
         setLineas(prev => {
           const existe = prev.find(item => item.codigo === art.codigo);
           if (existe) {
-            return prev.map(item =>
-              item.codigo === art.codigo ? { ...item, cantidad: item.cantidad + 1 } : item
-            );
+            return prev.map(item => item.codigo === art.codigo ? { ...item, cantidad: item.cantidad + 1 } : item);
           }
           return [...prev, { ...art, cantidad: 1 }];
         });
@@ -167,189 +182,55 @@ export default function EmpleadoPage() {
       } else {
         alert("Artículo no encontrado");
       }
-    } catch (e) {
-      console.error("Error en búsqueda:", e);
-    }
+    } catch (e) { console.error(e); }
   };
 
-  const totalPresupuesto = lineas.reduce(
-    (acc, item) => acc + (Number(item.precio_unitario) * item.cantidad),
-    0
-  );
+  const totalPresupuesto = lineas.reduce((acc, item) => acc + (Number(item.precio_unitario) * item.cantidad), 0);
 
   const enviarPresupuestoPDF = async () => {
     if (!seleccionado || lineas.length === 0) return;
     setEnviandoEmail(true);
-
     try {
       const doc = new jsPDF();
-      doc.setFontSize(22);
-      doc.setTextColor(37, 99, 235);
       doc.text("AJCAR 25 - PRESUPUESTO", 14, 20);
-      doc.setFontSize(10);
-      doc.setTextColor(50);
-      doc.text(`Cliente: ${seleccionado.nombre}`, 14, 30);
-      doc.text(`Vehículo: ${seleccionado.vehiculo}`, 14, 35);
-      doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 14, 40);
-
       autoTable(doc, {
         startY: 45,
-        head: [['Código', 'Descripción', 'Cant', 'Precio', 'Total']],
-        body: lineas.map(l => [
-          l.codigo,
-          l.descripcion,
-          l.cantidad,
-          `${Number(l.precio_unitario).toFixed(2)}€`,
-          `${(l.cantidad * Number(l.precio_unitario)).toFixed(2)}€`
-        ]),
-        foot: [['', '', '', 'TOTAL ESTIMADO', `${totalPresupuesto.toFixed(2)}€`]],
-        theme: 'striped',
-        headStyles: { fillColor: [37, 99, 235] }
+        head: [['Ref', 'Descripción', 'Cant', 'Precio', 'Total']],
+        body: lineas.map(l => [l.codigo, l.descripcion, l.cantidad, `${Number(l.precio_unitario).toFixed(2)}€`, `${(l.cantidad * Number(l.precio_unitario)).toFixed(2)}€`]),
       });
-
       const pdfBase64 = doc.output('datauristring');
-
       const res = await fetch("/api/enviar-presupuesto", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: seleccionado.id,
-          email: seleccionado.email,
-          nombre: seleccionado.nombre,
-          vehiculo: seleccionado.vehiculo,
-          total: totalPresupuesto.toFixed(2),
-          pdfBase64,
-          articulos: lineas
-        })
+        body: JSON.stringify({ id: seleccionado.id, email: seleccionado.email, nombre: seleccionado.nombre, vehiculo: seleccionado.vehiculo, total: totalPresupuesto.toFixed(2), pdfBase64, articulos: lineas })
       });
-
       if (res.ok) {
-        alert("Presupuesto guardado y enviado con éxito.");
+        alert("Enviado con éxito.");
         await cargarTodo();
         setSeleccionado(null);
-        setLineas([]);
       }
-    } catch (error) {
-      console.error("Error:", error);
-      alert("Error al procesar el envío.");
-    } finally {
-      setEnviandoEmail(false);
-    }
+    } catch (e) { alert("Error al enviar"); } finally { setEnviandoEmail(false); }
   };
 
   const procesarFactura = async () => {
     const articulosAFacturar = (view === "mantenimientos" || view === "aceptados") ? seleccionado?.articulos : lineas;
-
-    if (!seleccionado || !articulosAFacturar || articulosAFacturar.length === 0) {
-      alert("Error: No hay datos suficientes para facturar.");
-      return;
-    }
-
+    if (!seleccionado || !articulosAFacturar) return;
     setFacturando(true);
     try {
-      const doc = new jsPDF();
-      doc.setFontSize(22);
-      doc.setTextColor(126, 34, 206);
-      doc.text("AJCAR 25 - FACTURA OFICIAL", 14, 20);
-
-      doc.setFontSize(10);
-      doc.setTextColor(50);
-      doc.text(`Cliente: ${seleccionado.nombre}`, 14, 30);
-      doc.text(`Vehículo: ${seleccionado.vehiculo}`, 14, 35);
-      doc.text(`Email: ${seleccionado.email}`, 14, 40);
-      doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 14, 45);
-
-      const totalCalculado = articulosAFacturar.reduce(
-        (acc: number, item: any) => acc + (Number(item.precio_unitario) * item.cantidad),
-        0
-      );
-
-      autoTable(doc, {
-        startY: 55,
-        head: [['Ref', 'Descripción', 'Cant.', 'Precio', 'Subtotal']],
-        body: articulosAFacturar.map((l: any) => [
-          l.codigo,
-          l.descripcion,
-          l.cantidad,
-          `${Number(l.precio_unitario).toFixed(2)}€`,
-          `${(l.cantidad * Number(l.precio_unitario)).toFixed(2)}€`
-        ]),
-        foot: [['', '', '', 'TOTAL FACTURA', `${totalCalculado.toFixed(2)}€`]],
-        theme: 'grid',
-        headStyles: { fillColor: [126, 34, 206] }
-      });
-
-      const pdfBase64 = doc.output('datauristring');
-
       const res = await fetch("/api/facturas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          presupuesto_id: seleccionado.id,
-          cliente_nombre: seleccionado.nombre,
-          email: seleccionado.email,
-          vehiculo: seleccionado.vehiculo,
-          total: totalCalculado,
-          articulos: articulosAFacturar,
-          pdfBase64: pdfBase64
-        })
+        body: JSON.stringify({ presupuesto_id: seleccionado.id, cliente_nombre: seleccionado.nombre, email: seleccionado.email, vehiculo: seleccionado.vehiculo, total: totalPresupuesto, articulos: articulosAFacturar })
       });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        alert(`✅ Factura ${data.numero || ""} generada y enviada.`);
-        await cargarTodo();
-        setSeleccionado(null);
-        setLineas([]);
-      } else {
-        alert(`Error de API: ${data.error}`);
-      }
-    } catch (e: any) {
-      console.error("Error crítico:", e);
-      alert("Error al generar la factura.");
-    } finally {
-      setFacturando(false);
-    }
+      if (res.ok) { alert("Factura generada"); await cargarTodo(); setSeleccionado(null); }
+    } catch (e) { console.error(e); } finally { setFacturando(false); }
   };
 
   const verPDFFactura = (f: any) => {
-    try {
-      const doc = new jsPDF();
-      doc.setFontSize(22);
-      doc.setTextColor(126, 34, 206);
-      doc.text("AJCAR 25 - FACTURA", 14, 20);
-
-      doc.setFontSize(10);
-      doc.setTextColor(50);
-      doc.text(`Nº Factura: ${f.numero_factura}`, 14, 30);
-      doc.text(`Cliente: ${f.cliente_nombre}`, 14, 36);
-      doc.text(`Vehículo: ${f.vehiculo}`, 14, 42);
-      doc.text(`Fecha: ${new Date(f.fecha_emision).toLocaleDateString()}`, 14, 48);
-
-      const arts = typeof f.articulos === 'string' ? JSON.parse(f.articulos) : f.articulos;
-
-      autoTable(doc, {
-        startY: 55,
-        head: [['Ref', 'Descripción', 'Cant.', 'Precio', 'Subtotal']],
-        body: arts.map((l: any) => [
-          l.codigo,
-          l.descripcion,
-          l.cantidad,
-          `${Number(l.precio_unitario).toFixed(2)}€`,
-          `${(l.cantidad * Number(l.precio_unitario)).toFixed(2)}€`
-        ]),
-        foot: [['', '', '', 'TOTAL', `${Number(f.total).toFixed(2)}€`]],
-        theme: 'grid',
-        headStyles: { fillColor: [126, 34, 206] }
-      });
-
-      const blob = doc.output('blob');
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
-    } catch (e) {
-      alert("Error al abrir el PDF.");
-    }
+    const doc = new jsPDF();
+    doc.text(`FACTURA ${f.numero_factura}`, 14, 20);
+    const blob = doc.output('blob');
+    window.open(URL.createObjectURL(blob), '_blank');
   };
 
   const actualizarCita = async (nuevaFecha: string, nuevaHora: string) => {
@@ -361,51 +242,13 @@ export default function EmpleadoPage() {
         body: JSON.stringify({ fecha_cita: nuevaFecha, hora_cita: nuevaHora })
       });
       if (res.ok) {
-        setPresupuestos(prev => prev.map(p =>
-          p.id === seleccionado.id ? { ...p, fecha_cita: nuevaFecha, hora_cita: nuevaHora } : p
-        ));
+        setPresupuestos(prev => prev.map(p => p.id === seleccionado.id ? { ...p, fecha_cita: nuevaFecha, hora_cita: nuevaHora } : p));
         setSeleccionado({ ...seleccionado, fecha_cita: nuevaFecha, hora_cita: nuevaHora });
       }
-    } catch (error) {
-      console.error("Error actualizando cita:", error);
-    }
+    } catch (e) { console.error(e); }
   };
 
-  const crearPresupuestoManual = async () => {
-    if (!nuevoCliente.nombre || !nuevoCliente.vehiculo) {
-        alert("Nombre y vehículo son obligatorios");
-        return;
-    }
-
-    // Aquí llamarías a tu API POST /api/presupuestos si la tienes
-    // Por ahora simulamos la inserción para que sea funcional en UI
-    const tempId = "MAN-" + Math.floor(Math.random() * 10000);
-    const mockup: PresupuestoPedido = {
-      id: tempId,
-      ...nuevoCliente,
-      fecha_cita: new Date().toISOString().split('T')[0],
-      hora_cita: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      estado: "Pendiente",
-      creado_en: new Date().toISOString(),
-      articulos: []
-    };
-
-    setPresupuestos([mockup, ...presupuestos]);
-    setSeleccionado(mockup);
-    setLineas([]);
-    setShowNuevoPresupuesto(false);
-    setView("presupuestos");
-    
-    // Resetear formulario
-    setNuevoCliente({
-        nombre: "", email: "", telefono: "", vehiculo: "", anio: 2024, mensaje: ""
-    });
-  };
-
-  const handleLogout = () => {
-    localStorage.clear();
-    router.push("/");
-  };
+  const handleLogout = () => { localStorage.clear(); router.push("/"); };
 
   return (
     <div className="min-h-screen bg-[#0a0a0c] text-gray-400 font-sans selection:bg-blue-500/30">
@@ -421,25 +264,17 @@ export default function EmpleadoPage() {
                     <p className="text-[9px] text-blue-500 font-bold uppercase tracking-tighter">Panel de Gestión</p>
                  </div>
               </div>
-              <div className="flex items-center gap-6">
-                <h1 className="text-white text-5xl lg:text-7xl font-black italic tracking-tighter uppercase leading-none">
-                    {view === 'presupuestos' && "Presupuestos"}
-                    {view === 'aceptados' && "Aceptados"}
-                    {view === 'mantenimientos' && "Taller"}
-                    {view === 'stock' && "Almacén"}
-                    {view === 'facturas' && "Facturas"}
-                </h1>
-                {/* BOTÓN CREAR PRESUPUESTO */}
-                <button 
-                  onClick={() => setShowNuevoPresupuesto(true)}
-                  className="mt-2 bg-blue-600 hover:bg-blue-500 text-white p-3 rounded-2xl shadow-lg shadow-blue-900/20 transition-all group"
-                >
-                  <Plus size={24} className="group-hover:rotate-90 transition-transform duration-300" />
-                </button>
-              </div>
+              <h1 className="text-white text-5xl lg:text-7xl font-black italic tracking-tighter uppercase leading-none">
+                {view === 'presupuestos' && "Presupuestos"}
+                {view === 'aceptados' && "Aceptados"}
+                {view === 'mantenimientos' && "Taller"}
+                {view === 'stock' && "Almacén"}
+                {view === 'facturas' && "Facturas"}
+              </h1>
             </div>
 
-            <nav className="flex items-center gap-2 bg-white/5 p-2 rounded-2xl border border-white/5">
+            {/* BARRA DE NAVEGACIÓN ESTILO CÁPSULA */}
+            <nav className="flex items-center gap-1 bg-white/[0.03] p-1.5 rounded-3xl border border-white/5 shadow-2xl backdrop-blur-md">
                 {[
                   { id: 'presupuestos', label: 'Nuevos' },
                   { id: 'aceptados', label: 'Aceptados' },
@@ -450,13 +285,24 @@ export default function EmpleadoPage() {
                     <button 
                         key={v.id}
                         onClick={() => { setView(v.id as any); setSeleccionado(null); }}
-                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${view === v.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40' : 'text-gray-500 hover:text-white'}`}
+                        className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${view === v.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-gray-500 hover:text-gray-300'}`}
                     >
                         {v.label}
                     </button>
                 ))}
+                
+                {/* BOTÓN NUEVA ACCIÓN */}
+                <button 
+                  onClick={() => setShowNuevoPresupuesto(true)}
+                  className="px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-blue-400 hover:bg-blue-600/10 transition-all flex items-center gap-2 border border-blue-500/20 ml-1"
+                >
+                  <FilePlus2 size={14} />
+                  Crear
+                </button>
+
                 <div className="w-px h-4 bg-white/10 mx-2" />
-                <button onClick={handleLogout} className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-all">
+                
+                <button onClick={handleLogout} className="p-2.5 text-red-500/80 hover:text-red-400 hover:bg-red-500/5 rounded-2xl transition-all">
                     <LogOut size={18} />
                 </button>
             </nav>
@@ -467,32 +313,29 @@ export default function EmpleadoPage() {
               {loading ? (
                 <div className="h-[400px] flex flex-col items-center justify-center space-y-6 bg-[#0f0f12] rounded-[40px] border border-white/5">
                   <Loader2 className="animate-spin text-blue-600" size={48} />
-                  <p className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-600">Sincronizando...</p>
                 </div>
               ) : view === "stock" ? (
                 <div className="bg-[#0f0f12] rounded-[40px] border border-white/5 overflow-hidden">
-                  <div className="p-8 border-b border-white/5 flex gap-4">
-                    <div className="flex-1 bg-white/5 rounded-2xl flex items-center px-6 border border-white/5">
-                      <Search size={16} className="text-gray-600 mr-4" />
-                      <input type="text" value={filtroStock} onChange={(e) => setFiltroStock(e.target.value)} placeholder="Filtrar por código o descripción..." className="bg-transparent border-none focus:ring-0 text-xs text-white w-full py-4 h-full" />
+                    <div className="p-8 border-b border-white/5 flex gap-4">
+                        <div className="flex-1 bg-white/5 rounded-2xl flex items-center px-6 border border-white/5">
+                            <Search size={16} className="text-gray-600 mr-4" />
+                            <input type="text" value={filtroStock} onChange={(e) => setFiltroStock(e.target.value)} placeholder="Filtrar stock..." className="bg-transparent border-none focus:ring-0 text-xs text-white w-full py-4" />
+                        </div>
                     </div>
-                  </div>
-                  <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm">
-                      <thead className="bg-black/20 text-[10px] font-black uppercase tracking-widest text-gray-500">
-                        <tr><th className="p-8">Referencia</th><th className="p-8">Descripción</th><th className="p-8 text-center">Stock</th></tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/5">
-                        {articulos.filter(a => a.codigo.includes(filtroStock.toUpperCase()) || a.descripcion.toLowerCase().includes(filtroStock.toLowerCase())).map(art => (
-                          <tr key={art.id} className="hover:bg-white/[0.02] transition-colors">
-                            <td className="p-8 font-mono text-blue-400 font-bold">{art.codigo}</td>
-                            <td className="p-8 text-gray-300 font-medium uppercase text-xs">{art.descripcion}</td>
-                            <td className="p-8 text-center font-black text-white">{art.stock}</td>
-                          </tr>
-                        ))}
-                      </tbody>
+                        <thead className="bg-black/20 text-[10px] font-black uppercase tracking-widest text-gray-500">
+                            <tr><th className="p-8">Referencia</th><th className="p-8">Descripción</th><th className="p-8 text-center">Stock</th></tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                            {articulos.filter(a => a.codigo.includes(filtroStock.toUpperCase())).map(art => (
+                                <tr key={art.id} className="hover:bg-white/[0.02] transition-colors">
+                                    <td className="p-8 font-mono text-blue-400">{art.codigo}</td>
+                                    <td className="p-8 text-gray-300 uppercase text-xs">{art.descripcion}</td>
+                                    <td className="p-8 text-center font-black text-white">{art.stock}</td>
+                                </tr>
+                            ))}
+                        </tbody>
                     </table>
-                  </div>
                 </div>
               ) : view === "facturas" ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -526,16 +369,12 @@ export default function EmpleadoPage() {
                       <div
                         key={p.id}
                         onClick={() => { setSeleccionado(p); setLineas(p.articulos || []); }}
-                        className={`group relative p-8 rounded-[40px] border transition-all duration-500 cursor-pointer ${seleccionado?.id === p.id ? 'bg-blue-600 border-blue-500 shadow-2xl shadow-blue-900/40 translate-y-[-4px]' : 'bg-[#0f0f12] border-white/5 hover:border-white/10'}`}
+                        className={`group p-8 rounded-[40px] border transition-all duration-500 cursor-pointer ${seleccionado?.id === p.id ? 'bg-blue-600 border-blue-500 shadow-2xl shadow-blue-900/40 translate-y-[-4px]' : 'bg-[#0f0f12] border-white/5 hover:border-white/10'}`}
                       >
-                        <div className="relative z-10 flex flex-col h-full justify-between gap-10">
+                         <div className="flex flex-col h-full justify-between gap-10">
                           <div className="flex justify-between items-start">
-                            <div className={`p-4 rounded-[20px] transition-colors ${seleccionado?.id === p.id ? 'bg-white/10 text-white' : 'bg-blue-500/10 text-blue-500'}`}>
-                              <Car size={24} />
-                            </div>
-                            <div className={`text-[10px] font-black uppercase tracking-[0.2em] px-4 py-2 rounded-full ${seleccionado?.id === p.id ? 'bg-black/20 text-white' : 'bg-white/5 text-gray-500'}`}>
-                              {p.estado}
-                            </div>
+                            <div className={`p-4 rounded-[20px] ${seleccionado?.id === p.id ? 'bg-white/10 text-white' : 'bg-blue-500/10 text-blue-500'}`}><Car size={24} /></div>
+                            <div className={`text-[10px] font-black uppercase tracking-[0.2em] px-4 py-2 rounded-full ${seleccionado?.id === p.id ? 'bg-black/20 text-white' : 'bg-white/5 text-gray-500'}`}>{p.estado}</div>
                           </div>
                           <div>
                             <p className={`text-[10px] font-black uppercase tracking-[0.3em] mb-2 ${seleccionado?.id === p.id ? 'text-blue-100/60' : 'text-gray-500'}`}>{p.vehiculo} • {p.anio}</p>
@@ -549,14 +388,13 @@ export default function EmpleadoPage() {
             </div>
 
             <aside className="lg:col-span-5 sticky top-8">
-              <div className="bg-[#0f0f12] rounded-[48px] border border-white/5 overflow-hidden shadow-2xl">
+              <div className="bg-[#0f0f12] rounded-[48px] border border-white/5 overflow-hidden shadow-2xl min-h-[500px]">
                 {seleccionado ? (
-                  <div className="flex flex-col h-full p-10 space-y-8">
+                  <div className="flex flex-col p-10 space-y-8 animate-in fade-in slide-in-from-right-4">
                     <div className="flex justify-between items-center">
                       <span className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-500">Expediente Seleccionado</span>
-                      <button onClick={() => setSeleccionado(null)} className="text-gray-600 hover:text-white"><X size={20} /></button>
+                      <button onClick={() => setSeleccionado(null)} className="text-gray-600 hover:text-white transition-colors"><X size={20} /></button>
                     </div>
-
                     <div className="space-y-4">
                       <h3 className="text-3xl font-black italic uppercase text-white leading-none">{seleccionado.nombre}</h3>
                       <div className="flex flex-wrap gap-4">
@@ -565,32 +403,30 @@ export default function EmpleadoPage() {
                       </div>
                     </div>
 
-                    <div className="bg-amber-500/5 border border-amber-500/10 p-6 rounded-[32px] relative group">
+                    <div className="bg-amber-500/5 border border-amber-500/10 p-6 rounded-[32px] relative">
                       <MessageSquare className="absolute top-4 right-4 text-amber-500/20" size={24} />
-                      <p className="text-[9px] font-black uppercase text-amber-500/60 mb-2 tracking-widest">Lo que dice el cliente:</p>
-                      <p className="text-sm text-amber-200/90 italic font-medium leading-relaxed">
-                        "{seleccionado.mensaje || "Sin descripción de avería"}"
-                      </p>
+                      <p className="text-[9px] font-black uppercase text-amber-500/60 mb-2 tracking-widest">Avería / Notas:</p>
+                      <p className="text-sm text-amber-200/90 italic font-medium leading-relaxed">"{seleccionado.mensaje || "Sin descripción"}"</p>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
-                        <p className="text-[9px] font-black uppercase text-gray-500 mb-1">Fecha Cita</p>
-                        <input type="date" value={formatearFechaParaInput(seleccionado.fecha_cita)} onChange={(e) => actualizarCita(e.target.value, seleccionado.hora_cita)} className="bg-transparent border-none p-0 text-white text-xs font-bold w-full" />
+                        <p className="text-[9px] font-black uppercase text-gray-500 mb-1">Cita</p>
+                        <input type="date" value={formatearFechaParaInput(seleccionado.fecha_cita)} onChange={(e) => actualizarCita(e.target.value, seleccionado.hora_cita)} className="bg-transparent border-none p-0 text-white text-xs font-bold w-full outline-none" />
                       </div>
                       <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
                         <p className="text-[9px] font-black uppercase text-gray-500 mb-1">Hora</p>
-                        <input type="time" value={seleccionado.hora_cita} onChange={(e) => actualizarCita(seleccionado.fecha_cita, e.target.value)} className="bg-transparent border-none p-0 text-white text-xs font-bold w-full" />
+                        <input type="time" value={seleccionado.hora_cita} onChange={(e) => actualizarCita(seleccionado.fecha_cita, e.target.value)} className="bg-transparent border-none p-0 text-white text-xs font-bold w-full outline-none" />
                       </div>
                     </div>
 
-                    {view === "presupuestos" ? (
+                    {view === "presupuestos" && (
                       <div className="space-y-6">
                         <div className="flex gap-2">
-                          <input value={codigoBusqueda} onChange={(e) => setCodigoBusqueda(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && buscarYAñadirArticulo()} placeholder="Escribe código de pieza..." className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 text-xs text-white uppercase outline-none focus:border-blue-500" />
+                          <input value={codigoBusqueda} onChange={(e) => setCodigoBusqueda(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && buscarYAñadirArticulo()} placeholder="Ref. Pieza..." className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 text-xs text-white uppercase outline-none focus:border-blue-500" />
                           <button onClick={buscarYAñadirArticulo} className="bg-blue-600 p-3 rounded-xl text-white hover:bg-blue-500 transition-colors"><Plus size={20}/></button>
                         </div>
-                        <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar pr-2">
+                        <div className="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
                           {lineas.map((l, i) => (
                             <div key={i} className="flex justify-between items-center bg-white/[0.02] p-3 rounded-xl border border-white/5">
                               <span className="text-[10px] text-gray-300 font-bold uppercase">{l.descripcion} x{l.cantidad}</span>
@@ -598,51 +434,31 @@ export default function EmpleadoPage() {
                             </div>
                           ))}
                         </div>
-                        <div className="p-6 bg-blue-600 rounded-[32px] flex justify-between items-center shadow-xl">
-                          <div className="flex flex-col">
-                            <span className="text-[9px] font-black text-blue-200 uppercase">Total</span>
-                            <span className="text-3xl font-black italic text-white leading-none">{totalPresupuesto.toFixed(2)}€</span>
-                          </div>
+                        <div className="p-6 bg-blue-600 rounded-[32px] flex justify-between items-center shadow-xl shadow-blue-900/40">
+                          <div className="flex flex-col"><span className="text-[9px] font-black text-blue-200 uppercase">Total</span><span className="text-3xl font-black italic text-white leading-none">{totalPresupuesto.toFixed(2)}€</span></div>
                           <button onClick={enviarPresupuestoPDF} disabled={enviandoEmail || lineas.length === 0} className="bg-white text-blue-600 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-gray-100 disabled:opacity-50 transition-all">
                             {enviandoEmail ? <Loader2 className="animate-spin" size={14}/> : <Send size={14}/>} Enviar PDF
                           </button>
                         </div>
                       </div>
-                    ) : view === "aceptados" ? (
-                      <div className="space-y-6">
-                        <div className="p-6 bg-green-500/10 border border-green-500/20 rounded-[32px]">
-                           <p className="text-[10px] text-green-500 font-black uppercase text-center tracking-widest mb-4">Confirmar Entrada</p>
-                           <button 
-                            onClick={() => cambiarEstado(seleccionado.id, "En Taller")}
-                            disabled={cambiandoEstado}
-                            className="w-full bg-green-600 text-white py-5 rounded-[24px] font-black text-[10px] uppercase tracking-[0.3em] flex items-center justify-center gap-3 hover:bg-green-500 transition-all"
-                           >
-                            {cambiandoEstado ? <Loader2 className="animate-spin" size={16}/> : <Wrench size={16}/>} El coche ha entrado
-                           </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-6">
-                          <div className="space-y-2 border-t border-white/5 pt-6">
-                           {seleccionado.articulos?.map((a, i) => (
-                             <div key={i} className="flex justify-between items-center text-[11px] py-1">
-                               <span className="text-gray-500 uppercase">{a.descripcion} x{a.cantidad}</span>
-                               <span className="text-white font-bold">{ (a.cantidad * a.precio_unitario).toFixed(2) }€</span>
-                             </div>
-                           ))}
-                          </div>
-                          <button onClick={procesarFactura} disabled={facturando} className="w-full bg-white text-black py-5 rounded-[24px] font-black text-[10px] uppercase tracking-[0.3em] flex items-center justify-center gap-3 hover:bg-gray-200 transition-all">
-                            {facturando ? <Loader2 className="animate-spin" size={16}/> : <Printer size={16}/>} Cerrar y Facturar
-                          </button>
-                      </div>
+                    )}
+
+                    {view === "aceptados" && (
+                      <button onClick={() => cambiarEstado(seleccionado.id, "En Taller")} disabled={cambiandoEstado} className="w-full bg-green-600 text-white py-5 rounded-[24px] font-black text-[10px] uppercase tracking-[0.3em] flex items-center justify-center gap-3 hover:bg-green-500 transition-all">
+                        {cambiandoEstado ? <Loader2 className="animate-spin" size={16}/> : <Wrench size={16}/>} El coche ha entrado
+                      </button>
+                    )}
+
+                    {(view === "mantenimientos" || (view === "aceptados" && seleccionado.estado === "En Taller")) && (
+                      <button onClick={procesarFactura} disabled={facturando} className="w-full bg-white text-black py-5 rounded-[24px] font-black text-[10px] uppercase tracking-[0.3em] flex items-center justify-center gap-3 hover:bg-gray-200 transition-all">
+                        {facturando ? <Loader2 className="animate-spin" size={16}/> : <Printer size={16}/>} Cerrar y Facturar
+                      </button>
                     )}
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center py-40 text-center">
-                    <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-6">
-                      <Search size={32} className="text-gray-800" />
-                    </div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-700">Selecciona un vehículo<br/>para gestionar</p>
+                  <div className="flex flex-col items-center justify-center py-40 text-center opacity-20">
+                    <Search size={48} className="mb-6" />
+                    <p className="text-[10px] font-black uppercase tracking-widest">Selecciona un cliente</p>
                   </div>
                 )}
               </div>
@@ -651,83 +467,31 @@ export default function EmpleadoPage() {
         </div>
       </main>
 
-      {/* MODAL PARA CREAR PRESUPUESTO MANUAL */}
+      {/* MODAL CREAR PRESUPUESTO MANUAL */}
       {showNuevoPresupuesto && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
-          <div className="bg-[#0f0f12] border border-white/10 w-full max-w-xl rounded-[40px] overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-300">
-            <div className="p-10 border-b border-white/5 flex justify-between items-center">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-xl p-6">
+          <div className="bg-[#0f0f12] border border-white/10 w-full max-w-xl rounded-[50px] overflow-hidden shadow-2xl animate-in zoom-in duration-300">
+            <div className="p-10 border-b border-white/5 flex justify-between items-center bg-gradient-to-r from-blue-600/10 to-transparent">
               <div>
-                <h2 className="text-white text-2xl font-black italic uppercase tracking-tighter">Nuevo Presupuesto</h2>
-                <p className="text-[10px] text-blue-500 font-bold uppercase tracking-widest mt-1">Alta de cliente presencial</p>
+                <h2 className="text-white text-2xl font-black italic uppercase tracking-tighter leading-none">Nuevo Presupuesto</h2>
+                <p className="text-[10px] text-blue-500 font-bold uppercase tracking-[0.2em] mt-2">Cliente Presencial</p>
               </div>
-              <button onClick={() => setShowNuevoPresupuesto(false)} className="bg-white/5 p-3 rounded-full text-gray-500 hover:text-white transition-colors">
-                <X size={20} />
-              </button>
+              <button onClick={() => setShowNuevoPresupuesto(false)} className="bg-white/5 p-4 rounded-full text-gray-500 hover:text-white transition-all hover:rotate-90"><X size={20} /></button>
             </div>
             
-            <div className="p-10 space-y-5">
+            <div className="p-10 space-y-6">
               <div className="grid grid-cols-2 gap-5">
-                <div className="space-y-2">
-                  <label className="text-[9px] font-black text-gray-500 uppercase ml-2">Nombre Cliente</label>
-                  <input 
-                    placeholder="PABLO GARCÍA..." 
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white uppercase outline-none focus:border-blue-500 transition-all"
-                    onChange={(e) => setNuevoCliente({...nuevoCliente, nombre: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[9px] font-black text-gray-500 uppercase ml-2">Teléfono</label>
-                  <input 
-                    placeholder="600 000 000" 
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white uppercase outline-none focus:border-blue-500 transition-all"
-                    onChange={(e) => setNuevoCliente({...nuevoCliente, telefono: e.target.value})}
-                  />
-                </div>
+                <input placeholder="NOMBRE CLIENTE" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white uppercase outline-none focus:border-blue-500 transition-all" onChange={(e) => setNuevoCliente({...nuevoCliente, nombre: e.target.value})} />
+                <input placeholder="TELÉFONO" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white outline-none focus:border-blue-500 transition-all" onChange={(e) => setNuevoCliente({...nuevoCliente, telefono: e.target.value})} />
               </div>
-
-              <div className="space-y-2">
-                <label className="text-[9px] font-black text-gray-500 uppercase ml-2">Correo Electrónico</label>
-                <input 
-                  placeholder="cliente@email.com" 
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white outline-none focus:border-blue-500 transition-all"
-                  onChange={(e) => setNuevoCliente({...nuevoCliente, email: e.target.value})}
-                />
-              </div>
-
+              <input placeholder="EMAIL DE CONTACTO" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white outline-none focus:border-blue-500 transition-all" onChange={(e) => setNuevoCliente({...nuevoCliente, email: e.target.value})} />
               <div className="grid grid-cols-2 gap-5">
-                <div className="space-y-2">
-                  <label className="text-[9px] font-black text-gray-500 uppercase ml-2">Vehículo</label>
-                  <input 
-                    placeholder="BMW M4 G82..." 
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white uppercase outline-none focus:border-blue-500 transition-all"
-                    onChange={(e) => setNuevoCliente({...nuevoCliente, vehiculo: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[9px] font-black text-gray-500 uppercase ml-2">Año</label>
-                  <input 
-                    type="number" 
-                    placeholder="2024" 
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white outline-none focus:border-blue-500 transition-all"
-                    onChange={(e) => setNuevoCliente({...nuevoCliente, anio: parseInt(e.target.value)})}
-                  />
-                </div>
+                <input placeholder="VEHÍCULO (MARCA/MOD)" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white uppercase outline-none focus:border-blue-500 transition-all" onChange={(e) => setNuevoCliente({...nuevoCliente, vehiculo: e.target.value})} />
+                <input type="number" placeholder="AÑO" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white outline-none focus:border-blue-500 transition-all" onChange={(e) => setNuevoCliente({...nuevoCliente, anio: parseInt(e.target.value) || 2024})} />
               </div>
-
-              <div className="space-y-2">
-                <label className="text-[9px] font-black text-gray-500 uppercase ml-2">Notas / Avería</label>
-                <textarea 
-                  placeholder="Descripción del problema..." 
-                  className="w-full bg-white/5 border border-white/10 rounded-3xl p-5 text-xs text-white outline-none focus:border-blue-500 h-28 resize-none transition-all"
-                  onChange={(e) => setNuevoCliente({...nuevoCliente, mensaje: e.target.value})}
-                />
-              </div>
-              
-              <button 
-                onClick={crearPresupuestoManual}
-                className="w-full bg-blue-600 text-white font-black py-5 rounded-[28px] uppercase text-[10px] tracking-[0.2em] hover:bg-blue-500 transition-all shadow-xl shadow-blue-900/20"
-              >
-                Crear Expediente y Añadir Artículos
+              <textarea placeholder="DESCRIPCIÓN DE LA AVERÍA..." className="w-full bg-white/5 border border-white/10 rounded-[32px] p-6 text-xs text-white outline-none focus:border-blue-500 h-32 resize-none transition-all" onChange={(e) => setNuevoCliente({...nuevoCliente, mensaje: e.target.value})} />
+              <button onClick={crearPresupuestoManual} className="w-full bg-blue-600 text-white font-black py-5 rounded-[28px] uppercase text-[10px] tracking-[0.3em] hover:bg-blue-500 transition-all shadow-xl shadow-blue-600/20">
+                Empezar Presupuesto
               </button>
             </div>
           </div>
