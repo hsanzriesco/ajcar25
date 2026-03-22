@@ -4,24 +4,36 @@ import { neon } from "@neondatabase/serverless";
 export async function POST(request: Request) {
   try {
     const sql = neon(process.env.DATABASE_URL!);
-    const { nombre, apellidos, email, telefono, rol } = await request.json();
+    const body = await request.json();
+    
+    // Extraemos y limpiamos los datos
+    const nombre = body.nombre?.toUpperCase().trim() || "SIN NOMBRE";
+    const apellidos = body.apellidos?.toUpperCase().trim() || "SIN APELLIDO";
+    const email = body.email || `temporal_${Date.now()}@ajcar25.com`;
+    const telefono = body.telefono || "";
+    const rol = body.rol || 'cliente';
 
-    // Insertar en la tabla usuarios (ajusta los nombres de columnas si son diferentes)
-    await sql`
+    console.log("Intentando insertar usuario:", { nombre, apellidos, email });
+
+    // La consulta SQL debe coincidir EXACTAMENTE con tus columnas de Neon
+    const resultado = await sql`
       INSERT INTO usuarios (nombre, apellidos, email, telefono, role, password)
-      VALUES (
-        ${nombre.toUpperCase()}, 
-        ${apellidos.toUpperCase()}, 
-        ${email || null}, 
-        ${telefono || null}, 
-        ${rol || 'cliente'}, 
-        'auto123'
-      )
+      VALUES (${nombre}, ${apellidos}, ${email}, ${telefono}, ${rol}, 'ajcar2024')
+      RETURNING id
     `;
 
-    return NextResponse.json({ message: "Usuario creado correctamente" }, { status: 201 });
+    return NextResponse.json({ 
+      success: true, 
+      id: resultado[0].id 
+    }, { status: 201 });
+
   } catch (error: any) {
-    console.error("Error al crear usuario:", error);
-    return NextResponse.json({ error: "No se pudo crear el usuario" }, { status: 500 });
+    // ESTO ES CLAVE: Imprime el error real en la terminal de VS Code o Logs de Vercel
+    console.error("ERROR EN POST USUARIOS:", error.message);
+    
+    return NextResponse.json({ 
+      error: "Error interno", 
+      detalle: error.message 
+    }, { status: 500 });
   }
 }
