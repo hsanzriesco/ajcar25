@@ -6,29 +6,31 @@ export async function POST(request: Request) {
     const sql = neon(process.env.DATABASE_URL!);
     const body = await request.json();
     
-    // 1. Extraer y limpiar datos
+    // 1. Limpieza de datos
     const nombre = (body.nombre || "NUEVO").toUpperCase().trim();
     const apellidos = (body.apellidos || "CLIENTE").toUpperCase().trim();
-    const email = body.email?.toLowerCase().trim() || `user_${Date.now()}@ajcar25.com`;
+    const email = body.email?.toLowerCase().trim();
     const telefono = body.telefono || "";
 
-    // 2. Verificar si ya existe para no duplicar (Evita errores de Unique Constraint)
-    const existe = await sql`
+    // 2. VERIFICACIÓN CRÍTICA: Buscar por Email O por Nombre+Apellidos
+    // Esto evita el error de "unique constraint" del email
+    const usuarioExistente = await sql`
       SELECT id FROM usuarios 
-      WHERE UPPER(nombre) = ${nombre} AND UPPER(apellidos) = ${apellidos}
+      WHERE email = ${email} 
+      OR (UPPER(nombre) = ${nombre} AND UPPER(apellidos) = ${apellidos})
       LIMIT 1
     `;
 
-    if (existe.length > 0) {
+    if (usuarioExistente.length > 0) {
+      console.log("Usuario ya existe, saltando inserción...");
       return NextResponse.json({ 
         success: true, 
-        id: existe[0].id,
-        mensaje: "Usuario recuperado de la base de datos" 
+        id: usuarioExistente[0].id,
+        mensaje: "Usuario recuperado (ya existía)" 
       }, { status: 200 });
     }
 
-    // 3. Insertar el nuevo usuario
-    // Hemos añadido 'documento_identidad' porque tu DB lo exige como NOT NULL
+    // 3. INSERTAR solo si no existe nada parecido
     const nuevo = await sql`
       INSERT INTO usuarios (
         nombre, 
@@ -62,8 +64,6 @@ export async function POST(request: Request) {
 
   } catch (error: any) {
     console.error("ERROR FINAL USUARIOS:", error.message);
-    
-    // Si el error persiste, devolvemos el detalle exacto para corregirlo
     return NextResponse.json({ 
       error: "Error en la operación", 
       detalle: error.message 
