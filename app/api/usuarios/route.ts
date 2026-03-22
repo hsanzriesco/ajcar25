@@ -6,13 +6,13 @@ export async function POST(request: Request) {
     const sql = neon(process.env.DATABASE_URL!);
     const body = await request.json();
     
-    // Extraemos y normalizamos
-    const nombre = (body.nombre || "").toUpperCase().trim();
-    const apellidos = (body.apellidos || "").toUpperCase().trim();
+    // 1. Limpiamos datos
+    const nombre = (body.nombre || "NUEVO").toUpperCase().trim();
+    const apellidos = (body.apellidos || "CLIENTE").toUpperCase().trim();
     const email = body.email || `temp_${Date.now()}@ajcar25.com`;
     const telefono = body.telefono || "";
 
-    // Insertamos usando los nombres EXACTOS de tu imagen
+    // 2. Intento de inserción con los campos de tu imagen
     const resultado = await sql`
       INSERT INTO usuarios (
         nombre, 
@@ -21,8 +21,7 @@ export async function POST(request: Request) {
         telefono, 
         role, 
         password_hash, 
-        esta_activo,
-        tipo_cliente
+        esta_activo
       )
       VALUES (
         ${nombre}, 
@@ -31,8 +30,7 @@ export async function POST(request: Request) {
         ${telefono}, 
         'cliente', 
         'provisional_hash', 
-        true,
-        'particular'
+        true
       )
       RETURNING id
     `;
@@ -40,10 +38,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, id: resultado[0].id }, { status: 201 });
 
   } catch (error: any) {
-    console.error("ERROR BD USUARIOS:", error.message);
+    // ENVIAMOS EL ERROR REAL AL FRONTEND
+    console.error("ERROR SQL:", error.message);
     return NextResponse.json({ 
-      error: "Error en inserción", 
-      detalle: error.message 
+      error: "Error de Base de Datos", 
+      mensaje_sql: error.message, // <--- Esto te dirá qué columna falla
+      ayuda: "Revisa si la columna apellidos existe o si el email está duplicado"
     }, { status: 500 });
   }
 }
