@@ -22,7 +22,8 @@ import {
   ChevronRight,
   MessageSquare,
   CheckSquare,
-  Wrench
+  Wrench,
+  X
 } from "lucide-react";
 
 import jsPDF from "jspdf";
@@ -60,7 +61,6 @@ interface PresupuestoPedido {
 export default function EmpleadoPage() {
   const [nombreUsuario, setNombreUsuario] = useState("");
   const [loading, setLoading] = useState(true);
-  // AÑADIDO: "aceptados" a los tipos de vista
   const [view, setView] = useState<"mantenimientos" | "presupuestos" | "aceptados" | "stock" | "facturas">("presupuestos");
 
   const [presupuestos, setPresupuestos] = useState<PresupuestoPedido[]>([]);
@@ -75,6 +75,17 @@ export default function EmpleadoPage() {
   const [facturando, setFacturando] = useState(false);
   const [cambiandoEstado, setCambiandoEstado] = useState(false);
   const [facturas, setFacturas] = useState<any[]>([]);
+
+  // --- ESTADOS PARA CREAR PRESUPUESTO MANUAL ---
+  const [showNuevoPresupuesto, setShowNuevoPresupuesto] = useState(false);
+  const [nuevoCliente, setNuevoCliente] = useState({
+    nombre: "",
+    email: "",
+    telefono: "",
+    vehiculo: "",
+    anio: new Date().getFullYear(),
+    mensaje: ""
+  });
 
   const router = useRouter();
 
@@ -117,7 +128,6 @@ export default function EmpleadoPage() {
     }
   }, [router, cargarTodo]);
 
-  // FUNCIÓN PARA CAMBIAR ESTADOS (Ej: De Aceptado a Taller)
   const cambiarEstado = async (id: string, nuevoEstado: string) => {
     setCambiandoEstado(true);
     try {
@@ -361,6 +371,37 @@ export default function EmpleadoPage() {
     }
   };
 
+  const crearPresupuestoManual = async () => {
+    if (!nuevoCliente.nombre || !nuevoCliente.vehiculo) {
+        alert("Nombre y vehículo son obligatorios");
+        return;
+    }
+
+    // Aquí llamarías a tu API POST /api/presupuestos si la tienes
+    // Por ahora simulamos la inserción para que sea funcional en UI
+    const tempId = "MAN-" + Math.floor(Math.random() * 10000);
+    const mockup: PresupuestoPedido = {
+      id: tempId,
+      ...nuevoCliente,
+      fecha_cita: new Date().toISOString().split('T')[0],
+      hora_cita: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      estado: "Pendiente",
+      creado_en: new Date().toISOString(),
+      articulos: []
+    };
+
+    setPresupuestos([mockup, ...presupuestos]);
+    setSeleccionado(mockup);
+    setLineas([]);
+    setShowNuevoPresupuesto(false);
+    setView("presupuestos");
+    
+    // Resetear formulario
+    setNuevoCliente({
+        nombre: "", email: "", telefono: "", vehiculo: "", anio: 2024, mensaje: ""
+    });
+  };
+
   const handleLogout = () => {
     localStorage.clear();
     router.push("/");
@@ -380,19 +421,28 @@ export default function EmpleadoPage() {
                     <p className="text-[9px] text-blue-500 font-bold uppercase tracking-tighter">Panel de Gestión</p>
                  </div>
               </div>
-              <h1 className="text-white text-5xl lg:text-7xl font-black italic tracking-tighter uppercase leading-none">
-                {view === 'presupuestos' && "Presupuestos"}
-                {view === 'aceptados' && "Aceptados"}
-                {view === 'mantenimientos' && "Taller"}
-                {view === 'stock' && "Almacén"}
-                {view === 'facturas' && "Facturas"}
-              </h1>
+              <div className="flex items-center gap-6">
+                <h1 className="text-white text-5xl lg:text-7xl font-black italic tracking-tighter uppercase leading-none">
+                    {view === 'presupuestos' && "Presupuestos"}
+                    {view === 'aceptados' && "Aceptados"}
+                    {view === 'mantenimientos' && "Taller"}
+                    {view === 'stock' && "Almacén"}
+                    {view === 'facturas' && "Facturas"}
+                </h1>
+                {/* BOTÓN CREAR PRESUPUESTO */}
+                <button 
+                  onClick={() => setShowNuevoPresupuesto(true)}
+                  className="mt-2 bg-blue-600 hover:bg-blue-500 text-white p-3 rounded-2xl shadow-lg shadow-blue-900/20 transition-all group"
+                >
+                  <Plus size={24} className="group-hover:rotate-90 transition-transform duration-300" />
+                </button>
+              </div>
             </div>
 
             <nav className="flex items-center gap-2 bg-white/5 p-2 rounded-2xl border border-white/5">
                 {[
                   { id: 'presupuestos', label: 'Nuevos' },
-                  { id: 'aceptados', label: 'Aceptados' }, // PESTAÑA AÑADIDA
+                  { id: 'aceptados', label: 'Aceptados' },
                   { id: 'mantenimientos', label: 'Taller' },
                   { id: 'stock', label: 'Stock' },
                   { id: 'facturas', label: 'Facturas' }
@@ -504,7 +554,7 @@ export default function EmpleadoPage() {
                   <div className="flex flex-col h-full p-10 space-y-8">
                     <div className="flex justify-between items-center">
                       <span className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-500">Expediente Seleccionado</span>
-                      <button onClick={() => setSeleccionado(null)} className="text-gray-600 hover:text-white"><Plus className="rotate-45" /></button>
+                      <button onClick={() => setSeleccionado(null)} className="text-gray-600 hover:text-white"><X size={20} /></button>
                     </div>
 
                     <div className="space-y-4">
@@ -600,6 +650,89 @@ export default function EmpleadoPage() {
           </div>
         </div>
       </main>
+
+      {/* MODAL PARA CREAR PRESUPUESTO MANUAL */}
+      {showNuevoPresupuesto && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+          <div className="bg-[#0f0f12] border border-white/10 w-full max-w-xl rounded-[40px] overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-300">
+            <div className="p-10 border-b border-white/5 flex justify-between items-center">
+              <div>
+                <h2 className="text-white text-2xl font-black italic uppercase tracking-tighter">Nuevo Presupuesto</h2>
+                <p className="text-[10px] text-blue-500 font-bold uppercase tracking-widest mt-1">Alta de cliente presencial</p>
+              </div>
+              <button onClick={() => setShowNuevoPresupuesto(false)} className="bg-white/5 p-3 rounded-full text-gray-500 hover:text-white transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-10 space-y-5">
+              <div className="grid grid-cols-2 gap-5">
+                <div className="space-y-2">
+                  <label className="text-[9px] font-black text-gray-500 uppercase ml-2">Nombre Cliente</label>
+                  <input 
+                    placeholder="PABLO GARCÍA..." 
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white uppercase outline-none focus:border-blue-500 transition-all"
+                    onChange={(e) => setNuevoCliente({...nuevoCliente, nombre: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[9px] font-black text-gray-500 uppercase ml-2">Teléfono</label>
+                  <input 
+                    placeholder="600 000 000" 
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white uppercase outline-none focus:border-blue-500 transition-all"
+                    onChange={(e) => setNuevoCliente({...nuevoCliente, telefono: e.target.value})}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[9px] font-black text-gray-500 uppercase ml-2">Correo Electrónico</label>
+                <input 
+                  placeholder="cliente@email.com" 
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white outline-none focus:border-blue-500 transition-all"
+                  onChange={(e) => setNuevoCliente({...nuevoCliente, email: e.target.value})}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-5">
+                <div className="space-y-2">
+                  <label className="text-[9px] font-black text-gray-500 uppercase ml-2">Vehículo</label>
+                  <input 
+                    placeholder="BMW M4 G82..." 
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white uppercase outline-none focus:border-blue-500 transition-all"
+                    onChange={(e) => setNuevoCliente({...nuevoCliente, vehiculo: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[9px] font-black text-gray-500 uppercase ml-2">Año</label>
+                  <input 
+                    type="number" 
+                    placeholder="2024" 
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white outline-none focus:border-blue-500 transition-all"
+                    onChange={(e) => setNuevoCliente({...nuevoCliente, anio: parseInt(e.target.value)})}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[9px] font-black text-gray-500 uppercase ml-2">Notas / Avería</label>
+                <textarea 
+                  placeholder="Descripción del problema..." 
+                  className="w-full bg-white/5 border border-white/10 rounded-3xl p-5 text-xs text-white outline-none focus:border-blue-500 h-28 resize-none transition-all"
+                  onChange={(e) => setNuevoCliente({...nuevoCliente, mensaje: e.target.value})}
+                />
+              </div>
+              
+              <button 
+                onClick={crearPresupuestoManual}
+                className="w-full bg-blue-600 text-white font-black py-5 rounded-[28px] uppercase text-[10px] tracking-[0.2em] hover:bg-blue-500 transition-all shadow-xl shadow-blue-900/20"
+              >
+                Crear Expediente y Añadir Artículos
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
