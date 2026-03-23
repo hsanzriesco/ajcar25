@@ -6,28 +6,40 @@ export async function GET(request: Request) {
     const sql = neon(process.env.DATABASE_URL!);
     const { searchParams } = new URL(request.url);
     
-    const nombre = searchParams.get("nombre")?.toUpperCase().trim();
-    const apellidos = searchParams.get("apellidos")?.toUpperCase().trim();
+    // Normalizamos para la búsqueda
+    const nombre = searchParams.get("nombre")?.trim().toUpperCase();
+    const apellidos = searchParams.get("apellidos")?.trim().toUpperCase();
+
+    console.log(`🔍 Verificando: [${nombre}] [${apellidos}]`);
 
     if (!nombre || !apellidos) {
-      return NextResponse.json({ existe: false });
+      return NextResponse.json({ existe: false, motivo: "Faltan parámetros" });
     }
 
-    // Buscamos si ya hay alguien con ese nombre y apellidos
+    // Buscamos ignorando espacios extra en la columna de la BBDD también con TRIM
     const usuarios = await sql`
-      SELECT id FROM usuarios 
-      WHERE UPPER(nombre) = ${nombre} 
-      AND UPPER(apellidos) = ${apellidos}
+      SELECT id, nombre, apellidos FROM usuarios 
+      WHERE TRIM(UPPER(nombre)) = ${nombre} 
+      AND TRIM(UPPER(apellidos)) = ${apellidos}
       LIMIT 1
     `;
 
-    // Si encontró algo, existe es TRUE
     const existe = usuarios.length > 0;
+    
+    if (existe) {
+      console.log(`✅ Usuario ENCONTRADO en BD: ID ${usuarios[0].id}`);
+    } else {
+      console.log(`❌ Usuario NO encontrado en BD.`);
+    }
 
-    return NextResponse.json({ existe }, { status: 200 });
+    return NextResponse.json({ 
+      existe, 
+      id: existe ? usuarios[0].id : null,
+      debug: { nombre, apellidos } 
+    }, { status: 200 });
     
   } catch (error: any) {
-    console.error("Error verificando usuario:", error.message);
-    return NextResponse.json({ error: "Error interno", existe: false }, { status: 500 });
+    console.error("🔴 Error crítico en verificar:", error.message);
+    return NextResponse.json({ error: error.message, existe: false }, { status: 500 });
   }
 }

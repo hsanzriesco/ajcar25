@@ -17,8 +17,7 @@ import {
   MessageSquare,
   Wrench,
   X,
-  FilePlus2,
-  UserPlus
+  FilePlus2
 } from "lucide-react";
 
 import jsPDF from "jspdf";
@@ -72,7 +71,7 @@ export default function EmpleadoPage() {
   const [cambiandoEstado, setCambiandoEstado] = useState(false);
   const [facturas, setFacturas] = useState<any[]>([]);
 
-  // --- ESTADOS PARA NUEVO PRESUPUESTO Y VERIFICACIÓN ---
+  // --- ESTADOS PARA NUEVO PRESUPUESTO ---
   const [showNuevoPresupuesto, setShowNuevoPresupuesto] = useState(false);
   const [verificando, setVerificando] = useState(false);
   const [nuevoCliente, setNuevoCliente] = useState({
@@ -126,48 +125,39 @@ export default function EmpleadoPage() {
     }
   }, [router, cargarTodo]);
 
-  // --- LÓGICA DE VERIFICACIÓN Y CREACIÓN INTEGRADA ---
   const manejarCreacionPresupuesto = async () => {
-    const nom = nuevoCliente.nombre.trim();
-    const ape = nuevoCliente.apellidos.trim();
+    const nom = nuevoCliente.nombre.trim().toUpperCase();
+    const ape = nuevoCliente.apellidos.trim().toUpperCase();
 
     if (!nom || !ape || !nuevoCliente.vehiculo) {
-      alert("Nombre, Apellidos y Vehículo son obligatorios.");
+      alert("Faltan campos obligatorios: Nombre, Apellidos o Vehículo.");
       return;
     }
 
     setVerificando(true);
-
     try {
-      // 1. Verificar existencia del usuario
-      const resVerif = await fetch(`/api/usuarios/verificar?nombre=${encodeURIComponent(nom)}&apellidos=${encodeURIComponent(ape)}`);
-      if (!resVerif.ok) throw new Error("Error al conectar con la API de verificación");
-      
-      const dataVerif = await resVerif.json();
+      // 1. Intentar crear o recuperar el usuario directamente
+      // La lógica de verificación ya está integrada en el POST de usuarios
+      const resUsuario = await fetch("/api/usuarios", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nombre: nom,
+          apellidos: ape,
+          email: nuevoCliente.email.trim() || `${nom.toLowerCase()}.${Date.now()}@ajcar25.com`,
+          telefono: nuevoCliente.telefono.trim() || "000000000",
+        })
+      });
 
-      if (!dataVerif.existe) {
-        const confirmar = confirm(`El usuario "${nom} ${ape}" no existe. ¿Deseas darlo de alta como nuevo cliente antes de continuar?`);
-        if (confirmar) {
-          // 2. Crear el usuario en la DB
-          const resCrearU = await fetch("/api/usuarios", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              nombre: nom,
-              apellidos: ape,
-              email: nuevoCliente.email || `cliente_${Date.now()}@taller.com`,
-              telefono: nuevoCliente.telefono,
-              rol: "cliente"
-            })
-          });
-          if (!resCrearU.ok) alert("Aviso: No se pudo crear el perfil de usuario, pero procederemos con el presupuesto.");
-        } else {
-          setVerificando(false);
-          return;
-        }
+      const dataUsuario = await resUsuario.json();
+
+      if (!resUsuario.ok) {
+        throw new Error(dataUsuario.detalle || "Error al gestionar el cliente.");
       }
 
-      // 3. Crear el presupuesto real en la base de datos
+      console.log("Resultado Usuario:", dataUsuario.mensaje);
+
+      // 2. Proceder a crear el presupuesto con los datos limpios
       const resPres = await fetch("/api/presupuestos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -181,19 +171,29 @@ export default function EmpleadoPage() {
 
       if (resPres.ok) {
         const presupuestoGuardado = await resPres.json();
+        
+        // Actualizar estados locales
         setPresupuestos([presupuestoGuardado, ...presupuestos]);
         setSeleccionado(presupuestoGuardado);
         setLineas([]);
         setShowNuevoPresupuesto(false);
         setView("presupuestos");
-        alert("Presupuesto iniciado y guardado correctamente.");
-      } else {
-        alert("Error al guardar el presupuesto en la base de datos.");
-      }
+        
+        // Limpiar formulario
+        setNuevoCliente({
+          nombre: "", apellidos: "", email: "", telefono: "",
+          vehiculo: "", anio: new Date().getFullYear(), mensaje: ""
+        });
 
-    } catch (error) {
-      console.error(error);
-      alert("Hubo un error en el proceso. Revisa la consola.");
+        alert(`¡Operación completada! ${dataUsuario.mensaje}`);
+        await cargarTodo(); 
+      } else {
+        const errData = await resPres.json();
+        throw new Error(errData.detalle || "Error al crear el presupuesto.");
+      }
+    } catch (error: any) {
+      console.error("Error en el proceso:", error);
+      alert(`ERROR: ${error.message}`);
     } finally {
       setVerificando(false);
     }
@@ -226,15 +226,15 @@ export default function EmpleadoPage() {
       if (res.ok) {
         const art: Articulo = await res.json();
         setLineas(prev => {
-          const existe = prev.find(item => item.codigo === art.codigo);
+          const existe = prev.find(item => item.codigo.toUpperCase() === art.codigo.toUpperCase());
           if (existe) {
-            return prev.map(item => item.codigo === art.codigo ? { ...item, cantidad: item.cantidad + 1 } : item);
+            return prev.map(item => item.codigo.toUpperCase() === art.codigo.toUpperCase() ? { ...item, cantidad: item.cantidad + 1 } : item);
           }
           return [...prev, { ...art, cantidad: 1 }];
         });
         setCodigoBusqueda("");
       } else {
-        alert("Artículo no encontrado");
+        alert(`El artículo "${cod}" no existe.`);
       }
     } catch (e) { console.error(e); }
   };
@@ -246,24 +246,36 @@ export default function EmpleadoPage() {
     setEnviandoEmail(true);
     try {
       const doc = new jsPDF();
+      doc.setFontSize(18);
       doc.text("AJCAR 25 - PRESUPUESTO", 14, 20);
+      doc.setFontSize(10);
+      doc.text(`Cliente: ${seleccionado.nombre} ${seleccionado.apellidos}`, 14, 30);
+      doc.text(`Vehículo: ${seleccionado.vehiculo}`, 14, 35);
+      
       autoTable(doc, {
         startY: 45,
         head: [['Ref', 'Descripción', 'Cant', 'Precio', 'Total']],
-        body: lineas.map(l => [l.codigo, l.descripcion, l.cantidad, `${Number(l.precio_unitario).toFixed(2)}€`, `${(l.cantidad * Number(l.precio_unitario)).toFixed(2)}€`]),
+        body: lineas.map(l => [
+          l.codigo, 
+          l.descripcion, 
+          l.cantidad, 
+          `${Number(l.precio_unitario).toFixed(2)}€`, 
+          `${(l.cantidad * Number(l.precio_unitario)).toFixed(2)}€`
+        ]),
       });
+
       const pdfBase64 = doc.output('datauristring');
       const res = await fetch("/api/enviar-presupuesto", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-            id: seleccionado.id, 
-            email: seleccionado.email, 
-            nombre: `${seleccionado.nombre} ${seleccionado.apellidos}`, 
-            vehiculo: seleccionado.vehiculo, 
-            total: totalPresupuesto.toFixed(2), 
-            pdfBase64, 
-            articulos: lineas 
+          id: seleccionado.id, 
+          email: seleccionado.email, 
+          nombre: `${seleccionado.nombre} ${seleccionado.apellidos}`, 
+          vehiculo: seleccionado.vehiculo, 
+          total: totalPresupuesto.toFixed(2), 
+          pdfBase64, 
+          articulos: lineas 
         })
       });
       if (res.ok) {
@@ -271,7 +283,7 @@ export default function EmpleadoPage() {
         await cargarTodo();
         setSeleccionado(null);
       }
-    } catch (e) { alert("Error al enviar"); } finally { setEnviandoEmail(false); }
+    } catch (e) { alert("Error al enviar el PDF"); } finally { setEnviandoEmail(false); }
   };
 
   const procesarFactura = async () => {
@@ -283,12 +295,12 @@ export default function EmpleadoPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-            presupuesto_id: seleccionado.id, 
-            cliente_nombre: `${seleccionado.nombre} ${seleccionado.apellidos}`, 
-            email: seleccionado.email, 
-            vehiculo: seleccionado.vehiculo, 
-            total: totalPresupuesto, 
-            articulos: articulosAFacturar 
+          presupuesto_id: seleccionado.id, 
+          cliente_nombre: `${seleccionado.nombre} ${seleccionado.apellidos}`, 
+          email: seleccionado.email, 
+          vehiculo: seleccionado.vehiculo, 
+          total: totalPresupuesto, 
+          articulos: articulosAFacturar 
         })
       });
       if (res.ok) { alert("Factura generada"); await cargarTodo(); setSeleccionado(null); }
@@ -298,6 +310,8 @@ export default function EmpleadoPage() {
   const verPDFFactura = (f: any) => {
     const doc = new jsPDF();
     doc.text(`FACTURA ${f.numero_factura}`, 14, 20);
+    doc.text(`Cliente: ${f.cliente_nombre}`, 14, 30);
+    doc.text(`Total: ${f.total}€`, 14, 40);
     const blob = doc.output('blob');
     window.open(URL.createObjectURL(blob), '_blank');
   };
@@ -386,7 +400,13 @@ export default function EmpleadoPage() {
                     <div className="p-8 border-b border-white/5 flex gap-4">
                         <div className="flex-1 bg-white/5 rounded-2xl flex items-center px-6 border border-white/5">
                             <Search size={16} className="text-gray-600 mr-4" />
-                            <input type="text" value={filtroStock} onChange={(e) => setFiltroStock(e.target.value)} placeholder="Filtrar stock..." className="bg-transparent border-none focus:ring-0 text-xs text-white w-full py-4" />
+                            <input 
+                              type="text" 
+                              value={filtroStock} 
+                              onChange={(e) => setFiltroStock(e.target.value)} 
+                              placeholder="Filtrar por código o descripción..." 
+                              className="bg-transparent border-none focus:ring-0 text-xs text-white w-full py-4 uppercase" 
+                            />
                         </div>
                     </div>
                     <table className="w-full text-left text-sm">
@@ -394,13 +414,22 @@ export default function EmpleadoPage() {
                             <tr><th className="p-8">Referencia</th><th className="p-8">Descripción</th><th className="p-8 text-center">Stock</th></tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
-                            {articulos.filter(a => a.codigo.includes(filtroStock.toUpperCase())).map(art => (
+                            {(() => {
+                              const filtrados = articulos.filter(a => 
+                                a.codigo.toUpperCase().includes(filtroStock.toUpperCase()) || 
+                                a.descripcion.toUpperCase().includes(filtroStock.toUpperCase())
+                              );
+                              const ordenados = filtrados.sort((a, b) => a.descripcion.localeCompare(b.descripcion));
+                              const finales = filtroStock.trim() === "" ? ordenados.slice(0, 5) : ordenados;
+                              
+                              return finales.map(art => (
                                 <tr key={art.id} className="hover:bg-white/[0.02] transition-colors">
                                     <td className="p-8 font-mono text-blue-400">{art.codigo}</td>
                                     <td className="p-8 text-gray-300 uppercase text-xs">{art.descripcion}</td>
                                     <td className="p-8 text-center font-black text-white">{art.stock}</td>
                                 </tr>
-                            ))}
+                              ));
+                            })()}
                         </tbody>
                     </table>
                 </div>
@@ -490,14 +519,23 @@ export default function EmpleadoPage() {
                     {view === "presupuestos" && (
                       <div className="space-y-6">
                         <div className="flex gap-2">
-                          <input value={codigoBusqueda} onChange={(e) => setCodigoBusqueda(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && buscarYAñadirArticulo()} placeholder="Ref. Pieza..." className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 text-xs text-white uppercase outline-none focus:border-blue-500" />
+                          <input 
+                            value={codigoBusqueda} 
+                            onChange={(e) => setCodigoBusqueda(e.target.value)} 
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); buscarYAñadirArticulo(); } }} 
+                            placeholder="Ref. Pieza (ej: ACE-01)..." 
+                            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 text-xs text-white uppercase outline-none focus:border-blue-500" 
+                          />
                           <button onClick={buscarYAñadirArticulo} className="bg-blue-600 p-3 rounded-xl text-white hover:bg-blue-500 transition-colors"><Plus size={20}/></button>
                         </div>
                         <div className="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
                           {lineas.map((l, i) => (
-                            <div key={i} className="flex justify-between items-center bg-white/[0.02] p-3 rounded-xl border border-white/5">
+                            <div key={`${l.codigo}-${i}`} className="flex justify-between items-center bg-white/[0.02] p-3 rounded-xl border border-white/5">
                               <span className="text-[10px] text-gray-300 font-bold uppercase">{l.descripcion} x{l.cantidad}</span>
-                              <button onClick={() => setLineas(lineas.filter((_, idx) => idx !== i))} className="text-gray-600 hover:text-red-500"><Trash2 size={14}/></button>
+                              <div className="flex items-center gap-3">
+                                <span className="text-[10px] text-blue-400">{(l.cantidad * l.precio_unitario).toFixed(2)}€</span>
+                                <button onClick={() => setLineas(lineas.filter((_, idx) => idx !== i))} className="text-gray-600 hover:text-red-500"><Trash2 size={14}/></button>
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -534,14 +572,13 @@ export default function EmpleadoPage() {
         </div>
       </main>
 
-      {/* MODAL CREAR PRESUPUESTO ACTUALIZADO */}
       {showNuevoPresupuesto && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-xl p-6">
           <div className="bg-[#0f0f12] border border-white/10 w-full max-w-xl rounded-[50px] overflow-hidden shadow-2xl animate-in zoom-in duration-300">
             <div className="p-10 border-b border-white/5 flex justify-between items-center bg-gradient-to-r from-blue-600/10 to-transparent">
               <div>
                 <h2 className="text-white text-2xl font-black italic uppercase tracking-tighter leading-none">Nuevo Presupuesto</h2>
-                <p className="text-[10px] text-blue-500 font-bold uppercase tracking-[0.2em] mt-2">Verificación de Cliente</p>
+                <p className="text-[10px] text-blue-500 font-bold uppercase tracking-[0.2em] mt-2">Detección de Cliente</p>
               </div>
               <button onClick={() => setShowNuevoPresupuesto(false)} className="bg-white/5 p-4 rounded-full text-gray-500 hover:text-white transition-all hover:rotate-90"><X size={20} /></button>
             </div>
@@ -550,33 +587,45 @@ export default function EmpleadoPage() {
               <div className="grid grid-cols-2 gap-5">
                 <div className="space-y-2">
                    <p className="text-[9px] font-black text-gray-600 uppercase ml-2 tracking-widest">Nombre</p>
-                   <input placeholder="EJ: JUAN" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white uppercase outline-none focus:border-blue-500 transition-all" onChange={(e) => setNuevoCliente({...nuevoCliente, nombre: e.target.value})} />
+                   <input placeholder="EJ: JUAN" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white uppercase outline-none focus:border-blue-500 transition-all" value={nuevoCliente.nombre} onChange={(e) => setNuevoCliente({...nuevoCliente, nombre: e.target.value})} />
                 </div>
                 <div className="space-y-2">
                    <p className="text-[9px] font-black text-gray-600 uppercase ml-2 tracking-widest">Apellidos</p>
-                   <input placeholder="EJ: GARCÍA PÉREZ" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white uppercase outline-none focus:border-blue-500 transition-all" onChange={(e) => setNuevoCliente({...nuevoCliente, apellidos: e.target.value})} />
+                   <input placeholder="EJ: GARCÍA PÉREZ" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white uppercase outline-none focus:border-blue-500 transition-all" value={nuevoCliente.apellidos} onChange={(e) => setNuevoCliente({...nuevoCliente, apellidos: e.target.value})} />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-5">
-                <input placeholder="TELÉFONO" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white outline-none focus:border-blue-500 transition-all" onChange={(e) => setNuevoCliente({...nuevoCliente, telefono: e.target.value})} />
-                <input placeholder="EMAIL" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white outline-none focus:border-blue-500 transition-all" onChange={(e) => setNuevoCliente({...nuevoCliente, email: e.target.value})} />
+                <div className="space-y-2">
+                  <p className="text-[9px] font-black text-gray-600 uppercase ml-2 tracking-widest">Teléfono</p>
+                  <input placeholder="600 000 000" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white outline-none focus:border-blue-500 transition-all" value={nuevoCliente.telefono} onChange={(e) => setNuevoCliente({...nuevoCliente, telefono: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                  <p className="text-[9px] font-black text-gray-600 uppercase ml-2 tracking-widest">Email (Opcional)</p>
+                  <input placeholder="cliente@correo.com" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white outline-none focus:border-blue-500 transition-all" value={nuevoCliente.email} onChange={(e) => setNuevoCliente({...nuevoCliente, email: e.target.value})} />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-5">
-                <input placeholder="VEHÍCULO (MARCA/MOD)" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white uppercase outline-none focus:border-blue-500 transition-all" onChange={(e) => setNuevoCliente({...nuevoCliente, vehiculo: e.target.value})} />
-                <input type="number" placeholder="AÑO" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white outline-none focus:border-blue-500 transition-all" onChange={(e) => setNuevoCliente({...nuevoCliente, anio: parseInt(e.target.value) || 2024})} />
+                <div className="space-y-2">
+                  <p className="text-[9px] font-black text-gray-600 uppercase ml-2 tracking-widest">Vehículo</p>
+                  <input placeholder="BMW M3" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white uppercase outline-none focus:border-blue-500 transition-all" value={nuevoCliente.vehiculo} onChange={(e) => setNuevoCliente({...nuevoCliente, vehiculo: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                  <p className="text-[9px] font-black text-gray-600 uppercase ml-2 tracking-widest">Año</p>
+                  <input type="number" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white outline-none focus:border-blue-500 transition-all" value={nuevoCliente.anio} onChange={(e) => setNuevoCliente({...nuevoCliente, anio: parseInt(e.target.value) || 2026})} />
+                </div>
               </div>
 
-              <textarea placeholder="DESCRIPCIÓN DE LA AVERÍA..." className="w-full bg-white/5 border border-white/10 rounded-[32px] p-6 text-xs text-white outline-none focus:border-blue-500 h-28 resize-none transition-all" onChange={(e) => setNuevoCliente({...nuevoCliente, mensaje: e.target.value})} />
+              <textarea placeholder="DESCRIPCIÓN DE LA AVERÍA..." className="w-full bg-white/5 border border-white/10 rounded-[32px] p-6 text-xs text-white outline-none focus:border-blue-500 h-28 resize-none transition-all uppercase" value={nuevoCliente.mensaje} onChange={(e) => setNuevoCliente({...nuevoCliente, mensaje: e.target.value})} />
               
               <button 
                 onClick={manejarCreacionPresupuesto} 
                 disabled={verificando}
                 className="w-full bg-blue-600 text-white font-black py-5 rounded-[28px] uppercase text-[10px] tracking-[0.3em] hover:bg-blue-500 transition-all shadow-xl shadow-blue-600/20 flex items-center justify-center gap-3"
               >
-                {verificando ? <Loader2 className="animate-spin" size={16} /> : <UserPlus size={16} />}
-                Verificar y Empezar
+                {verificando ? <Loader2 className="animate-spin" size={16} /> : <CheckCircle size={16} />}
+                Confirmar y Guardar
               </button>
             </div>
           </div>
