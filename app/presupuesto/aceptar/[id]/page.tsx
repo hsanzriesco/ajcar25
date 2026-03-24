@@ -2,48 +2,52 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { CheckCircle, Loader2, XCircle, Wrench } from "lucide-react";
+import { CheckCircle, Loader2, XCircle, Wrench, X } from "lucide-react";
 
 export default function PaginaAceptarPresupuesto() {
   const params = useParams();
   const id = params?.id;
-  const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
+  // Añadimos el estado "rejected"
+  const [status, setStatus] = useState<"loading" | "success" | "error" | "rejected" | "view">("loading");
+  const [verificando, setVerificando] = useState(false);
 
+  // 1. Efecto inicial para cargar los datos (Opcional, para mostrar botones)
   useEffect(() => {
+    if (id) setStatus("view");
+  }, [id]);
+
+  // 2. FUNCIÓN PARA ACEPTAR
+  const procesarAccion = async (nuevoEstado: "Aceptado por el cliente" | "Rechazado") => {
     if (!id) return;
+    setVerificando(true);
 
-    const procesarAceptacion = async () => {
-      try {
-        // 1. OBTENER LOS DATOS DEL PRESUPUESTO (Para saber qué artículos tiene)
-        const resDatos = await fetch(`/api/presupuestos/${id}`);
-        if (!resDatos.ok) throw new Error("No se pudo obtener el presupuesto");
-        
-        const presupuestoActual = await resDatos.json();
+    try {
+      // Obtener datos para el stock si es aceptación
+      const resDatos = await fetch(`/api/presupuestos/${id}`);
+      if (!resDatos.ok) throw new Error("No se pudo obtener el presupuesto");
+      const presupuestoActual = await resDatos.json();
 
-        // 2. ENVIAR LA ACEPTACIÓN CON LOS ARTÍCULOS
-        // 'presupuestoActual.articulos' debe ser el array que guardaste al crear el presupuesto
-        const res = await fetch(`/api/presupuestos/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-            estado: "Aceptado por el cliente",
-            articulos: presupuestoActual.articulos // <--- Esto es lo que activa la resta de stock en la API
-          }),
-        });
+      const res = await fetch(`/api/presupuestos/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          estado: nuevoEstado,
+          articulos: nuevoEstado === "Aceptado por el cliente" ? presupuestoActual.articulos : [] 
+        }),
+      });
 
-        if (res.ok) {
-          setStatus("success");
-        } else {
-          setStatus("error");
-        }
-      } catch (error) {
-        console.error("Error al aceptar:", error);
+      if (res.ok) {
+        setStatus(nuevoEstado === "Rechazado" ? "rejected" : "success");
+      } else {
         setStatus("error");
       }
-    };
-
-    procesarAceptacion();
-  }, [id]);
+    } catch (error) {
+      console.error("Error:", error);
+      setStatus("error");
+    } finally {
+      setVerificando(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#0f1218] flex items-center justify-center p-4 font-sans text-white">
@@ -55,45 +59,60 @@ export default function PaginaAceptarPresupuesto() {
           </div>
         </div>
 
-        {status === "loading" && (
-          <div className="space-y-4">
-            <Loader2 className="animate-spin text-blue-500 mx-auto" size={48} />
-            <h1 className="text-xl font-bold uppercase tracking-widest">Procesando...</h1>
-            <p className="text-gray-400 text-sm">Estamos registrando su aprobación y reservando el material en stock.</p>
-          </div>
-        )}
+        {/* ESTADO: VISTA INICIAL (BOTONES) */}
+        {status === "view" && (
+          <div className="space-y-6">
+            <h1 className="text-xl font-bold uppercase tracking-widest">Revisión de Presupuesto</h1>
+            <p className="text-gray-400 text-sm mb-8">Por favor, seleccione una opción para continuar con su servicio en AJCAR 25.</p>
+            
+            <div className="flex flex-col gap-4">
+              <button 
+                onClick={() => procesarAccion("Aceptado por el cliente")}
+                disabled={verificando}
+                className="w-full bg-emerald-600 text-white font-black py-6 rounded-[24px] uppercase text-[11px] tracking-[0.2em] hover:bg-emerald-500 transition-all flex items-center justify-center gap-3 shadow-lg shadow-emerald-900/20"
+              >
+                {verificando ? <Loader2 className="animate-spin" size={20} /> : <CheckCircle size={20} />}
+                Aceptar Presupuesto
+              </button>
 
-        {status === "success" && (
-          <div className="space-y-4 animate-in fade-in zoom-in duration-500">
-            <CheckCircle className="text-green-500 mx-auto" size={64} />
-            <h1 className="text-2xl font-black uppercase tracking-tight">¡Presupuesto Aceptado!</h1>
-            <p className="text-gray-400 leading-relaxed">
-              Gracias por confiar en <span className="text-white font-bold">AJCAR 25</span>. 
-              Hemos recibido su confirmación y el material ha sido reservado para su vehículo.
-            </p>
-            <div className="pt-6">
-              <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 text-green-500 text-xs flex items-center gap-3">
-                <Wrench size={16} />
-                <span>Le avisaremos cuando su vehículo esté listo.</span>
-              </div>
+              <button 
+                onClick={() => {
+                  if(confirm("¿Seguro que desea rechazar el presupuesto?")) procesarAccion("Rechazado")
+                }}
+                disabled={verificando}
+                className="w-full bg-transparent border border-red-500/30 text-red-500 font-bold py-4 rounded-[24px] uppercase text-[10px] tracking-[0.15em] hover:bg-red-500/10 transition-all flex items-center justify-center gap-2"
+              >
+                <X size={16} />
+                Rechazar Presupuesto
+              </button>
             </div>
           </div>
         )}
 
+        {/* ESTADO: ÉXITO ACEPTADO */}
+        {status === "success" && (
+          <div className="space-y-4 animate-in fade-in zoom-in">
+            <CheckCircle className="text-green-500 mx-auto" size={64} />
+            <h1 className="text-2xl font-black uppercase tracking-tight">¡Presupuesto Aceptado!</h1>
+            <p className="text-gray-400 text-sm">El material ha sido reservado. Le avisaremos cuando su vehículo esté listo.</p>
+          </div>
+        )}
+
+        {/* ESTADO: RECHAZADO */}
+        {status === "rejected" && (
+          <div className="space-y-4 animate-in fade-in zoom-in">
+            <XCircle className="text-red-500 mx-auto" size={64} />
+            <h1 className="text-2xl font-black uppercase tracking-tight">Presupuesto Rechazado</h1>
+            <p className="text-gray-400 text-sm">Ha marcado el presupuesto como rechazado. Nos pondremos en contacto si es necesario.</p>
+          </div>
+        )}
+
+        {/* ESTADO: ERROR */}
         {status === "error" && (
           <div className="space-y-4">
             <XCircle className="text-red-500 mx-auto" size={64} />
-            <h1 className="text-2xl font-black uppercase tracking-tight">Hubo un problema</h1>
-            <p className="text-gray-400">
-              No hemos podido procesar la aceptación automáticamente. 
-              Es posible que el presupuesto ya haya sido aceptado o haya un error de conexión.
-            </p>
-            <button 
-              onClick={() => window.location.reload()}
-              className="mt-4 text-blue-400 text-sm underline underline-offset-4"
-            >
-              Intentar de nuevo
-            </button>
+            <h1 className="text-2xl font-black">Error</h1>
+            <p className="text-gray-400">Hubo un problema procesando su solicitud.</p>
           </div>
         )}
 

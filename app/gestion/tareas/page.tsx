@@ -97,6 +97,8 @@ function EmpleadoContent() {
   const [showModalNuevoUsuario, setShowModalNuevoUsuario] = useState(false);
   const [verificando, setVerificando] = useState(false);
   const [usuarioExiste, setUsuarioExiste] = useState(false);
+  const [sugerencias, setSugerencias] = useState<Articulo[]>([]);
+  const [busquedaAlmacen, setBusquedaAlmacen] = useState("");
 
   const [nuevoCliente, setNuevoCliente] = useState({
     nombre: "",
@@ -107,7 +109,7 @@ function EmpleadoContent() {
     vehiculo: "",
     anio: new Date().getFullYear(),
     mensaje: "",
-    tipo_cliente: "Particular" // <--- NUEVO CAMPO
+    tipo_cliente: "Particular"
   });
 
   const router = useRouter();
@@ -202,13 +204,18 @@ function EmpleadoContent() {
           email: nuevoCliente.email.trim().toLowerCase(),
           telefono: nuevoCliente.telefono.trim(),
           documento_identidad: nuevoCliente.documento_identidad.trim().toUpperCase(),
-          tipo_cliente: nuevoCliente.tipo_cliente // <--- ENVIADO A LA API
+          tipo_cliente: nuevoCliente.tipo_cliente
         })
       });
 
       const data = await resUsuario.json();
 
       if (resUsuario.ok) {
+        setNuevoCliente(prev => ({
+          ...prev,
+          apellidos: `${ape1} ${ape2}`.trim()
+        }));
+
         setUsuarioExiste(true);
         setShowModalNuevoUsuario(false);
         alert("✅ Cliente registrado con éxito");
@@ -237,6 +244,7 @@ function EmpleadoContent() {
           return [...prev, { ...art, cantidad: 1 }];
         });
         setCodigoBusqueda("");
+        setSugerencias([]);
       } else {
         alert("Artículo no encontrado en el almacén");
       }
@@ -264,6 +272,7 @@ function EmpleadoContent() {
         setShowNuevoPresupuesto(false);
         setModalStep(1);
         setLineas([]);
+        setSugerencias([]);
         setNuevoCliente({
           nombre: "", apellidos: "", email: "", telefono: "",
           documento_identidad: "", vehiculo: "", anio: new Date().getFullYear(), mensaje: "",
@@ -273,6 +282,47 @@ function EmpleadoContent() {
         alert("✅ Presupuesto guardado correctamente");
       }
     } catch (error: any) { alert(`ERROR AL GUARDAR: ${error.message}`); } finally { setVerificando(false); }
+  };
+
+  const imprimirFacturaExistente = (factura: any) => {
+    const doc = new jsPDF();
+    doc.setFillColor(31, 41, 55);
+    doc.rect(0, 0, 210, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.setFont("helvetica", "bold");
+    doc.text("AJCAR 25 - FACTURA", 14, 25);
+
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(10);
+    doc.text(`Nº FACTURA: ${factura.id.toString().toUpperCase()}`, 14, 50);
+    doc.text(`FECHA EMISIÓN: ${new Date(factura.fecha_emision).toLocaleDateString()}`, 160, 50);
+
+    doc.setFont("helvetica", "bold");
+    doc.text("DATOS DEL CLIENTE:", 14, 60);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Cliente: ${factura.cliente_nombre}`, 14, 67);
+    doc.text(`Vehículo: ${factura.vehiculo}`, 14, 73);
+    doc.text(`Email: ${factura.email || 'N/A'}`, 14, 79);
+
+    autoTable(doc, {
+      startY: 85,
+      head: [['DESCRIPCIÓN', 'CANT.', 'PRECIO UN.', 'TOTAL']],
+      headStyles: { fillColor: [31, 41, 55] },
+      body: factura.articulos.map((art: any) => [
+        art.descripcion,
+        art.cantidad,
+        `${Number(art.precio_unitario).toFixed(2)}€`,
+        `${(art.cantidad * Number(art.precio_unitario)).toFixed(2)}€`
+      ]),
+      foot: [[
+        { content: 'TOTAL FACTURA', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold' } },
+        { content: `${Number(factura.total).toFixed(2)}€`, styles: { fontStyle: 'bold' } }
+      ]],
+    });
+
+    doc.autoPrint();
+    window.open(doc.output('bloburl'), '_blank');
   };
 
   const cambiarEstado = async (id: string, nuevoEstado: string) => {
@@ -290,34 +340,21 @@ function EmpleadoContent() {
   const totalPresupuesto = lineas.reduce((acc, item) => acc + (Number(item.precio_unitario) * item.cantidad), 0);
 
   const enviarPresupuestoPDF = async () => {
-    if (!seleccionado || lineas.length === 0) return;
+    if (!seleccionado || !seleccionado.id || !seleccionado.email) {
+      alert("❌ Error: El presupuesto no tiene ID o el cliente no tiene Email asignado.");
+      return;
+    }
+
+    if (lineas.length === 0) {
+      alert("❌ Error: No hay artículos en el presupuesto.");
+      return;
+    }
+
     setEnviandoEmail(true);
     try {
       const doc = new jsPDF();
-      doc.setFillColor(37, 99, 235);
-      doc.rect(0, 0, 210, 40, 'F');
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(22);
-      doc.setFont("helvetica", "bold");
-      doc.text("AJCAR 25 - PRESUPUESTO", 14, 25);
-      doc.setTextColor(0, 0, 0);
-      doc.setFontSize(10);
-      doc.text(`FECHA: ${new Date().toLocaleDateString()}`, 160, 50);
-      doc.setFont("helvetica", "bold");
-      doc.text("DATOS DEL CLIENTE:", 14, 55);
-      doc.setFont("helvetica", "normal");
-      doc.text(`Nombre: ${seleccionado.nombre} ${seleccionado.apellidos1}`, 14, 62);
-      doc.text(`Vehículo: ${seleccionado.vehiculo} (${seleccionado.anio})`, 14, 68);
-      autoTable(doc, {
-        startY: 85,
-        head: [['REFERENCIA', 'DESCRIPCIÓN', 'CANT.', 'PRECIO UN.', 'TOTAL']],
-        headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255] },
-        body: lineas.map(l => [l.codigo, l.descripcion, l.cantidad, `${Number(l.precio_unitario).toFixed(2)}€`, `${(l.cantidad * Number(l.precio_unitario)).toFixed(2)}€`]),
-        foot: [[{ content: 'TOTAL PRESUPUESTO', colSpan: 4, styles: { halign: 'right', fontStyle: 'bold' } }, `${totalPresupuesto.toFixed(2)}€`]],
-      });
-
       const pdfBase64Full = doc.output('datauristring');
-      const pdfBase64 = pdfBase64Full.split(',')[1];
+      const pdfBase64 = pdfBase64Full.includes(',') ? pdfBase64Full.split(',')[1] : pdfBase64Full;
 
       const res = await fetch("/api/enviar-presupuesto", {
         method: "POST",
@@ -339,10 +376,9 @@ function EmpleadoContent() {
         setSeleccionado(null);
       } else {
         const errData = await res.json();
-        throw new Error(errData.error || "Error en el servidor al enviar el correo");
+        throw new Error(errData.error || "Error desconocido en el servidor");
       }
     } catch (e: any) {
-      console.error("Error enviando email:", e);
       alert("❌ Error al enviar presupuesto: " + e.message);
     } finally {
       setEnviandoEmail(false);
@@ -350,24 +386,73 @@ function EmpleadoContent() {
   };
 
   const procesarFactura = async () => {
-    const articulosAFacturar = (view === "mantenimientos" || view === "aceptados") ? seleccionado?.articulos : lineas;
-    if (!seleccionado || !articulosAFacturar || articulosAFacturar.length === 0) return;
+    // 1. Determinar qué artículos facturar según la vista actual
+    const articulosAFacturar = (view === "mantenimientos" || view === "aceptados")
+      ? seleccionado?.articulos
+      : lineas;
+
+    if (!seleccionado || !articulosAFacturar || articulosAFacturar.length === 0) {
+      alert("No hay artículos seleccionados para facturar.");
+      return;
+    }
+
     setFacturando(true);
     try {
+      // 2. Generar el PDF en Base64
+      const doc = new jsPDF();
+      doc.setFontSize(20);
+      doc.text("FACTURA - AJCAR 25", 14, 20);
+
+      autoTable(doc, {
+        startY: 45,
+        head: [['Descripción', 'Cant.', 'Precio', 'Total']],
+        body: articulosAFacturar.map(l => [
+          l.descripcion,
+          l.cantidad,
+          `${Number(l.precio_unitario).toFixed(2)}€`,
+          `${(l.cantidad * Number(l.precio_unitario)).toFixed(2)}€`
+        ]),
+      });
+
+      const pdfBase64 = doc.output('datauristring').split(',')[1];
+
+      // 3. Calcular total
+      const totalCalculado = articulosAFacturar.reduce(
+        (acc, item) => acc + (Number(item.precio_unitario) * item.cantidad), 0
+      );
+
+      // 4. PREPARAR EL PAYLOAD (Ajustado a la nueva API)
+      const payload = {
+        presupuesto_id: seleccionado.id, // Nombre exacto que espera la API
+        cliente_nombre: `${seleccionado.nombre} ${seleccionado.apellidos1}`,
+        email: seleccionado.email || "cliente@ajcar25.com",
+        vehiculo: seleccionado.vehiculo,
+        total: totalCalculado.toFixed(2),
+        articulos: articulosAFacturar,   // Nombre exacto que espera la API
+        pdfBase64: pdfBase64
+      };
+
       const res = await fetch("/api/facturas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          presupuesto_id: seleccionado.id,
-          cliente_nombre: `${seleccionado.nombre} ${seleccionado.apellidos1}`,
-          email: seleccionado.email,
-          vehiculo: seleccionado.vehiculo,
-          total: totalPresupuesto || seleccionado.articulos?.reduce((a, b) => a + (b.precio_unitario * b.cantidad), 0),
-          articulos: articulosAFacturar
-        })
+        body: JSON.stringify(payload)
       });
-      if (res.ok) { alert("✅ Factura generada y stock actualizado"); await cargarTodo(); setSeleccionado(null); }
-    } catch (e) { console.error(e); } finally { setFacturando(false); }
+
+      const data = await res.json();
+
+      if (res.ok) {
+        alert("✅ Factura generada, stock actualizado y email enviado");
+        await cargarTodo();
+        setSeleccionado(null);
+      } else {
+        alert(`❌ Error: ${data.error || "No se pudo procesar la factura"}`);
+      }
+    } catch (e) {
+      console.error("Error en conexión:", e);
+      alert("❌ Error de conexión con el servidor");
+    } finally {
+      setFacturando(false);
+    }
   };
 
   const handleLogout = () => { localStorage.clear(); router.push("/"); };
@@ -401,7 +486,7 @@ function EmpleadoContent() {
               ].map((v) => (
                 <button key={v.id} onClick={() => { setView(v.id as any); setSeleccionado(null); }} className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${view === v.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-gray-500 hover:text-gray-300'}`}>{v.label}</button>
               ))}
-              <button onClick={() => { setShowNuevoPresupuesto(true); setModalStep(1); setLineas([]); setUsuarioExiste(false); }} className="px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-blue-400 hover:bg-blue-600/10 transition-all border border-blue-500/20 ml-1 flex items-center gap-2"><FilePlus2 size={14} />Crear</button>
+              <button onClick={() => { setShowNuevoPresupuesto(true); setModalStep(1); setLineas([]); setSugerencias([]); setUsuarioExiste(false); }} className="px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-blue-400 hover:bg-blue-600/10 transition-all border border-blue-500/20 ml-1 flex items-center gap-2"><FilePlus2 size={14} />Crear</button>
               <button onClick={handleLogout} className="p-2.5 text-red-500/80 hover:text-red-400 hover:bg-red-500/5 rounded-2xl transition-all ml-2"><LogOut size={18} /></button>
             </nav>
           </header>
@@ -416,15 +501,13 @@ function EmpleadoContent() {
               ) : view === "stock" ? (
                 <div className="bg-[#0f0f12] rounded-[40px] border border-white/5 overflow-hidden shadow-2xl">
                   <div className="p-8 border-b border-white/5 bg-white/[0.01] flex justify-between items-center">
-                    <div className="bg-white/5 rounded-2xl flex items-center px-6 border border-white/5 flex-1 max-w-md">
-                      <Search size={16} className="text-gray-600 mr-4" />
-                      <input type="text" value={filtroStock} onChange={(e) => setFiltroStock(e.target.value)} placeholder="FILTRAR POR REFERENCIA O NOMBRE..." className="bg-transparent border-none focus:ring-0 text-xs text-white w-full py-4 uppercase font-bold tracking-tight" />
+                    <div>
+                      <h3 className="text-white font-black italic uppercase tracking-tighter">Últimos artículos utilizados</h3>
+                      <p className="text-[9px] text-gray-500 uppercase tracking-widest">Mostrando los 5 más recientes</p>
                     </div>
-                    <div className="flex gap-4 ml-8">
-                      <div className="text-right">
-                        <p className="text-[8px] font-black text-gray-600 uppercase">Artículos Totales</p>
-                        <p className="text-xl font-black text-white italic">{articulos.length}</p>
-                      </div>
+                    <div className="bg-white/5 rounded-2xl flex items-center px-6 border border-white/5 flex-1 max-w-md ml-8">
+                      <Search size={16} className="text-gray-600 mr-4" />
+                      <input type="text" value={filtroStock} onChange={(e) => setFiltroStock(e.target.value)} placeholder="FILTRAR..." className="bg-transparent border-none focus:ring-0 text-xs text-white w-full py-4 uppercase font-bold tracking-tight" />
                     </div>
                   </div>
                   <div className="max-h-[600px] overflow-y-auto custom-scrollbar">
@@ -433,13 +516,27 @@ function EmpleadoContent() {
                         <tr><th className="p-8">Referencia</th><th className="p-8">Descripción</th><th className="p-8 text-center">En Stock</th></tr>
                       </thead>
                       <tbody className="divide-y divide-white/5">
-                        {articulos.filter(a => a.codigo.includes(filtroStock.toUpperCase()) || a.descripcion.includes(filtroStock.toUpperCase())).map(art => (
-                          <tr key={art.id} className="hover:bg-white/[0.02] transition-colors group">
-                            <td className="p-8 font-mono text-blue-400 font-bold">{art.codigo}</td>
-                            <td className="p-8 text-gray-300 uppercase text-[11px] font-bold">{art.descripcion}</td>
-                            <td className={`p-8 text-center font-black text-lg italic ${art.stock < 5 ? 'text-red-500' : 'text-white'}`}>{art.stock}</td>
-                          </tr>
-                        ))}
+                        {articulos
+                          .filter(a => {
+                            const termino = filtroStock.toLowerCase();
+                            // Buscamos en código y descripción ignorando mayúsculas/minúsculas
+                            return (
+                              a.codigo?.toLowerCase().includes(termino) ||
+                              a.descripcion?.toLowerCase().includes(termino)
+                            );
+                          })
+                          .sort((a, b) => b.id - a.id)
+                          // Eliminamos el .slice(0, 5) para que el buscador muestre TODOS los resultados encontrados
+                          .map(art => (
+                            <tr key={art.id} className="hover:bg-white/[0.02] transition-colors group">
+                              <td className="p-8 font-mono text-blue-400 font-bold">{art.codigo}</td>
+                              <td className="p-8 text-gray-300 uppercase text-[11px] font-bold">{art.descripcion}</td>
+                              <td className={`p-8 text-center font-black text-lg italic ${art.stock < 5 ? 'text-red-500' : 'text-white'}`}>
+                                {art.stock}
+                              </td>
+                            </tr>
+                          ))
+                        }
                       </tbody>
                     </table>
                   </div>
@@ -453,14 +550,28 @@ function EmpleadoContent() {
                           <FileText size={24} />
                         </div>
                         <div>
-                          <p className="text-[10px] font-black text-gray-600 uppercase mb-1 tracking-widest">Factura No. {f.id.slice(0, 8)}</p>
+                          <p className="text-[10px] font-black text-gray-600 uppercase mb-1 tracking-widest">Factura No. {String(f.id).slice(0, 8)}</p>
                           <h4 className="text-white text-xl font-black italic uppercase tracking-tighter">{f.cliente_nombre}</h4>
                           <p className="text-xs text-gray-500 font-bold uppercase">{f.vehiculo} • {new Date(f.fecha_emision).toLocaleDateString()}</p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-3xl font-black text-white italic tracking-tighter">{Number(f.total).toFixed(2)}€</p>
-                        <span className="text-[9px] bg-green-500/10 text-green-500 px-4 py-1.5 rounded-full font-black uppercase tracking-widest border border-green-500/20">Liquidada</span>
+
+                      <div className="flex items-center gap-8">
+                        <div className="text-right">
+                          <p className="text-3xl font-black text-white italic tracking-tighter">{Number(f.total).toFixed(2)}€</p>
+                          <div className="flex items-center gap-3 justify-end mt-2">
+                            <span className="text-[9px] bg-green-500/10 text-green-500 px-4 py-1.5 rounded-full font-black uppercase tracking-widest border border-green-500/20">
+                              Liquidada
+                            </span>
+                            <button
+                              onClick={() => imprimirFacturaExistente(f)}
+                              className="p-2 bg-blue-600/10 text-blue-500 hover:bg-blue-600 hover:text-white rounded-xl transition-all border border-blue-500/20"
+                              title="Imprimir Factura"
+                            >
+                              <Printer size={18} />
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -473,7 +584,7 @@ function EmpleadoContent() {
                     if (view === "mantenimientos") return p.estado === "En Taller";
                     return false;
                   }).map(p => (
-                    <div key={p.id} onClick={() => { setSeleccionado(p); setLineas(p.articulos || []); }} className={`p-10 rounded-[48px] border transition-all duration-500 cursor-pointer relative overflow-hidden group ${seleccionado?.id === p.id ? 'bg-blue-600 border-blue-500 text-white shadow-2xl shadow-blue-900/40' : 'bg-[#0f0f12] border-white/5 hover:border-white/10'}`}>
+                    <div key={p.id} onClick={() => { setSeleccionado(p); setLineas(p.articulos || []); setSugerencias([]); }} className={`p-10 rounded-[48px] border transition-all duration-500 cursor-pointer relative overflow-hidden group ${seleccionado?.id === p.id ? 'bg-blue-600 border-blue-500 text-white shadow-2xl shadow-blue-900/40' : 'bg-[#0f0f12] border-white/5 hover:border-white/10'}`}>
                       {seleccionado?.id === p.id && <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-bl-full animate-pulse" />}
                       <div className="relative z-10">
                         <div className="flex justify-between items-start mb-8">
@@ -500,7 +611,7 @@ function EmpleadoContent() {
                   <div className="p-12 space-y-10 animate-in slide-in-from-right-8 duration-500 flex-1 flex flex-col">
                     <div className="flex justify-between items-center">
                       <span className="text-[10px] font-black uppercase tracking-[0.5em] text-blue-500">Expediente Detallado</span>
-                      <button onClick={() => setSeleccionado(null)} className="bg-white/5 p-3 rounded-2xl text-gray-600 hover:text-white transition-all"><X size={20} /></button>
+                      <button onClick={() => { setSeleccionado(null); setSugerencias([]); }} className="bg-white/5 p-3 rounded-2xl text-gray-600 hover:text-white transition-all"><X size={20} /></button>
                     </div>
 
                     <div className="space-y-6">
@@ -527,10 +638,53 @@ function EmpleadoContent() {
                     {view === "presupuestos" && (
                       <div className="space-y-8 flex-1 flex flex-col justify-end">
                         <div className="space-y-4">
-                          <div className="flex gap-3">
-                            <div className="flex-1 bg-white/5 border border-white/10 rounded-2xl flex items-center px-5 focus-within:border-blue-500 transition-all shadow-inner">
+                          <div className="flex gap-3 relative">
+                            <div className="flex-1 bg-white/5 border border-white/10 rounded-2xl flex items-center px-5 focus-within:border-blue-500 transition-all shadow-inner relative">
                               <Package size={16} className="text-gray-600 mr-4" />
-                              <input value={codigoBusqueda} onChange={(e) => setCodigoBusqueda(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && buscarYAñadirArticuloModal()} placeholder="AÑADIR PIEZA POR CÓDIGO..." className="bg-transparent border-none focus:ring-0 text-[10px] text-white w-full py-5 uppercase font-black" />
+                              <input
+                                value={codigoBusqueda}
+                                onChange={(e) => {
+                                  const valor = e.target.value.toUpperCase();
+                                  setCodigoBusqueda(valor);
+                                  if (valor.length > 0) {
+                                    const filtrados = articulos.filter(a =>
+                                      a.codigo.toUpperCase().includes(valor) ||
+                                      a.descripcion.toUpperCase().includes(valor)
+                                    ).slice(0, 5);
+                                    setSugerencias(filtrados);
+                                  } else {
+                                    setSugerencias([]);
+                                  }
+                                }}
+                                onKeyDown={(e) => e.key === 'Enter' && buscarYAñadirArticuloModal()}
+                                placeholder="AÑADIR PIEZA..."
+                                className="bg-transparent border-none focus:ring-0 text-[10px] text-white w-full py-5 uppercase font-black"
+                              />
+                              {sugerencias.length > 0 && (
+                                <div className="absolute top-full left-0 w-full bg-[#16161a] border border-white/10 rounded-2xl mt-2 z-[150] shadow-2xl overflow-hidden">
+                                  {sugerencias.map((sug) => (
+                                    <div
+                                      key={sug.id}
+                                      onClick={() => {
+                                        setLineas(prev => {
+                                          const existe = prev.find(item => item.codigo === sug.codigo);
+                                          if (existe) return prev.map(item => item.codigo === sug.codigo ? { ...item, cantidad: item.cantidad + 1 } : item);
+                                          return [...prev, { ...sug, cantidad: 1 }];
+                                        });
+                                        setCodigoBusqueda("");
+                                        setSugerencias([]);
+                                      }}
+                                      className="p-4 hover:bg-blue-600/20 cursor-pointer border-b border-white/5 flex justify-between items-center transition-colors group"
+                                    >
+                                      <div>
+                                        <p className="text-[10px] text-white font-black uppercase tracking-tight group-hover:text-blue-400">{sug.descripcion}</p>
+                                        <p className="text-[8px] text-gray-500 font-mono font-bold">{sug.codigo}</p>
+                                      </div>
+                                      <span className="text-[10px] text-blue-500 font-black italic">{Number(sug.precio_unitario).toFixed(2)}€</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                             <button onClick={buscarYAñadirArticuloModal} className="bg-blue-600 w-16 rounded-2xl text-white flex items-center justify-center hover:bg-blue-500 shadow-lg shadow-blue-600/20 transition-all active:scale-95"><Plus size={24} /></button>
                           </div>
@@ -620,7 +774,7 @@ function EmpleadoContent() {
                   </div>
                 </div>
               </div>
-              <button onClick={() => { setShowNuevoPresupuesto(false); setModalStep(1); setLineas([]); }} className="bg-white/5 p-6 rounded-full text-gray-500 hover:text-white transition-all hover:rotate-90"><X size={24} /></button>
+              <button onClick={() => { setShowNuevoPresupuesto(false); setModalStep(1); setLineas([]); setSugerencias([]); }} className="bg-white/5 p-6 rounded-full text-gray-500 hover:text-white transition-all hover:rotate-90"><X size={24} /></button>
             </div>
 
             <div className="p-12 overflow-y-auto custom-scrollbar flex-1">
@@ -681,16 +835,56 @@ function EmpleadoContent() {
                 </div>
               ) : (
                 <div className="space-y-8 animate-in slide-in-from-right-8 duration-500">
-                  <div className="flex gap-4">
-                    <div className="flex-1 bg-white/5 border border-white/10 rounded-[32px] flex items-center px-8 focus-within:border-blue-500 transition-all shadow-inner">
+                  <div className="flex gap-4 relative">
+                    <div className="flex-1 bg-white/5 border border-white/10 rounded-[32px] flex items-center px-8 focus-within:border-blue-500 transition-all shadow-inner relative">
                       <Package size={20} className="text-gray-600 mr-4" />
                       <input
                         value={codigoBusqueda}
-                        onChange={(e) => setCodigoBusqueda(e.target.value)}
+                        onChange={(e) => {
+                          const valor = e.target.value.toUpperCase();
+                          setCodigoBusqueda(valor);
+                          if (valor.length > 0) {
+                            const filtrados = articulos.filter(a =>
+                              a.codigo.toUpperCase().includes(valor) ||
+                              a.descripcion.toUpperCase().includes(valor)
+                            ).slice(0, 5);
+                            setSugerencias(filtrados);
+                          } else {
+                            setSugerencias([]);
+                          }
+                        }}
                         onKeyDown={(e) => { if (e.key === 'Enter') buscarYAñadirArticuloModal(); }}
-                        placeholder="ESCRIBE EL CÓDIGO DE LA PIEZA O REFERENCIA..."
+                        placeholder="ESCRIBE CÓDIGO O NOMBRE DE PIEZA..."
                         className="bg-transparent border-none focus:ring-0 text-xs text-white w-full py-6 uppercase font-black tracking-widest"
                       />
+                      {sugerencias.length > 0 && (
+                        <div className="absolute top-full left-0 w-full bg-[#16161a] border border-white/10 rounded-[24px] mt-2 z-[150] shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2">
+                          {sugerencias.map((sug) => (
+                            <div
+                              key={sug.id}
+                              onClick={() => {
+                                setLineas(prev => {
+                                  const existe = prev.find(item => item.codigo === sug.codigo);
+                                  if (existe) return prev.map(item => item.codigo === sug.codigo ? { ...item, cantidad: item.cantidad + 1 } : item);
+                                  return [...prev, { ...sug, cantidad: 1 }];
+                                });
+                                setCodigoBusqueda("");
+                                setSugerencias([]);
+                              }}
+                              className="p-5 hover:bg-blue-600/20 cursor-pointer border-b border-white/5 flex justify-between items-center transition-colors group"
+                            >
+                              <div>
+                                <p className="text-[11px] text-white font-black uppercase tracking-tight group-hover:text-blue-400">{sug.descripcion}</p>
+                                <p className="text-[9px] text-gray-500 font-mono font-bold">{sug.codigo}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-[10px] text-blue-500 font-black italic">{Number(sug.precio_unitario).toFixed(2)}€</p>
+                                <p className="text-[8px] text-gray-600 uppercase font-bold tracking-tighter">Stock: {sug.stock}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <button onClick={buscarYAñadirArticuloModal} className="bg-blue-600 px-10 rounded-[32px] text-white hover:bg-blue-500 shadow-xl shadow-blue-600/30 transition-all active:scale-95"><Plus size={32} /></button>
                   </div>
@@ -734,7 +928,7 @@ function EmpleadoContent() {
                       <p className="text-5xl font-black italic text-white tracking-tighter leading-none">{totalPresupuesto.toFixed(2)}€</p>
                     </div>
                     <div className="flex gap-4 relative z-10">
-                      <button onClick={() => setModalStep(1)} className="bg-black/20 px-8 py-5 rounded-[28px] text-[10px] font-black text-white uppercase tracking-widest hover:bg-black/30 transition-all flex items-center gap-3"><ChevronLeft size={16} /> Volver</button>
+                      <button onClick={() => { setModalStep(1); setSugerencias([]); }} className="bg-black/20 px-8 py-5 rounded-[28px] text-[10px] font-black text-white uppercase tracking-widest hover:bg-black/30 transition-all flex items-center gap-3"><ChevronLeft size={16} /> Volver</button>
                       <button onClick={manejarCreacionPresupuesto} className="bg-white px-10 py-5 rounded-[28px] text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] hover:scale-105 transition-all shadow-xl active:scale-95">Finalizar Apertura</button>
                     </div>
                   </div>
@@ -757,15 +951,14 @@ function EmpleadoContent() {
             <p className="text-gray-500 text-[10px] uppercase mb-12 tracking-[0.2em] leading-relaxed">No hay registros para {nuevoCliente.nombre}.<br />Es obligatorio cumplimentar la ficha legal.</p>
 
             <div className="space-y-5 mb-12 text-left">
-              {/* --- SELECTOR TIPO CLIENTE --- */}
               <div className="space-y-2">
                 <p className="text-[8px] font-black text-blue-500 uppercase ml-5 tracking-widest flex items-center gap-2">
-                   <Briefcase size={10} /> Régimen del Cliente
+                  <Briefcase size={10} /> Régimen del Cliente
                 </p>
-                <select 
+                <select
                   className="w-full bg-white/5 border border-white/10 rounded-[24px] p-6 text-xs text-white uppercase outline-none focus:border-blue-500 transition-all font-bold shadow-inner appearance-none cursor-pointer"
                   value={nuevoCliente.tipo_cliente}
-                  onChange={(e) => setNuevoCliente({...nuevoCliente, tipo_cliente: e.target.value})}
+                  onChange={(e) => setNuevoCliente({ ...nuevoCliente, tipo_cliente: e.target.value })}
                 >
                   <option value="Particular" className="bg-[#16161a]">Persona Física / Particular</option>
                   <option value="Empresa" className="bg-[#16161a]">Persona Jurídica / Empresa / Autónomo</option>
