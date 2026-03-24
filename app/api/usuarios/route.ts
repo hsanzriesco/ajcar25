@@ -3,148 +3,132 @@ import { neon } from "@neondatabase/serverless";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
 
-/**
- * GET: Verifica si el usuario existe usando apellido1 y apellido2
- */
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const nombre = (searchParams.get("nombre") || "").trim().toUpperCase();
-    const apellido1 = (searchParams.get("apellidos1") || "").trim().toUpperCase();
-    const apellido2 = (searchParams.get("apellidos2") || "").trim().toUpperCase();
+    const apellido1 = (searchParams.get("apellido1") || searchParams.get("apellidos1") || "").trim().toUpperCase();
+    const apellido2 = (searchParams.get("apellido2") || searchParams.get("apellidos2") || "").trim().toUpperCase();
 
-    if (!nombre || !apellido1) {
-      return NextResponse.json({ existe: false });
-    }
+    if (!nombre || !apellido1) return NextResponse.json({ existe: false });
 
     const sql = neon(process.env.DATABASE_URL!);
-    
     const resultado = await sql`
-      SELECT id, nombre, apellido1, apellido2, email, telefono, documento_identidad
+      SELECT id, nombre, apellido1, apellido2, email, telefono, documento_identidad, tipo_cliente
       FROM usuarios 
       WHERE UPPER(TRIM(nombre)) = ${nombre} 
       AND UPPER(TRIM(apellido1)) = ${apellido1}
-      AND UPPER(TRIM(apellido2)) = ${apellido2}
+      AND (UPPER(TRIM(apellido2)) = ${apellido2} OR apellido2 IS NULL OR apellido2 = '')
       LIMIT 1
     `;
 
-    return NextResponse.json({ 
-      existe: resultado.length > 0, 
-      usuario: resultado[0] || null 
-    });
-
+    return NextResponse.json({ existe: resultado.length > 0, usuario: resultado[0] || null });
   } catch (error: any) {
-    console.error("🔴 Error en GET usuarios:", error.message);
     return NextResponse.json({ error: "Error al buscar usuario" }, { status: 500 });
   }
 }
 
-/**
- * POST: Crea el usuario y envía correo real con Nodemailer
- */
 export async function POST(request: Request) {
   try {
-    // 1. Validar Variables de Entorno Críticas
-    if (!process.env.DATABASE_URL) throw new Error("Falta DATABASE_URL en .env");
-    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) throw new Error("Faltan credenciales SMTP en .env");
-
+    if (!process.env.DATABASE_URL) throw new Error("Falta DATABASE_URL");
     const sql = neon(process.env.DATABASE_URL);
     const body = await request.json();
 
     const nombre = (body.nombre || "").trim().toUpperCase();
-    const apellido1 = (body.apellidos1 || "").trim().toUpperCase();
-    const apellido2 = (body.apellidos2 || "").trim().toUpperCase();
+    const apellido1 = (body.apellido1 || "").trim().toUpperCase(); 
+    const apellido2 = (body.apellido2 || "").trim().toUpperCase();
     const email = (body.email || "").toLowerCase().trim();
     const telefono = (body.telefono || "").trim();
     const dni = (body.documento_identidad || `TEMP-${Date.now()}`).toUpperCase().trim();
+    
+    // Determinamos si es Empresa o Particular basado en el input
+    const esEmpresa = (body.tipo_cliente || "").toUpperCase().includes("EMPRESA") || 
+                      (body.tipo_cliente || "").toUpperCase().includes("AUTON");
+
+    // Lista de formatos posibles que tu DB podría estar esperando (Prueba error)
+    const opcionesIntentar = esEmpresa 
+      ? ["Empresa", "EMPRESA", "empresa"] 
+      : ["Particular", "PARTICULAR", "particular"];
 
     if (!nombre || !apellido1 || !email) {
-      return NextResponse.json({ error: "Nombre, Apellido 1 y Email son obligatorios" }, { status: 400 });
+      return NextResponse.json({ error: "Datos obligatorios faltantes" }, { status: 400 });
     }
 
-    // 2. Generar Token y expiración
     const resetToken = crypto.randomBytes(32).toString("hex");
-    const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); 
 
-    // 3. Inserción en DB
-    console.log("💾 Guardando usuario en DB...");
-    const nuevo = await sql`
-      INSERT INTO usuarios (
-        nombre, apellido1, apellido2, email, telefono, 
-        documento_identidad, role, esta_activo, tipo_cliente, 
-        password_hash, reset_token, reset_token_expires
-      )
-      VALUES (
-        ${nombre}, ${apellido1}, ${apellido2}, ${email}, ${telefono}, 
-        ${dni}, 'user', true, 'particular', 
-        'PENDING_SETUP', ${resetToken}, ${expires}
-      )
-      RETURNING id
-    `;
+    let nuevo = null;
+    let ultimoError = "";
 
-    // 4. Configurar Transporter con validación de puerto
-    const smtpPort = Number(process.env.SMTP_PORT) || 465;
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: smtpPort,
-      secure: smtpPort === 465, 
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-      // Timeout para evitar que la API se quede colgada
-      connectionTimeout: 10000, 
-    });
-
-    const setupLink = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/set-password?token=${resetToken}`;
-
-    // 5. Envío de Email con bloque try-catch específico
-    console.log(`📧 Intentando enviar email a ${email}...`);
-    try {
-      await transporter.sendMail({
-        from: `"AJCAR 25" <${process.env.SMTP_USER}>`,
-        to: email,
-        subject: "Configura tu acceso - AJCAR 25",
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; padding: 20px; border-radius: 10px;">
-            <h2 style="color: #2563eb;">Hola, ${nombre}</h2>
-            <p>Se ha creado tu cuenta de cliente en <strong>AJCAR 25</strong>.</p>
-            <p>Por favor, establece tu contraseña para acceder a tus presupuestos:</p>
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${setupLink}" style="background-color: #2563eb; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
-                CONFIGURAR CONTRASEÑA
-              </a>
-            </div>
-            <p style="font-size: 11px; color: #999;">Si el botón no funciona, copia este enlace: ${setupLink}</p>
-          </div>
-        `,
-      });
-      console.log("✅ Email enviado con éxito");
-    } catch (mailError: any) {
-      console.error("⚠️ Error crítico enviando email:", mailError.message);
-      // Opcional: Podrías borrar al usuario de la DB aquí si quieres ser estricto
-      return NextResponse.json({ 
-        success: true, 
-        id: nuevo[0].id, 
-        mensaje: "Usuario creado, pero hubo un problema enviando el correo. Configúralo manualmente." 
-      }, { status: 201 });
+    // BUCLE DE INTENTOS: Probamos los 3 formatos hasta que uno no dé error de constraint
+    for (const valorPrueba of opcionesIntentar) {
+      try {
+        nuevo = await sql`
+          INSERT INTO usuarios (
+            nombre, apellido1, apellido2, email, telefono, 
+            documento_identidad, role, tipo_cliente, password_hash, 
+            reset_token, reset_token_expires
+          )
+          VALUES (
+            ${nombre}, ${apellido1}, ${apellido2}, ${email}, ${telefono}, 
+            ${dni}, 'cliente', ${valorPrueba}, 'PENDING_SETUP', 
+            ${resetToken}, ${expires}
+          )
+          RETURNING id
+        `;
+        if (nuevo) break; // Si tuvo éxito, salimos del bucle
+      } catch (dbError: any) {
+        ultimoError = dbError.message;
+        if (dbError.message.includes("check constraint")) {
+          continue; // Si es error de validación, probamos el siguiente formato
+        } else {
+          throw dbError; // Si es otro tipo de error (ej: email duplicado), paramos
+        }
+      }
     }
 
-    return NextResponse.json({
-      success: true,
-      id: nuevo[0].id,
-      mensaje: "Usuario creado y correo enviado correctamente."
-    }, { status: 201 });
+    if (!nuevo) {
+      throw new Error(`La base de datos rechazó todos los formatos de tipo_cliente. Error: ${ultimoError}`);
+    }
+
+    // --- ENVÍO DE EMAIL ---
+    const emailUser = process.env.EMAIL_USER;
+    const emailPass = process.env.EMAIL_PASS;
+
+    if (emailUser && emailPass) {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user: emailUser, pass: emailPass },
+      });
+
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+      const setupLink = `${baseUrl}/set-password?token=${resetToken}`;
+
+      try {
+        await transporter.sendMail({
+          from: `"AJCAR 25" <${emailUser}>`,
+          to: email,
+          subject: "Configura tu acceso de cliente - AJCAR 25",
+          html: `<div style="font-family:sans-serif;padding:20px;">
+            <h2>Hola ${nombre},</h2>
+            <p>Se ha creado tu ficha de cliente. Establece tu contraseña para acceder:</p>
+            <a href="${setupLink}" style="background:#2563eb;color:white;padding:12px 20px;text-decoration:none;border-radius:8px;font-weight:bold;">ESTABLECER CONTRASEÑA</a>
+          </div>`,
+        });
+      } catch (e) { console.error("Error email:", e); }
+    }
+
+    return NextResponse.json({ success: true, id: nuevo[0].id }, { status: 201 });
 
   } catch (error: any) {
-    console.error("🔴 ERROR EN POST /api/usuarios:", error.message);
+    console.error("🔴 ERROR REGISTRO:", error.message);
     
-    if (error.message.includes("unique constraint") || error.message.includes("already exists")) {
-        return NextResponse.json({ error: "El Email o DNI ya está registrado" }, { status: 409 });
+    if (error.message.includes("unique constraint")) {
+      return NextResponse.json({ error: "El DNI o Email ya existen." }, { status: 409 });
     }
 
     return NextResponse.json({ 
-      error: "Error interno del servidor", 
+      error: "Error de servidor", 
       detalle: error.message 
     }, { status: 500 });
   }

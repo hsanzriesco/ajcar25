@@ -1,99 +1,111 @@
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
-import { neon } from "@neondatabase/serverless"; // Importamos Neon
+import { neon } from "@neondatabase/serverless";
 
 export async function POST(req: Request) {
   try {
-    const { id, email, nombre, pdfBase64, total, vehiculo, articulos } = await req.json();
+    const body = await req.json();
+    const { id, email, nombre, pdfBase64, total, vehiculo, articulos } = body;
 
-    // 1. Validaciones de seguridad
-    if (!id) {
-      return NextResponse.json({ error: "El ID del presupuesto es obligatorio" }, { status: 400 });
+    // 1. Validaciones de datos de entrada
+    if (!id || !email || !pdfBase64) {
+      return NextResponse.json({ error: "Faltan datos requeridos (ID, Email o PDF)" }, { status: 400 });
     }
 
-    const sql = neon(process.env.DATABASE_URL!);
+    if (!process.env.DATABASE_URL) {
+      console.error("CRÍTICO: DATABASE_URL no está definida en .env");
+      return NextResponse.json({ error: "Error de configuración de base de datos" }, { status: 500 });
+    }
 
-    // --- BLOQUE DE BASE DE DATOS: GUARDAR LÍNEAS ---
-    // Borramos líneas previas para evitar duplicados si se envía varias veces
-    await sql`DELETE FROM lineas_presupuestos WHERE presupuesto_id = ${id}`;
+    const sql = neon(process.env.DATABASE_URL);
 
-    // Insertamos las líneas una a una (Línea 1, Línea 2...)
-    if (articulos && Array.isArray(articulos)) {
-      for (const art of articulos) {
-        await sql`
-          INSERT INTO lineas_presupuestos (
-            presupuesto_id, 
-            articulo_codigo, 
-            descripcion, 
-            cantidad, 
-            precio_unitario
-          ) VALUES (
-            ${id}, 
-            ${art.codigo}, 
-            ${art.descripcion}, 
-            ${art.cantidad}, 
-            ${art.precio_unitario}
-          )
-        `;
+    // --- BLOQUE DE BASE DE DATOS ---
+    try {
+      // Borramos líneas previas para evitar duplicados
+      await sql`DELETE FROM lineas_presupuestos WHERE presupuesto_id = ${id}`;
+
+      // Insertamos las líneas si existen
+      if (articulos && Array.isArray(articulos) && articulos.length > 0) {
+        for (const art of articulos) {
+          await sql`
+            INSERT INTO lineas_presupuestos (
+              presupuesto_id, 
+              articulo_codigo, 
+              descripcion, 
+              cantidad, 
+              precio_unitario
+            ) VALUES (
+              ${id}, 
+              ${art.codigo}, 
+              ${art.descripcion}, 
+              ${art.cantidad}, 
+              ${art.precio_unitario}
+            )
+          `;
+        }
       }
+
+      // Actualizamos el estado
+      await sql`UPDATE presupuestos_pedidos SET estado = 'Presupuesto enviado' WHERE id = ${id}`;
+    } catch (dbError: any) {
+      console.error("ERROR NEON DB:", dbError);
+      return NextResponse.json({ error: "Fallo en base de datos: " + dbError.message }, { status: 500 });
     }
 
-    // Actualizamos el estado del presupuesto a "Enviado" en la tabla principal
-    await sql`UPDATE presupuestos_pedidos SET estado = 'Presupuesto enviado' WHERE id = ${id}`;
-    // ----------------------------------------------
+    // --- BLOQUE DE EMAIL ---
+    try {
+      if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+        throw new Error("Credenciales de Gmail no configuradas");
+      }
 
-    // 2. Configuración de Email (Nodemailer)
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
-
-    const base64Data = pdfBase64.split(",")[1];
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-    const acceptUrl = `${baseUrl}/presupuesto/aceptar/${id}`; 
-
-    const mailOptions = {
-      from: `"AJCAR 25" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: `Presupuesto AJCAR 25 - ${vehiculo}`,
-      html: `
-        <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: auto; border: 1px solid #eee; padding: 20px; border-radius: 12px;">
-          <h2 style="color: #1e3a8a;">Hola, ${nombre}</h2>
-          <p>Le adjuntamos el presupuesto detallado para su vehículo <strong>${vehiculo}</strong>.</p>
-          <p style="font-size: 16px;"><strong>Total Presupuestado:</strong> <span style="font-size: 20px; color: #1e3a8a;">${total}€</span> (IVA incluido)</p>
-          
-          <div style="margin: 35px 0; text-align: center;">
-            <p style="margin-bottom: 20px; font-size: 14px; color: #666;">Si está de acuerdo con el presupuesto, puede aceptarlo haciendo clic aquí:</p>
-            
-            <a href="${acceptUrl}" 
-               style="background-color: #22c55e; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; font-size: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-              ACEPTAR PRESUPUESTO ONLINE
-            </a>
-          </div>
-
-          <p style="font-size: 13px; color: #888;">Si tiene dudas, puede responder a este correo o llamarnos directamente.</p>
-          <br/>
-          <hr style="border: 0; border-top: 1px solid #eee;" />
-          <p style="font-size: 12px; color: #aaa; text-align: center;">AJCAR 25 - Taller Mecánico de Confianza</p>
-        </div>
-      `,
-      attachments: [
-        {
-          filename: `Presupuesto_${vehiculo.replace(/\s+/g, '_')}.pdf`,
-          content: base64Data,
-          encoding: 'base64',
+      const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
         },
-      ],
-    };
+      });
 
-    await transporter.sendMail(mailOptions);
+      // Limpiar el Base64 (quitar el encabezado data:application/pdf;base64,)
+      const base64Data = pdfBase64.includes(",") ? pdfBase64.split(",")[1] : pdfBase64;
+      
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+      const acceptUrl = `${baseUrl}/presupuesto/aceptar/${id}`; 
 
-    return NextResponse.json({ message: "Guardado en DB y Correo enviado" });
+      const mailOptions = {
+        from: `"AJCAR 25" <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: `Presupuesto AJCAR 25 - ${vehiculo || "Revisión"}`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #eee; padding: 20px; border-radius: 12px;">
+            <h2 style="color: #2563eb;">Hola, ${nombre}</h2>
+            <p>Se ha generado el presupuesto para su vehículo <strong>${vehiculo}</strong>.</p>
+            <p style="font-size: 18px;">Total: <strong>${total}€</strong></p>
+            <div style="margin: 30px 0; text-align: center;">
+              <a href="${acceptUrl}" style="background-color: #22c55e; color: white; padding: 15px 25px; text-decoration: none; border-radius: 8px; font-weight: bold;">ACEPTAR PRESUPUESTO ONLINE</a>
+            </div>
+            <p style="font-size: 11px; color: #999;">Adjuntamos el desglose en PDF.</p>
+          </div>
+        `,
+        attachments: [
+          {
+            filename: `Presupuesto_${id.substring(0, 6)}.pdf`,
+            content: base64Data,
+            encoding: 'base64',
+          },
+        ],
+      };
+
+      await transporter.sendMail(mailOptions);
+    } catch (mailError: any) {
+      console.error("ERROR NODEMAILER:", mailError);
+      return NextResponse.json({ error: "Fallo al enviar correo: " + mailError.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, message: "OK" });
+
   } catch (error: any) {
-    console.error("Error en el proceso:", error);
+    console.error("ERROR GLOBAL API:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
