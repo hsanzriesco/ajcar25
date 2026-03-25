@@ -17,7 +17,6 @@ export async function GET(request: Request) {
     let resultado;
 
     if (dni) {
-      // === BÚSQUEDA PRINCIPAL POR DNI ===
       resultado = await sql`
         SELECT id, nombre, apellido1, apellido2, email, telefono, documento_identidad, tipo_cliente
         FROM usuarios 
@@ -25,7 +24,6 @@ export async function GET(request: Request) {
         LIMIT 1
       `;
     } else if (nombre && apellido1) {
-      // Búsqueda antigua por nombre + apellidos (por compatibilidad)
       resultado = await sql`
         SELECT id, nombre, apellido1, apellido2, email, telefono, documento_identidad, tipo_cliente
         FROM usuarios 
@@ -68,7 +66,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Nombre, apellidos, email y DNI son obligatorios" }, { status: 400 });
     }
 
-    // Verificar si ya existe el DNI antes de insertar
+    // Verificar si ya existe el DNI
     const existeDNI = await sql`
       SELECT id FROM usuarios 
       WHERE UPPER(TRIM(documento_identidad)) = ${dni}
@@ -79,11 +77,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Ya existe un cliente con ese DNI" }, { status: 409 });
     }
 
-    // Determinamos tipo_cliente
-    const esEmpresa = (body.tipo_cliente || "").toUpperCase().includes("EMPRESA") || 
-                      (body.tipo_cliente || "").toUpperCase().includes("AUTON");
-
-    const tipoClienteFinal = esEmpresa ? "Empresa" : "Particular";
+    // ✅ CORREGIDO: Usamos exactamente los valores que acepta la constraint de la BD
+    const tipoClienteFinal = (body.tipo_cliente || "").toLowerCase().trim() === "empresa" 
+      ? "empresa" 
+      : "particular";
 
     const resetToken = crypto.randomBytes(32).toString("hex");
     const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); 

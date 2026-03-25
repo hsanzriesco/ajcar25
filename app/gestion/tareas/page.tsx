@@ -90,7 +90,7 @@ function EmpleadoContent() {
     vehiculo: "",
     anio: new Date().getFullYear(),
     mensaje: "",
-    tipo_cliente: "Particular"
+    tipo_cliente: "particular"   // ← Cambia esta línea
   });
 
   // ==================== ESTADO PARA ALERTAS ====================
@@ -183,14 +183,9 @@ function EmpleadoContent() {
       return;
     }
 
-    // Validación de teléfono
     const telefonoLimpio = nuevoCliente.telefono.replace(/[\s\-\(\)\.]/g, "");
-    if (!telefonoLimpio) {
-      showAlert("Teléfono obligatorio", "Por favor introduce un número de teléfono", "warning");
-      return;
-    }
-    if (!/^[6-9]\d{8}$/.test(telefonoLimpio)) {
-      showAlert("Teléfono inválido", "El número debe tener 9 dígitos y empezar por 6, 7, 8 o 9.\nEjemplo: 600123456 o 912345678", "warning");
+    if (!telefonoLimpio || !/^[6-9]\d{8}$/.test(telefonoLimpio)) {
+      showAlert("Teléfono inválido", "El teléfono debe tener 9 dígitos empezando por 6-9", "warning");
       return;
     }
 
@@ -211,17 +206,11 @@ function EmpleadoContent() {
           email: nuevoCliente.email.trim().toLowerCase(),
           telefono: telefonoLimpio,
           documento_identidad: nuevoCliente.documento_identidad.trim().toUpperCase(),
-          // ✅ SOLUCIÓN: Forzamos exactamente los valores que acepta la constraint
-          tipo_cliente: nuevoCliente.tipo_cliente === "Empresa" ? "empresa" : "particular"
+          tipo_cliente: nuevoCliente.tipo_cliente   // ← enviamos directamente lo del estado
         })
       });
 
-      let data;
-      try {
-        data = await resUsuario.json();
-      } catch {
-        data = { error: "Respuesta inválida del servidor" };
-      }
+      const data: any = await resUsuario.json().catch(() => ({}));
 
       if (resUsuario.ok) {
         setUsuarioExiste(true);
@@ -229,16 +218,16 @@ function EmpleadoContent() {
         showAlert("¡Cliente registrado!", "El cliente se ha creado correctamente.", "success");
         await cargarTodo();
       } else {
-        console.error("Error del API:", data);
+        console.error("❌ Error del servidor:", data);
         showAlert(
           "Error al registrar cliente",
-          data.detalle || data.error || data.message || `Error ${resUsuario.status}`,
+          data?.detalle || data?.error || `Error ${resUsuario.status}`,
           "error"
         );
       }
     } catch (error: any) {
       console.error("Error de conexión:", error);
-      showAlert("Error de conexión", "No se pudo conectar con el servidor. Revisa la consola.", "error");
+      showAlert("Error de conexión", "No se pudo conectar con el servidor.", "error");
     } finally {
       setVerificando(false);
     }
@@ -1027,12 +1016,12 @@ function EmpleadoContent() {
                   <Briefcase size={10} /> Régimen del Cliente
                 </p>
                 <select
-                  className="w-full bg-white/5 border border-white/10 rounded-[24px] p-6 text-xs text-white uppercase outline-none focus:border-blue-500 transition-all font-bold shadow-inner appearance-none cursor-pointer"
                   value={nuevoCliente.tipo_cliente}
                   onChange={(e) => setNuevoCliente({ ...nuevoCliente, tipo_cliente: e.target.value })}
+                  className="w-full bg-white/5 border border-white/10 rounded-[24px] p-6 text-xs text-white uppercase outline-none focus:border-blue-500 transition-all font-bold shadow-inner appearance-none cursor-pointer"
                 >
-                  <option value="Particular">Persona Física / Particular</option>
-                  <option value="Empresa">Persona Jurídica / Empresa / Autónomo</option>
+                  <option value="particular">Persona Física / Particular</option>
+                  <option value="empresa">Persona Jurídica / Empresa / Autónomo</option>
                 </select>
               </div>
 
