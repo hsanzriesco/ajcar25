@@ -25,31 +25,36 @@ export default function LoginForm() {
 
       const data = await res.json();
 
+      console.log("📥 Respuesta del servidor:", data);   // ← Log importante
+
       if (res.ok) {
         localStorage.clear();
 
-        // Guardamos tal cual viene de la base de datos
-        localStorage.setItem("user_role", data.role); 
-        localStorage.setItem("user_name", data.nombre);
+        localStorage.setItem("user_role", data.role);
+        localStorage.setItem("user_name", data.nombre || "");
         localStorage.setItem("user_id", data.id);
 
-        // --- LÓGICA DE REDIRECCIÓN ROBUSTA ---
-        // Convertimos a minúsculas para comparar sin errores de escritura
-        const normalizedRole = data.role.toLowerCase();
+        const role = (data.role || "").toLowerCase().trim();
+        console.log("🔑 Rol recibido (normalizado):", `"${role}"`);
+
         let destination = "/";
-        
-        if (normalizedRole === "jefe" || normalizedRole === "admin") {
-          destination = "/admin/dashboard";
-        } else if (normalizedRole === "empleado") {
+
+        if (role === "cliente") {
+          destination = "/cliente";
+          console.log("→ Redirigiendo a /cliente");
+        } else if (role === "empleado") {
           destination = "/gestion/tareas";
+          console.log("→ Redirigiendo a /gestion/tareas");
+        } else if (role === "jefe" || role === "admin") {
+          destination = "/admin/dashboard";
+          console.log("→ Redirigiendo a /admin/dashboard");
         } else {
-          // Cubre "cliente", "usuario", o cualquier otro
           destination = "/mi-perfil";
+          console.log("→ Redirigiendo a /mi-perfil");
         }
 
         router.push(destination);
 
-        // Recarga para refrescar estados globales
         setTimeout(() => {
           window.location.reload();
         }, 300);
@@ -58,6 +63,7 @@ export default function LoginForm() {
         setError(data.message || "Credenciales incorrectas");
       }
     } catch (err) {
+      console.error("Error en login:", err);
       setError("Error de conexión con el servidor");
     } finally {
       setLoading(false);
@@ -67,7 +73,7 @@ export default function LoginForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4 w-full max-w-sm mx-auto">
       {error && (
-        <div className="bg-red-500/20 border border-red-500 text-red-200 p-3 rounded-lg text-sm text-center animate-pulse">
+        <div className="bg-red-500/20 border border-red-500 text-red-200 p-3 rounded-lg text-sm text-center">
           {error}
         </div>
       )}
@@ -101,12 +107,7 @@ export default function LoginForm() {
         disabled={loading}
         className="w-full bg-white text-black font-bold py-3 rounded-lg hover:bg-gray-200 active:scale-[0.98] transition-all disabled:opacity-50 mt-2 shadow-lg"
       >
-        {loading ? (
-          <span className="flex items-center justify-center gap-2">
-            <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
-            Verificando...
-          </span>
-        ) : "Entrar"}
+        {loading ? "Verificando..." : "Entrar"}
       </button>
 
       <div className="text-center mt-6 space-y-4 border-t border-white/10 pt-6">

@@ -29,22 +29,27 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Contraseña incorrecta" }, { status: 401 });
     }
 
-    // 3. Obtenemos el rol (priorizamos columna 'role')
-    let userRole = user.role || "Cliente";
+    // 3. Obtenemos el rol correctamente (normalizado a minúsculas)
+    let userRole = (user.role || "cliente").toLowerCase().trim();
 
-    // Si el rol es un ID (número), intentamos buscar el nombre en la tabla roles
+    // Si existe id_rol, intentamos obtener el nombre del rol desde la tabla roles
     if (user.id_rol && !isNaN(Number(user.id_rol))) {
       const roleData = await sql`SELECT nombre FROM roles WHERE id = ${user.id_rol} LIMIT 1`;
-      if (roleData.length > 0) userRole = roleData[0].nombre;
+      if (roleData.length > 0) {
+        userRole = roleData[0].nombre.toLowerCase().trim();
+      }
     }
 
+    // ✅ IMPORTANTE: Devolvemos el rol siempre en minúsculas para evitar problemas
     return NextResponse.json({
       id: user.id,
       nombre: user.nombre,
-      role: userRole // Enviamos el texto: "Empleado", "Cliente", etc.
+      role: userRole,           // ← Ahora siempre viene en minúsculas ("cliente", "empleado", etc.)
+      email: user.email
     }, { status: 200 });
 
   } catch (error: any) {
-    return NextResponse.json({ message: "Error: " + error.message }, { status: 500 });
+    console.error("Error en login:", error);
+    return NextResponse.json({ message: "Error interno del servidor" }, { status: 500 });
   }
 }
