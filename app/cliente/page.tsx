@@ -4,21 +4,30 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
     Car, FileText, Clock, CheckCircle, AlertCircle,
-    Download, LogOut, Wrench, Phone, Mail
+    Download, LogOut, Wrench
 } from "lucide-react";
 
-interface VehiculoEstado {
+interface Presupuesto {
+    id: string;
     vehiculo: string;
-    estado: "En Taller" | "En Espera" | "Finalizado" | "Presupuesto Pendiente";
-    fecha_ingreso?: string;
+    estado: string;
+    total: number;
+    creado_en: string;
     mensaje?: string;
-    total_estimado?: number;
+}
+
+interface Factura {
+    id: string;
+    vehiculo: string;
+    total: number;
+    fecha_emision: string;
+    estado: string;
 }
 
 export default function ClientePage() {
     const [cliente, setCliente] = useState<any>(null);
-    const [vehiculoEstado, setVehiculoEstado] = useState<VehiculoEstado | null>(null);
-    const [presupuestos, setPresupuestos] = useState<any[]>([]);
+    const [presupuestos, setPresupuestos] = useState<Presupuesto[]>([]);
+    const [facturas, setFacturas] = useState<Factura[]>([]);   // ← Esta era la que faltaba
     const [loading, setLoading] = useState(true);
     const [view, setView] = useState<"estado" | "presupuestos" | "facturas" | "perfil">("estado");
 
@@ -40,30 +49,16 @@ export default function ClientePage() {
         try {
             const res = await fetch(`/api/cliente/${userId}`);
 
-            if (!res.ok) {
-                console.error("Error al cargar datos");
-                return;
-            }
+            if (!res.ok) throw new Error("Error al cargar datos");
 
             const data = await res.json();
 
             setCliente(data.cliente);
             setPresupuestos(data.presupuestos || []);
-
-            // Simulamos estado del vehículo (más adelante lo traeremos de la BD)
-            if (data.presupuestos && data.presupuestos.length > 0) {
-                const ultimo = data.presupuestos[0];
-                setVehiculoEstado({
-                    vehiculo: ultimo.vehiculo,
-                    estado: ultimo.estado === "En Taller" ? "En Taller" : "Presupuesto Pendiente",
-                    fecha_ingreso: ultimo.creado_en,
-                    mensaje: ultimo.mensaje || "Tu vehículo está siendo revisado.",
-                    total_estimado: ultimo.total
-                });
-            }
+            setFacturas(data.facturas || []);        // ← Aquí asignamos las facturas
 
         } catch (error) {
-            console.error("Error cargando datos:", error);
+            console.error("Error cargando datos del cliente:", error);
         } finally {
             setLoading(false);
         }
@@ -101,7 +96,10 @@ export default function ClientePage() {
                         </div>
                     </div>
 
-                    <button onClick={handleLogout} className="flex items-center gap-2 px-6 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-2xl transition-all">
+                    <button
+                        onClick={handleLogout}
+                        className="flex items-center gap-2 px-6 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-2xl transition-all"
+                    >
                         <LogOut size={20} /> Cerrar Sesión
                     </button>
                 </header>
@@ -110,7 +108,6 @@ export default function ClientePage() {
                 <div className="flex gap-2 mb-12 bg-white/[0.03] p-1.5 rounded-3xl border border-white/5 w-fit">
                     {[
                         { key: "estado", label: "Estado de mi Vehículo" },
-                        { key: "presupuestos", label: "Mis Presupuestos" },
                         { key: "facturas", label: "Mis Facturas" },
                         { key: "perfil", label: "Mi Perfil" }
                     ].map((tab) => (
@@ -118,8 +115,8 @@ export default function ClientePage() {
                             key={tab.key}
                             onClick={() => setView(tab.key as any)}
                             className={`px-8 py-3 rounded-2xl text-sm font-bold transition-all ${view === tab.key
-                                ? "bg-blue-600 text-white shadow-lg"
-                                : "text-gray-400 hover:bg-white/5 hover:text-white"
+                                    ? "bg-blue-600 text-white shadow-lg"
+                                    : "text-gray-400 hover:bg-white/5 hover:text-white"
                                 }`}
                         >
                             {tab.label}
@@ -127,7 +124,7 @@ export default function ClientePage() {
                     ))}
                 </div>
 
-                {/* ==================== ESTADO DEL VEHÍCULO ==================== */}
+                {/* ESTADO DEL VEHÍCULO */}
                 {view === "estado" && (
                     <div className="bg-[#0f0f12] rounded-[40px] p-12 border border-white/5">
                         {presupuestos.length > 0 ? (
@@ -136,72 +133,48 @@ export default function ClientePage() {
                                     <Car size={48} className="text-blue-600" />
                                     <div>
                                         <h2 className="text-3xl font-black text-white">Estado de mi Vehículo</h2>
-                                        <p className="text-gray-500">Información actual de tus vehículos</p>
+                                        <p className="text-gray-500">Última intervención</p>
                                     </div>
                                 </div>
 
                                 {presupuestos.map((p) => {
-                                    const estadoLower = p.estado.toLowerCase();
-                                    const isInTaller = estadoLower.includes("taller") ||
-                                        estadoLower.includes("proceso") ||
-                                        estadoLower.includes("ingres");
-
-                                    const isAceptado = estadoLower.includes("aceptado");
+                                    const estadoLower = (p.estado || "").toLowerCase();
+                                    const isInTaller = estadoLower.includes("taller");
 
                                     return (
-                                        <div key={p.id} className={`mb-8 p-10 rounded-3xl border transition-all ${isInTaller
-                                                ? 'border-green-500/50 bg-green-500/5'
-                                                : isAceptado
-                                                    ? 'border-blue-500/50 bg-blue-500/5'
-                                                    : 'border-white/10'
+                                        <div key={p.id} className={`mb-8 p-10 rounded-3xl border ${isInTaller ? 'border-green-500/50 bg-green-500/10' : 'border-white/10'
                                             }`}>
-                                            <div className="flex justify-between items-start mb-6">
+                                            <div className="flex justify-between items-start">
                                                 <div>
                                                     <p className="text-blue-400 font-mono">{p.vehiculo}</p>
-                                                    <h3 className="text-2xl font-black text-white mt-1">Presupuesto #{p.id.slice(0, 8)}</h3>
+                                                    <h3 className="text-2xl font-black text-white mt-2">Presupuesto #{p.id.slice(0, 8)}</h3>
                                                 </div>
-
-                                                <div className={`px-6 py-3 rounded-full text-sm font-bold uppercase tracking-widest flex items-center gap-2 ${isInTaller
-                                                        ? "bg-green-500/20 text-green-400"
-                                                        : isAceptado
-                                                            ? "bg-blue-500/20 text-blue-400"
-                                                            : "bg-gray-500/20 text-gray-400"
+                                                <div className={`px-6 py-3 rounded-full text-sm font-bold uppercase tracking-widest ${isInTaller ? "bg-green-600 text-white" : "bg-gray-700 text-gray-300"
                                                     }`}>
-                                                    {isInTaller && <Wrench size={20} />}
                                                     {p.estado}
                                                 </div>
                                             </div>
 
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-sm">
+                                            <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-8">
                                                 <div>
-                                                    <p className="text-gray-500 text-xs mb-1">FECHA DE INGRESO</p>
-                                                    <p className="font-medium text-white">
-                                                        {new Date(p.creado_en).toLocaleDateString('es-ES', {
-                                                            weekday: 'long',
-                                                            day: 'numeric',
-                                                            month: 'long'
-                                                        })}
+                                                    <p className="text-xs text-gray-500 mb-1">FECHA</p>
+                                                    <p className="text-white font-medium">
+                                                        {new Date(p.creado_en).toLocaleDateString('es-ES')}
                                                     </p>
                                                 </div>
                                                 <div>
-                                                    <p className="text-gray-500 text-xs mb-1">TOTAL ESTIMADO</p>
-                                                    <p className="text-2xl font-black text-white tracking-tighter">
+                                                    <p className="text-xs text-gray-500 mb-1">TOTAL</p>
+                                                    <p className="text-3xl font-black text-white tracking-tighter">
                                                         {p.total ? p.total.toFixed(2) + " €" : "Pendiente"}
                                                     </p>
                                                 </div>
                                                 <div>
-                                                    <p className="text-gray-500 text-xs mb-1">ESTADO ACTUAL</p>
-                                                    <p className={`font-bold ${isInTaller ? 'text-green-400' : 'text-white'}`}>
-                                                        {isInTaller ? "En Taller" : p.estado}
+                                                    <p className="text-xs text-gray-500 mb-1">ESTADO</p>
+                                                    <p className={`text-lg font-bold ${isInTaller ? 'text-green-400' : 'text-white'}`}>
+                                                        {p.estado}
                                                     </p>
                                                 </div>
                                             </div>
-
-                                            {p.mensaje && (
-                                                <div className="mt-8 pt-6 border-t border-white/10 text-gray-300 italic">
-                                                    "{p.mensaje}"
-                                                </div>
-                                            )}
                                         </div>
                                     );
                                 })}
@@ -209,34 +182,67 @@ export default function ClientePage() {
                         ) : (
                             <div className="text-center py-20">
                                 <Car size={80} className="mx-auto mb-6 text-gray-600" />
-                                <p className="text-2xl font-bold text-white mb-3">No tienes vehículos registrados</p>
-                                <p className="text-gray-500">Cuando ingreses un vehículo al taller, aparecerá aquí su estado en tiempo real.</p>
+                                <p className="text-2xl font-bold text-white">No tienes vehículos en proceso</p>
                             </div>
                         )}
                     </div>
                 )}
 
-                {/* Otras vistas (por ahora vacías) */}
-                {view === "presupuestos" && (
-                    <div className="text-center py-20 text-gray-500">
-                        Tus presupuestos aparecerán aquí
-                    </div>
-                )}
-
                 {view === "facturas" && (
-                    <div className="text-center py-20 text-gray-500">
-                        Tus facturas aparecerán aquí
+                    <div className="space-y-6">
+                        <h2 className="text-3xl font-black text-white mb-8">Mis Facturas</h2>
+
+                        {facturas.length > 0 ? (
+                            facturas.map((f) => (
+                                <div key={f.id} className="bg-[#0f0f12] p-10 rounded-[40px] border border-white/5 hover:border-green-500/30 transition-all flex flex-col md:flex-row justify-between gap-8 items-start">
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 bg-green-600/20 rounded-2xl flex items-center justify-center">
+                                                <FileText size={28} className="text-green-500" />
+                                            </div>
+                                            <div>
+                                                <p className="text-green-400 font-mono text-sm">Factura #{f.id}</p>
+                                                <h3 className="text-xl font-bold text-white mt-1">{f.vehiculo}</h3>
+                                            </div>
+                                        </div>
+                                        <p className="text-gray-500 mt-4">
+                                            Fecha: {new Date(f.fecha_emision).toLocaleDateString('es-ES')}
+                                        </p>
+                                    </div>
+
+                                    <div className="text-right">
+                                        <p className="text-4xl font-black text-white tracking-tighter">
+                                            {Number(f.total).toFixed(2)}€
+                                        </p>
+                                        <button
+                                            onClick={() => window.open(`/api/pdf/factura/${f.id}`, "_blank")}
+                                            className="mt-6 bg-white text-black px-8 py-4 rounded-2xl font-bold hover:bg-gray-100 transition-all flex items-center gap-2"
+                                        >
+                                            <Download size={18} /> Descargar Factura PDF
+                                        </button>
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="bg-[#0f0f12] rounded-[40px] p-16 text-center border border-white/5">
+                                <FileText size={80} className="mx-auto mb-6 text-gray-600" />
+                                <p className="text-2xl font-bold text-white mb-3">Aún no tienes facturas</p>
+                                <p className="text-gray-500 max-w-md mx-auto">
+                                    Cuando el taller facture uno de tus vehículos, la factura aparecerá aquí automáticamente.
+                                </p>
+                            </div>
+                        )}
                     </div>
                 )}
 
+                {/* Otras vistas */}
                 {view === "perfil" && (
                     <div className="bg-[#0f0f12] rounded-[40px] p-12">
                         <h2 className="text-3xl font-black text-white mb-8">Mi Perfil</h2>
-                        <div className="space-y-4 text-lg">
+                        <div className="space-y-4">
                             <p><strong>Nombre:</strong> {cliente?.nombre} {cliente?.apellido1}</p>
                             <p><strong>Email:</strong> {cliente?.email}</p>
                             <p><strong>Teléfono:</strong> {cliente?.telefono}</p>
-                            <p><strong>DNI:</strong> {cliente?.documento_identidad}</p>
                         </div>
                     </div>
                 )}
