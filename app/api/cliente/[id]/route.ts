@@ -1,21 +1,19 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from 'next/server';
 
+// 1. Define que params es una Promesa
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest, 
+  { params }: { params: Promise<{ id: string }> } 
 ) {
-  const userId = params.id;
+  // 2. Espera a que la promesa se resuelva
+  const { id } = await params;
 
-  console.log("✅ API /cliente/[id] fue llamada correctamente con ID:", userId);
+  // Tu lógica actual...
+  const cliente = { id, nombre: "Ejemplo", email: "test@test.com" }; 
 
-  // Respuesta temporal simple para probar
-  return NextResponse.json({
-    cliente: {
-      id: userId,
-      nombre: "Cliente de Prueba",
-      email: "prueba@ajcar25.com"
-    },
-    presupuestos: [],
-    facturas: []
+  return NextResponse.json({ 
+    cliente, 
+    presupuestos: [], 
+    facturas: [] 
   });
 }
