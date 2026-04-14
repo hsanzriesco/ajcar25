@@ -10,6 +10,10 @@ interface AlertModalProps {
   message: string;
   type?: "success" | "error" | "warning" | "info";
   confirmText?: string;
+  cancelText?: string;
+  onConfirm?: () => void;     // Acción al pulsar "Sí"
+  onCancel?: () => void;      // Acción al pulsar "No"
+  showCancelButton?: boolean; // Si queremos mostrar el botón "No"
 }
 
 export default function AlertModal({
@@ -19,6 +23,10 @@ export default function AlertModal({
   message,
   type = "info",
   confirmText = "Aceptar",
+  cancelText = "Cancelar",
+  onConfirm,
+  onCancel,
+  showCancelButton = false,
 }: AlertModalProps) {
   useEffect(() => {
     if (isOpen) {
@@ -44,7 +52,7 @@ export default function AlertModal({
     },
     warning: { 
       icon: <AlertCircle className="w-14 h-14 text-yellow-500" />, 
-      button: "bg-yellow-600 hover:bg-yellow-500" 
+      button: "bg-yellow-600 hover:bg-yellow-500 text-black" 
     },
     info: { 
       icon: <Info className="w-14 h-14 text-blue-500" />, 
@@ -65,15 +73,30 @@ export default function AlertModal({
           <h3 className="text-2xl font-black italic uppercase tracking-tighter text-white mb-3">
             {title}
           </h3>
-          <p className="text-gray-400 text-[15px] leading-relaxed px-4">
+          <p className="text-gray-400 text-[15px] leading-relaxed px-4 whitespace-pre-line">
             {message}
           </p>
         </div>
 
-        <div className="border-t border-white/5 p-6">
+        <div className="border-t border-white/5 p-6 flex gap-4">
+          {showCancelButton && onCancel && (
+            <button
+              onClick={() => {
+                onCancel();
+                onClose();
+              }}
+              className="flex-1 py-5 rounded-[32px] font-black uppercase tracking-[0.5em] text-sm transition-all active:scale-95 border border-white/20 text-white hover:bg-white/5"
+            >
+              {cancelText}
+            </button>
+          )}
+
           <button
-            onClick={onClose}
-            className={`w-full py-5 rounded-[32px] font-black uppercase tracking-[0.5em] text-sm transition-all active:scale-95 text-white ${current.button}`}
+            onClick={() => {
+              if (onConfirm) onConfirm();
+              onClose();
+            }}
+            className={`flex-1 py-5 rounded-[32px] font-black uppercase tracking-[0.5em] text-sm transition-all active:scale-95 text-white ${current.button}`}
           >
             {confirmText}
           </button>

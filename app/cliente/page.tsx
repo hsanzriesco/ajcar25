@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
     Car, FileText, Clock, CheckCircle, AlertCircle,
-    Download, LogOut, Wrench
+    Download, LogOut, Wrench, Calendar
 } from "lucide-react";
 
 interface Presupuesto {
@@ -14,6 +14,8 @@ interface Presupuesto {
     total: number;
     creado_en: string;
     mensaje?: string;
+    fecha_cita?: string;
+    hora_cita?: string;
 }
 
 interface Factura {
@@ -27,9 +29,9 @@ interface Factura {
 export default function ClientePage() {
     const [cliente, setCliente] = useState<any>(null);
     const [presupuestos, setPresupuestos] = useState<Presupuesto[]>([]);
-    const [facturas, setFacturas] = useState<Factura[]>([]);   // ← Esta era la que faltaba
+    const [facturas, setFacturas] = useState<Factura[]>([]);
     const [loading, setLoading] = useState(true);
-    const [view, setView] = useState<"estado" | "presupuestos" | "facturas" | "perfil">("estado");
+    const [view, setView] = useState<"estado" | "facturas" | "perfil">("estado");
 
     const router = useRouter();
 
@@ -55,7 +57,7 @@ export default function ClientePage() {
 
             setCliente(data.cliente);
             setPresupuestos(data.presupuestos || []);
-            setFacturas(data.facturas || []);        // ← Aquí asignamos las facturas
+            setFacturas(data.facturas || []);
 
         } catch (error) {
             console.error("Error cargando datos del cliente:", error);
@@ -124,70 +126,105 @@ export default function ClientePage() {
                     ))}
                 </div>
 
-                {/* ESTADO DEL VEHÍCULO */}
+                {/* ====================== ESTADO DEL VEHÍCULO ====================== */}
                 {view === "estado" && (
-                    <div className="bg-[#0f0f12] rounded-[40px] p-12 border border-white/5">
+                    <div className="space-y-8">
+                        <h2 className="text-4xl font-black text-white mb-10">Estado de mi Vehículo</h2>
+
                         {presupuestos.length > 0 ? (
-                            <>
-                                <div className="flex items-center gap-4 mb-10">
-                                    <Car size={48} className="text-blue-600" />
-                                    <div>
-                                        <h2 className="text-3xl font-black text-white">Estado de mi Vehículo</h2>
-                                        <p className="text-gray-500">Última intervención</p>
-                                    </div>
-                                </div>
+                            presupuestos.map((p) => {
+                                const estadoLower = (p.estado || "").toLowerCase();
+                                const estaEnTaller = estadoLower.includes("taller") || estadoLower === "en taller";
 
-                                {presupuestos.map((p) => {
-                                    const estadoLower = (p.estado || "").toLowerCase();
-                                    const isInTaller = estadoLower.includes("taller");
-
-                                    return (
-                                        <div key={p.id} className={`mb-8 p-10 rounded-3xl border ${isInTaller ? 'border-green-500/50 bg-green-500/10' : 'border-white/10'
-                                            }`}>
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <p className="text-blue-400 font-mono">{p.vehiculo}</p>
-                                                    <h3 className="text-2xl font-black text-white mt-2">Presupuesto #{p.id.slice(0, 8)}</h3>
-                                                </div>
-                                                <div className={`px-6 py-3 rounded-full text-sm font-bold uppercase tracking-widest ${isInTaller ? "bg-green-600 text-white" : "bg-gray-700 text-gray-300"
-                                                    }`}>
-                                                    {p.estado}
-                                                </div>
+                                return (
+                                    <div 
+                                        key={p.id} 
+                                        className={`bg-[#0f0f12] border rounded-[40px] p-12 transition-all ${
+                                            estaEnTaller 
+                                                ? "border-orange-500/50 bg-orange-500/5" 
+                                                : "border-white/10"
+                                        }`}
+                                    >
+                                        <div className="flex justify-between items-start mb-10">
+                                            <div>
+                                                <p className="uppercase text-xs tracking-widest text-gray-500 mb-2">Vehículo en taller</p>
+                                                <h3 className="text-3xl font-black text-white">{p.vehiculo}</h3>
                                             </div>
 
-                                            <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-8">
-                                                <div>
-                                                    <p className="text-xs text-gray-500 mb-1">FECHA</p>
-                                                    <p className="text-white font-medium">
-                                                        {new Date(p.creado_en).toLocaleDateString('es-ES')}
-                                                    </p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs text-gray-500 mb-1">TOTAL</p>
-                                                    <p className="text-3xl font-black text-white tracking-tighter">
-                                                        {p.total ? p.total.toFixed(2) + " €" : "Pendiente"}
-                                                    </p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs text-gray-500 mb-1">ESTADO</p>
-                                                    <p className={`text-lg font-bold ${isInTaller ? 'text-green-400' : 'text-white'}`}>
-                                                        {p.estado}
-                                                    </p>
-                                                </div>
+                                            <div className={`px-8 py-3 rounded-full font-bold uppercase tracking-widest text-sm ${
+                                                estaEnTaller 
+                                                    ? "bg-orange-600 text-white" 
+                                                    : "bg-green-600 text-white"
+                                            }`}>
+                                                {p.estado || "Pendiente"}
                                             </div>
                                         </div>
-                                    );
-                                })}
-                            </>
+
+                                        {estaEnTaller && (
+                                            <div className="mb-10 bg-orange-500/10 border border-orange-500/30 rounded-3xl p-10">
+                                                <div className="flex items-center gap-5 mb-6">
+                                                    <div className="w-16 h-16 bg-orange-500/20 rounded-2xl flex items-center justify-center flex-shrink-0">
+                                                        <Wrench size={32} className="text-orange-400" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-orange-400 font-black text-xl">Tu vehículo está siendo reparado</p>
+                                                        <p className="text-gray-400 mt-1">El equipo de AJCAR 25 está trabajando en él</p>
+                                                    </div>
+                                                </div>
+
+                                                {p.mensaje && (
+                                                    <div className="italic text-gray-300 border-l-4 border-orange-500 pl-6 py-1">
+                                                        "{p.mensaje}"
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                            <div>
+                                                <p className="text-xs uppercase tracking-widest text-gray-500 mb-2">Fecha de entrada</p>
+                                                <p className="text-white font-medium text-lg">
+                                                    {new Date(p.creado_en).toLocaleDateString('es-ES', {
+                                                        day: 'numeric',
+                                                        month: 'long',
+                                                        year: 'numeric'
+                                                    })}
+                                                </p>
+                                            </div>
+
+                                            {p.fecha_cita && (
+                                                <div>
+                                                    <p className="text-xs uppercase tracking-widest text-gray-500 mb-2">Próxima cita</p>
+                                                    <p className="text-white font-medium text-lg">
+                                                        {new Date(p.fecha_cita).toLocaleDateString('es-ES')} • {p.hora_cita}
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            <div>
+                                                <p className="text-xs uppercase tracking-widest text-gray-500 mb-2">Importe estimado</p>
+                                                <p className="text-3xl font-black text-white tracking-tighter">
+                                                    {p.total ? `${p.total.toFixed(2)} €` : "Pendiente"}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })
                         ) : (
-                            <div className="text-center py-20">
-                                <Car size={80} className="mx-auto mb-6 text-gray-600" />
-                                <p className="text-2xl font-bold text-white">No tienes vehículos en proceso</p>
+                            <div className="bg-[#0f0f12] rounded-[40px] p-20 text-center border border-white/5">
+                                <Car size={90} className="mx-auto mb-8 text-gray-600" />
+                                <p className="text-3xl font-black text-white mb-4">No tienes vehículos en taller</p>
+                                <p className="text-gray-500 max-w-md mx-auto">
+                                    Cuando envíes un presupuesto y sea aceptado por el taller, 
+                                    podrás ver aquí el estado en tiempo real de tu vehículo.
+                                </p>
                             </div>
                         )}
                     </div>
                 )}
 
+                {/* ====================== MIS FACTURAS ====================== */}
                 {view === "facturas" && (
                     <div className="space-y-6">
                         <h2 className="text-3xl font-black text-white mb-8">Mis Facturas</h2>
@@ -235,14 +272,27 @@ export default function ClientePage() {
                     </div>
                 )}
 
-                {/* Otras vistas */}
+                {/* ====================== MI PERFIL ====================== */}
                 {view === "perfil" && (
-                    <div className="bg-[#0f0f12] rounded-[40px] p-12">
+                    <div className="bg-[#0f0f12] rounded-[40px] p-12 border border-white/5">
                         <h2 className="text-3xl font-black text-white mb-8">Mi Perfil</h2>
-                        <div className="space-y-4">
-                            <p><strong>Nombre:</strong> {cliente?.nombre} {cliente?.apellido1}</p>
-                            <p><strong>Email:</strong> {cliente?.email}</p>
-                            <p><strong>Teléfono:</strong> {cliente?.telefono}</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-lg">
+                            <div>
+                                <p className="text-gray-500 text-sm mb-1">Nombre</p>
+                                <p className="text-white font-medium">{cliente?.nombre} {cliente?.apellido1}</p>
+                            </div>
+                            <div>
+                                <p className="text-gray-500 text-sm mb-1">Email</p>
+                                <p className="text-white font-medium">{cliente?.email}</p>
+                            </div>
+                            <div>
+                                <p className="text-gray-500 text-sm mb-1">Teléfono</p>
+                                <p className="text-white font-medium">{cliente?.telefono}</p>
+                            </div>
+                            <div>
+                                <p className="text-gray-500 text-sm mb-1">Tipo de cliente</p>
+                                <p className="text-white font-medium capitalize">{cliente?.tipo_cliente}</p>
+                            </div>
                         </div>
                     </div>
                 )}

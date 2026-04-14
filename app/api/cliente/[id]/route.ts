@@ -16,15 +16,7 @@ export async function GET(
 
     // Datos del cliente
     const clienteData = await sql`
-      SELECT 
-        id, 
-        nombre, 
-        apellido1, 
-        apellido2, 
-        email, 
-        telefono, 
-        documento_identidad, 
-        tipo_cliente
+      SELECT id, nombre, apellido1, apellido2, email, telefono, tipo_cliente
       FROM usuarios 
       WHERE id = ${id}
       LIMIT 1
@@ -36,25 +28,59 @@ export async function GET(
 
     const cliente = clienteData[0];
 
-    // Facturas reales (usando cliente_nombre como criterio principal)
+    // 1. Obtenemos la información principal de presupuestos_pedidos (estado, vehículo, etc.)
+    const pedidos = await sql`
+      SELECT 
+        id,
+        vehiculo,
+        estado,
+        mensaje,
+        creado_en,
+        fecha_cita,
+        hora_cita
+      FROM presupuestos_pedidos 
+      WHERE usuario_id = ${id}
+      ORDER BY creado_en DESC
+    `;
+
+    // 2. Obtenemos el total (subtotal) desde lineas_presupuestos
+    const totales = await sql`
+      SELECT 
+        presupuesto_id,
+        SUM(subtotal) as total
+      FROM lineas_presupuestos 
+      WHERE presupuesto_id IN (SELECT id FROM presupuestos_pedidos WHERE usuario_id = ${id})
+      GROUP BY presupuesto_id
+    `;
+
+    // Combinamos ambos resultados
+    const presupuestos = pedidos.map((pedido: any) => {
+      const totalData = totales.find((t: any) => t.presupuesto_id === pedido.id);
+      return {
+        ...pedido,
+        total: totalData ? Number(totalData.total) : 0
+      };
+    });
+
+    // Facturas
     const facturas = await sql`
       SELECT 
         id,
         numero_factura,
         total,
         fecha_emision,
-        vehiculo,
-        articulos
+        estado,
+        vehiculo
       FROM facturas 
       WHERE cliente_nombre ILIKE '%' || ${cliente.nombre} || '%'
       ORDER BY fecha_emision DESC
     `;
 
-    console.log(`✅ Facturas encontradas: ${facturas.length} para ${cliente.nombre}`);
+    console.log(`✅ API cliente cargada | Presupuestos: ${presupuestos.length} | Facturas: ${facturas.length}`);
 
     return NextResponse.json({
       cliente,
-      presupuestos: [],        // Temporalmente vacío (puedes activarlo después)
+      presupuestos,
       facturas
     });
 
