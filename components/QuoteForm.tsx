@@ -13,7 +13,7 @@ export default function QuoteForm() {
   const [loading, setLoading] = useState(false);
   const [serverError, setServerError] = useState("");
 
-  // Estado para el AlertModal personalizado con botones Sí/No
+  // Estado para el AlertModal personalizado
   const [customAlert, setCustomAlert] = useState<{
     isOpen: boolean;
     title: string;
@@ -66,9 +66,7 @@ export default function QuoteForm() {
     };
   }, [selectedCountry]);
 
-  const [maxInputLength, setMaxInputLength] = useState(countryData.maxLength + 5);
-
-  // Verificación del email con AlertModal + botones Sí/No
+  // Verificación inteligente del email
   const verificarEmailExistente = async (email: string) => {
     if (!email || email.length < 6) return;
 
@@ -77,26 +75,37 @@ export default function QuoteForm() {
       const data = await res.json();
 
       if (data.existe) {
-        showCustomAlert(
-          "Correo ya registrado",
-          "Has utilizado un correo electrónico que ya está registrado.\n\n¿Quieres asignar este vehículo a este correo también?",
-          "warning",
-          // onConfirm → Sí
-          () => {
-            setForm(prev => ({
-              ...prev,
-              nombre: data.usuario.nombre || prev.nombre,
-            }));
-          },
-          // onCancel → No
-          () => {
-            setForm(prev => ({ ...prev, email: "" }));
-          }
-        );
+        if (data.esEmpleado) {
+          // === ALERTA PARA EMPLEADO ===
+          showCustomAlert(
+            "Acción no permitida",
+            "No se puede enviar un presupuesto a un correo de empleado.\n\nPor favor utiliza un correo personal o de cliente.",
+            "error",
+            undefined,
+            () => setForm(prev => ({ ...prev, email: "" })) // Limpiar email al cerrar
+          );
+        } else {
+          // === ALERTA PARA CLIENTE ===
+          showCustomAlert(
+            "Correo ya registrado",
+            "Has utilizado un correo electrónico que ya está registrado.\n\n¿Quieres asignar este vehículo a este correo también?",
+            "warning",
+            // Sí → Asignar datos del cliente
+            () => {
+              setForm(prev => ({
+                ...prev,
+                nombre: data.usuario.nombre || prev.nombre,
+              }));
+            },
+            // No → Limpiar el email
+            () => {
+              setForm(prev => ({ ...prev, email: "" }));
+            }
+          );
+        }
       }
     } catch (error) {
       console.error("Error verificando email:", error);
-      showCustomAlert("Error", "No se pudo verificar el correo electrónico.", "error");
     }
   };
 
@@ -167,9 +176,11 @@ export default function QuoteForm() {
 
       if (!response.ok) {
         setServerError(data.message || "Error al enviar el presupuesto");
+        showCustomAlert("Error", data.message || "No se pudo enviar el presupuesto", "error");
       } else {
-        showCustomAlert("¡Éxito!", "Presupuesto solicitado correctamente.", "success");
+        showCustomAlert("¡Éxito!", "Presupuesto solicitado correctamente. Te contactaremos pronto.", "success");
         
+        // Resetear formulario
         setForm({
           nombre: "",
           email: "",
@@ -192,8 +203,6 @@ export default function QuoteForm() {
   return (
     <>
       <form onSubmit={handleSubmit} className="space-y-4 w-full">
-        
-        {/* NOMBRE Y EMAIL */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm mb-1 text-gray-300 font-medium">Nombre Completo</label>
@@ -225,7 +234,6 @@ export default function QuoteForm() {
           </div>
         </div>
 
-        {/* TELÉFONO */}
         <div>
           <label className="block text-sm mb-1 text-gray-300 font-medium">Número de Teléfono</label>
           <div className={`bg-neutral-800 border rounded p-2 focus-within:border-red-500 transition-all ${errors.phone ? "border-red-500" : "border-white/10"}`}>
@@ -243,7 +251,6 @@ export default function QuoteForm() {
           {errors.phone && <p className="text-red-500 text-[11px] mt-1">{errors.phone}</p>}
         </div>
 
-        {/* VEHÍCULO Y AÑO */}
         <div className="flex gap-4">
           <div className="flex-1">
             <label className="block text-sm mb-1 text-gray-300 font-medium">Vehículo</label>
@@ -274,7 +281,6 @@ export default function QuoteForm() {
           </div>
         </div>
 
-        {/* FECHA Y HORA */}
         <div className="flex gap-4">
           <div className="flex-1">
             <label className="block text-sm mb-1 text-gray-300 font-medium">Fecha preferida</label>
@@ -306,7 +312,6 @@ export default function QuoteForm() {
           </div>
         </div>
 
-        {/* MENSAJE */}
         <div>
           <label className="block text-sm mb-1 text-gray-300 font-medium">¿Qué necesitas?</label>
           <div className="flex items-start bg-neutral-800 border border-white/10 rounded px-3 pt-3 focus-within:border-red-500 transition-colors">
@@ -348,17 +353,17 @@ export default function QuoteForm() {
         </button>
       </form>
 
-      {/* AlertModal con botones Sí y No */}
+      {/* AlertModal */}
       <AlertModal
         isOpen={customAlert.isOpen}
+        onClose={closeCustomAlert}
         title={customAlert.title}
         message={customAlert.message}
         type={customAlert.type}
-        onClose={closeCustomAlert}
         onConfirm={customAlert.onConfirm}
         onCancel={customAlert.onCancel}
-        showCancelButton={true}
-        confirmText="Sí, asignar vehículo"
+        showCancelButton={customAlert.type === "warning"}
+        confirmText={customAlert.type === "warning" ? "Sí, asignar vehículo" : "Aceptar"}
         cancelText="No, cambiar correo"
       />
     </>

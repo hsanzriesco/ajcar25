@@ -30,19 +30,16 @@ export async function GET(
     return NextResponse.json(resultado[0]);
 
   } catch (error: any) {
-
     console.error("Error al obtener presupuesto:", error);
-
     return NextResponse.json(
       { error: error.message || "Error interno del servidor" },
       { status: 500 }
     );
-
   }
 }
 
 /* =========================
-   ACTUALIZAR PRESUPUESTO
+   ACTUALIZAR PRESUPUESTO (PATCH)
 ========================= */
 
 export async function PATCH(
@@ -52,19 +49,14 @@ export async function PATCH(
   const { id } = await context.params;
 
   try {
-
-    const { estado, articulos } = await req.json();
+    const { estado, articulos, motivo_cancelacion } = await req.json();
 
     const sql = neon(process.env.DATABASE_URL!);
 
-    // INICIO DE OPERACIÓN ATÓMICA (Lógica de negocio)
+    // ====================== LÓGICA PARA ACEPTADO POR EL CLIENTE ======================
     if (estado === "Aceptado por el cliente" && articulos && articulos.length > 0) {
-
-      // Actualizamos el stock de cada artículo incluido
+      // Actualizamos el stock de cada artículo
       for (const item of articulos) {
-
-        console.log("item");
-
         await sql`
           UPDATE articulos 
           SET 
@@ -72,12 +64,40 @@ export async function PATCH(
             stock_reservado = stock_reservado + ${item.cantidad}
           WHERE codigo = ${item.codigo}
         `;
-
       }
-
     }
 
-    // Actualizamos el estado del presupuesto
+    // ====================== LÓGICA PARA CANCELACIÓN ======================
+    if (estado === "Cancelado") {
+      if (!motivo_cancelacion || motivo_cancelacion.trim() === "") {
+        return NextResponse.json(
+          { error: "El motivo de cancelación es obligatorio" },
+          { status: 400 }
+        );
+      }
+
+      // Actualizamos estado + motivo de cancelación
+      const resultado = await sql`
+        UPDATE presupuestos_pedidos
+        SET 
+          estado = ${estado},
+          motivo_cancelacion = ${motivo_cancelacion.trim()}
+        WHERE id = ${id}
+        RETURNING *
+      `;
+
+      if (!resultado.length) {
+        return NextResponse.json(
+          { error: "Presupuesto no encontrado" },
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json(resultado[0]);
+    }
+
+    // ====================== ACTUALIZACIÓN NORMAL (otros estados) ======================
+    // Actualizamos solo el estado
     const resultado = await sql`
       UPDATE presupuestos_pedidos
       SET estado = ${estado} 
@@ -85,16 +105,20 @@ export async function PATCH(
       RETURNING *
     `;
 
+    if (!resultado.length) {
+      return NextResponse.json(
+        { error: "Presupuesto no encontrado" },
+        { status: 404 }
+      );
+    }
+
     return NextResponse.json(resultado[0]);
 
   } catch (error: any) {
-
-    console.error("Error al actualizar y mover stock:", error);
-
+    console.error("Error al actualizar presupuesto:", error);
     return NextResponse.json(
       { error: error.message || "Error interno del servidor" },
       { status: 500 }
     );
-
   }
 }

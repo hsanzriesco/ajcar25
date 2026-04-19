@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-    Car, FileText, Clock, CheckCircle, AlertCircle,
-    Download, LogOut, Wrench, Calendar
+    Car, FileText, LogOut, Wrench, Download
 } from "lucide-react";
 
 interface Presupuesto {
@@ -16,13 +15,15 @@ interface Presupuesto {
     mensaje?: string;
     fecha_cita?: string;
     hora_cita?: string;
+    motivo_cancelacion?: string;
 }
 
 interface Factura {
     id: string;
     vehiculo: string;
     total: number;
-    fecha_emision: string;
+    creado_en: string;           // ← AÑADIDO
+    fecha_emision?: string;      // ← Mantenido por compatibilidad
     estado: string;
 }
 
@@ -51,7 +52,10 @@ export default function ClientePage() {
         try {
             const res = await fetch(`/api/cliente/${userId}`);
 
-            if (!res.ok) throw new Error("Error al cargar datos");
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.detalle || `Error HTTP ${res.status}`);
+            }
 
             const data = await res.json();
 
@@ -59,7 +63,7 @@ export default function ClientePage() {
             setPresupuestos(data.presupuestos || []);
             setFacturas(data.facturas || []);
 
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error cargando datos del cliente:", error);
         } finally {
             setLoading(false);
@@ -94,7 +98,7 @@ export default function ClientePage() {
                             <h1 className="text-5xl font-black italic text-white tracking-tighter">
                                 Hola, {cliente?.nombre}
                             </h1>
-                            <p className="text-blue-500 text-sm font-bold uppercase tracking-widest">Área de Cliente</p>
+                            <p className="text-blue-500 text-sm font-bold uppercase tracking-widest">ÁREA DE CLIENTE</p>
                         </div>
                     </div>
 
@@ -116,47 +120,61 @@ export default function ClientePage() {
                         <button
                             key={tab.key}
                             onClick={() => setView(tab.key as any)}
-                            className={`px-8 py-3 rounded-2xl text-sm font-bold transition-all ${view === tab.key
+                            className={`px-8 py-3 rounded-2xl text-sm font-bold transition-all ${
+                                view === tab.key
                                     ? "bg-blue-600 text-white shadow-lg"
                                     : "text-gray-400 hover:bg-white/5 hover:text-white"
-                                }`}
+                            }`}
                         >
                             {tab.label}
                         </button>
                     ))}
                 </div>
 
-                {/* ====================== ESTADO DEL VEHÍCULO ====================== */}
+                {/* ====================== ESTADO DE MIS VEHÍCULOS ====================== */}
                 {view === "estado" && (
                     <div className="space-y-8">
-                        <h2 className="text-4xl font-black text-white mb-10">Estado de mi Vehículo</h2>
+                        <h2 className="text-4xl font-black text-white mb-10">Estado de mis Vehículos</h2>
 
                         {presupuestos.length > 0 ? (
                             presupuestos.map((p) => {
-                                const estadoLower = (p.estado || "").toLowerCase();
+                                const estadoLower = (p.estado || "").toLowerCase().trim();
                                 const estaEnTaller = estadoLower.includes("taller") || estadoLower === "en taller";
+                                const estaCancelado = estadoLower === "cancelado";
+
+                                let estadoColor = "bg-gray-600 text-white";
+                                let estadoTexto = p.estado || "Pendiente";
+
+                                if (estaEnTaller) {
+                                    estadoColor = "bg-orange-600 text-white";
+                                    estadoTexto = "En Taller";
+                                } else if (estaCancelado) {
+                                    estadoColor = "bg-red-600 text-white";
+                                    estadoTexto = "Cancelado";
+                                }
+
+                                const totalFormateado = (p.total != null && !isNaN(Number(p.total)))
+                                    ? `${Number(p.total).toFixed(2)} €`
+                                    : "Pendiente";
 
                                 return (
-                                    <div 
-                                        key={p.id} 
+                                    <div
+                                        key={p.id}
                                         className={`bg-[#0f0f12] border rounded-[40px] p-12 transition-all ${
                                             estaEnTaller 
                                                 ? "border-orange-500/50 bg-orange-500/5" 
+                                                : estaCancelado 
+                                                ? "border-red-500/50 bg-red-500/5" 
                                                 : "border-white/10"
                                         }`}
                                     >
                                         <div className="flex justify-between items-start mb-10">
                                             <div>
-                                                <p className="uppercase text-xs tracking-widest text-gray-500 mb-2">Vehículo en taller</p>
+                                                <p className="uppercase text-xs tracking-widest text-gray-500 mb-2">Mi vehículo</p>
                                                 <h3 className="text-3xl font-black text-white">{p.vehiculo}</h3>
                                             </div>
-
-                                            <div className={`px-8 py-3 rounded-full font-bold uppercase tracking-widest text-sm ${
-                                                estaEnTaller 
-                                                    ? "bg-orange-600 text-white" 
-                                                    : "bg-green-600 text-white"
-                                            }`}>
-                                                {p.estado || "Pendiente"}
+                                            <div className={`px-8 py-3 rounded-full font-bold uppercase tracking-widest text-sm ${estadoColor}`}>
+                                                {estadoTexto}
                                             </div>
                                         </div>
 
@@ -167,11 +185,10 @@ export default function ClientePage() {
                                                         <Wrench size={32} className="text-orange-400" />
                                                     </div>
                                                     <div>
-                                                        <p className="text-orange-400 font-black text-xl">Tu vehículo está siendo reparado</p>
-                                                        <p className="text-gray-400 mt-1">El equipo de AJCAR 25 está trabajando en él</p>
+                                                        <p className="text-orange-400 font-black text-xl">Tu vehículo está en taller</p>
+                                                        <p className="text-gray-400 mt-1">Estamos trabajando en él</p>
                                                     </div>
                                                 </div>
-
                                                 {p.mensaje && (
                                                     <div className="italic text-gray-300 border-l-4 border-orange-500 pl-6 py-1">
                                                         "{p.mensaje}"
@@ -180,31 +197,24 @@ export default function ClientePage() {
                                             </div>
                                         )}
 
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                        {estaCancelado && p.motivo_cancelacion && (
+                                            <div className="mb-10 bg-red-500/10 border border-red-500/30 rounded-3xl p-10">
+                                                <p className="text-red-400 font-bold mb-2">Motivo de cancelación:</p>
+                                                <p className="text-gray-300 italic">"{p.motivo_cancelacion}"</p>
+                                            </div>
+                                        )}
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                             <div>
-                                                <p className="text-xs uppercase tracking-widest text-gray-500 mb-2">Fecha de entrada</p>
+                                                <p className="text-xs uppercase tracking-widest text-gray-500 mb-2">Fecha de solicitud</p>
                                                 <p className="text-white font-medium text-lg">
-                                                    {new Date(p.creado_en).toLocaleDateString('es-ES', {
-                                                        day: 'numeric',
-                                                        month: 'long',
-                                                        year: 'numeric'
-                                                    })}
+                                                    {new Date(p.creado_en).toLocaleDateString('es-ES')}
                                                 </p>
                                             </div>
-
-                                            {p.fecha_cita && (
-                                                <div>
-                                                    <p className="text-xs uppercase tracking-widest text-gray-500 mb-2">Próxima cita</p>
-                                                    <p className="text-white font-medium text-lg">
-                                                        {new Date(p.fecha_cita).toLocaleDateString('es-ES')} • {p.hora_cita}
-                                                    </p>
-                                                </div>
-                                            )}
-
                                             <div>
                                                 <p className="text-xs uppercase tracking-widest text-gray-500 mb-2">Importe estimado</p>
                                                 <p className="text-3xl font-black text-white tracking-tighter">
-                                                    {p.total ? `${p.total.toFixed(2)} €` : "Pendiente"}
+                                                    {totalFormateado}
                                                 </p>
                                             </div>
                                         </div>
@@ -214,10 +224,9 @@ export default function ClientePage() {
                         ) : (
                             <div className="bg-[#0f0f12] rounded-[40px] p-20 text-center border border-white/5">
                                 <Car size={90} className="mx-auto mb-8 text-gray-600" />
-                                <p className="text-3xl font-black text-white mb-4">No tienes vehículos en taller</p>
+                                <p className="text-3xl font-black text-white mb-4">No tienes vehículos activos en taller</p>
                                 <p className="text-gray-500 max-w-md mx-auto">
-                                    Cuando envíes un presupuesto y sea aceptado por el taller, 
-                                    podrás ver aquí el estado en tiempo real de tu vehículo.
+                                    Cuando envíes un presupuesto y sea aceptado, podrás ver aquí el estado en tiempo real.
                                 </p>
                             </div>
                         )}
@@ -227,33 +236,36 @@ export default function ClientePage() {
                 {/* ====================== MIS FACTURAS ====================== */}
                 {view === "facturas" && (
                     <div className="space-y-6">
-                        <h2 className="text-3xl font-black text-white mb-8">Mis Facturas</h2>
+                        <h2 className="text-4xl font-black text-white mb-10">Mis Facturas</h2>
 
                         {facturas.length > 0 ? (
                             facturas.map((f) => (
-                                <div key={f.id} className="bg-[#0f0f12] p-10 rounded-[40px] border border-white/5 hover:border-green-500/30 transition-all flex flex-col md:flex-row justify-between gap-8 items-start">
+                                <div 
+                                    key={f.id} 
+                                    className="bg-[#0f0f12] p-10 rounded-[40px] border border-green-500/30 hover:border-green-500/50 transition-all flex flex-col md:flex-row justify-between gap-8 items-start"
+                                >
                                     <div className="flex-1">
                                         <div className="flex items-center gap-4">
                                             <div className="w-12 h-12 bg-green-600/20 rounded-2xl flex items-center justify-center">
                                                 <FileText size={28} className="text-green-500" />
                                             </div>
                                             <div>
-                                                <p className="text-green-400 font-mono text-sm">Factura #{f.id}</p>
+                                                <p className="text-green-400 font-mono text-sm">Factura #{f.id.slice(0, 8)}</p>
                                                 <h3 className="text-xl font-bold text-white mt-1">{f.vehiculo}</h3>
                                             </div>
                                         </div>
                                         <p className="text-gray-500 mt-4">
-                                            Fecha: {new Date(f.fecha_emision).toLocaleDateString('es-ES')}
+                                            Fecha: {new Date(f.creado_en || f.fecha_emision || Date.now()).toLocaleDateString('es-ES')}
                                         </p>
                                     </div>
 
                                     <div className="text-right">
-                                        <p className="text-4xl font-black text-white tracking-tighter">
-                                            {Number(f.total).toFixed(2)}€
+                                        <p className="text-4xl font-black text-green-400 tracking-tighter">
+                                            {Number(f.total).toFixed(2)} €
                                         </p>
                                         <button
-                                            onClick={() => window.open(`/api/pdf/factura/${f.id}`, "_blank")}
-                                            className="mt-6 bg-white text-black px-8 py-4 rounded-2xl font-bold hover:bg-gray-100 transition-all flex items-center gap-2"
+                                            onClick={() => alert("Funcionalidad de descarga de factura en desarrollo")}
+                                            className="mt-6 bg-green-600 hover:bg-green-700 text-white px-8 py-4 rounded-2xl font-bold transition-all flex items-center gap-2"
                                         >
                                             <Download size={18} /> Descargar Factura PDF
                                         </button>
@@ -261,11 +273,11 @@ export default function ClientePage() {
                                 </div>
                             ))
                         ) : (
-                            <div className="bg-[#0f0f12] rounded-[40px] p-16 text-center border border-white/5">
+                            <div className="bg-[#0f0f12] rounded-[40px] p-20 text-center border border-white/5">
                                 <FileText size={80} className="mx-auto mb-6 text-gray-600" />
                                 <p className="text-2xl font-bold text-white mb-3">Aún no tienes facturas</p>
                                 <p className="text-gray-500 max-w-md mx-auto">
-                                    Cuando el taller facture uno de tus vehículos, la factura aparecerá aquí automáticamente.
+                                    Cuando el taller complete y facture un mantenimiento, aparecerá aquí automáticamente.
                                 </p>
                             </div>
                         )}
@@ -279,7 +291,9 @@ export default function ClientePage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-lg">
                             <div>
                                 <p className="text-gray-500 text-sm mb-1">Nombre</p>
-                                <p className="text-white font-medium">{cliente?.nombre} {cliente?.apellido1}</p>
+                                <p className="text-white font-medium">
+                                    {cliente?.nombre} {cliente?.apellido || cliente?.apellido1}
+                                </p>
                             </div>
                             <div>
                                 <p className="text-gray-500 text-sm mb-1">Email</p>
@@ -291,7 +305,9 @@ export default function ClientePage() {
                             </div>
                             <div>
                                 <p className="text-gray-500 text-sm mb-1">Tipo de cliente</p>
-                                <p className="text-white font-medium capitalize">{cliente?.tipo_cliente}</p>
+                                <p className="text-white font-medium capitalize">
+                                    {cliente?.tipo_cliente || "Particular"}
+                                </p>
                             </div>
                         </div>
                     </div>

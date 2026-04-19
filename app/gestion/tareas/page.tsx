@@ -73,6 +73,9 @@ function EmpleadoContent() {
   const [enviandoEmail, setEnviandoEmail] = useState(false);
   const [facturando, setFacturando] = useState(false);
   const [cambiandoEstado, setCambiandoEstado] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelando, setCancelando] = useState(false);
 
   const [showNuevoPresupuesto, setShowNuevoPresupuesto] = useState(false);
   const [modalStep, setModalStep] = useState(1);
@@ -80,6 +83,10 @@ function EmpleadoContent() {
   const [verificando, setVerificando] = useState(false);
   const [usuarioExiste, setUsuarioExiste] = useState(false);
   const [sugerencias, setSugerencias] = useState<Articulo[]>([]);
+
+  // Estados para errores de validación
+  const [dniError, setDniError] = useState<string>("");
+  const [emailError, setEmailError] = useState<string>("");
 
   const [nuevoCliente, setNuevoCliente] = useState({
     nombre: "",
@@ -90,7 +97,7 @@ function EmpleadoContent() {
     vehiculo: "",
     anio: new Date().getFullYear(),
     mensaje: "",
-    tipo_cliente: "particular"   // ← Cambia esta línea
+    tipo_cliente: "particular"
   });
 
   // ==================== ESTADO PARA ALERTAS ====================
@@ -143,10 +150,53 @@ function EmpleadoContent() {
     }
   }, [router, cargarTodo]);
 
+  
+  // ====================== VALIDACIÓN DE EMAIL ======================
+  const validarEmail = (email: string): string => {
+    if (!email || email.trim() === "") {
+      return "El correo electrónico es obligatorio";
+    }
+
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+    if (!emailRegex.test(email.trim())) {
+      return "El formato del correo electrónico no es válido";
+    }
+
+    return ""; // vacío = válido
+  };
+
+  // ====================== VALIDACIÓN DE DNI ======================
+  const validarDNI = (dni: string) => {
+    if (!dni) {
+      setDniError("");
+      return;
+    }
+
+    const valor = dni.toUpperCase().trim();
+
+    // DNI (8 números + 1 letra)
+    const dniRegex = /^[0-9]{8}[A-Z]$/;
+    // NIE (X,Y,Z + 7 números + 1 letra)
+    const nieRegex = /^[XYZ][0-9]{7}[A-Z]$/;
+    // CIF básico (Letra + 7 números + letra/número)
+    const cifRegex = /^[ABCDEFGHJNPQRSUVW][0-9]{7}[0-9A-J]$/;
+
+    if (dniRegex.test(valor) || nieRegex.test(valor) || cifRegex.test(valor)) {
+      setDniError("");
+    } else {
+      setDniError("El formato del DNI / NIE / CIF no es válido");
+    }
+  };
+
   // ====================== VERIFICACIÓN POR DNI ======================
   const verificarUsuario = async () => {
     const dni = nuevoCliente.documento_identidad.trim().toUpperCase();
     if (!dni) return;
+
+    // Validar formato antes de verificar
+    validarDNI(dni);
+    if (dniError) return;
 
     setVerificando(true);
     try {
@@ -183,6 +233,17 @@ function EmpleadoContent() {
       return;
     }
 
+    // === VALIDACIÓN DEL CORREO ELECTRÓNICO ===
+    const errorEmail = validarEmail(nuevoCliente.email);
+    if (errorEmail) {
+      setEmailError(errorEmail);
+      showAlert("Correo inválido", errorEmail, "warning");
+      return;
+    } else {
+      setEmailError("");
+    }
+
+    // Validación del teléfono (sin tocar, tal como estaba)
     const telefonoLimpio = nuevoCliente.telefono.replace(/[\s\-\(\)\.]/g, "");
     if (!telefonoLimpio || !/^[6-9]\d{8}$/.test(telefonoLimpio)) {
       showAlert("Teléfono inválido", "El teléfono debe tener 9 dígitos empezando por 6-9", "warning");
@@ -206,7 +267,7 @@ function EmpleadoContent() {
           email: nuevoCliente.email.trim().toLowerCase(),
           telefono: telefonoLimpio,
           documento_identidad: nuevoCliente.documento_identidad.trim().toUpperCase(),
-          tipo_cliente: nuevoCliente.tipo_cliente   // ← enviamos directamente lo del estado
+          tipo_cliente: nuevoCliente.tipo_cliente
         })
       });
 
@@ -233,6 +294,7 @@ function EmpleadoContent() {
     }
   };
 
+  // ====================== OTRAS FUNCIONES (sin cambios) ======================
   const buscarYAñadirArticuloModal = async () => {
     const cod = codigoBusqueda.toUpperCase().trim();
     if (!cod) return;
@@ -296,7 +358,6 @@ function EmpleadoContent() {
     }
   };
 
-  // ====================== FUNCIÓN PDF ======================
   const generarFacturaPDF = (data: any, abrirEnVentana: boolean = true) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -341,7 +402,7 @@ function EmpleadoContent() {
 
     const tableBody = (data.articulos || []).map((art: any) => [
       art.descripcion || art.nombre || "Artículo",
-      art.cantidad.toString(),
+      art.cantidad?.toString() || "1",
       `${Number(art.precio_unitario || 0).toFixed(2)}€`,
       `${(art.cantidad * Number(art.precio_unitario || 0)).toFixed(2)}€`
     ]);
@@ -369,7 +430,18 @@ function EmpleadoContent() {
     });
 
     const finalY = (doc as any).lastAutoTable.finalY + 8;
-    const total = data.total || tableBody.reduce((acc: number, row: any[]) => acc + parseFloat(row[3].replace("€", "")), 0);
+
+    let total = 0;
+    if (data.total !== undefined && data.total !== null) {
+      total = Number(data.total);
+    } else if (tableBody.length > 0) {
+      total = tableBody.reduce((acc: number, row: any[]) => {
+        const valor = parseFloat((row[3] || "0").toString().replace("€", ""));
+        return acc + (isNaN(valor) ? 0 : valor);
+      }, 0);
+    }
+
+    if (isNaN(total)) total = 0;
 
     doc.setFillColor(41, 128, 185);
     doc.rect(margin, finalY, pageWidth - margin * 2, 12, "F");
@@ -515,6 +587,43 @@ function EmpleadoContent() {
     }
   };
 
+  // ====================== CANCELAR MANTENIMIENTO ======================
+  const cancelarMantenimiento = async () => {
+    if (!seleccionado || !cancelReason.trim()) {
+      showAlert("Motivo requerido", "Debes explicar la razón por la que se cancela el mantenimiento.", "warning");
+      return;
+    }
+
+    setCancelando(true);
+
+    try {
+      const res = await fetch(`/api/presupuestos/${seleccionado.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          estado: "Cancelado",
+          motivo_cancelacion: cancelReason.trim().toUpperCase()
+        })
+      });
+
+      if (res.ok) {
+        showAlert("Mantenimiento cancelado", "El expediente ha sido cancelado correctamente.", "success");
+        setShowCancelModal(false);
+        setCancelReason("");
+        setSeleccionado(null);
+        await cargarTodo();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        showAlert("Error al cancelar", data?.error || "No se pudo cancelar el mantenimiento", "error");
+      }
+    } catch (error) {
+      console.error("Error al cancelar:", error);
+      showAlert("Error de conexión", "No se pudo conectar con el servidor.", "error");
+    } finally {
+      setCancelando(false);
+    }
+  };
+
   const cambiarEstado = async (id: string, nuevoEstado: string) => {
     setCambiandoEstado(true);
     try {
@@ -581,6 +690,7 @@ function EmpleadoContent() {
                   setLineas([]);
                   setSugerencias([]);
                   setUsuarioExiste(false);
+                  setDniError("");
                   setNuevoCliente({ nombre: "", apellidos: "", email: "", telefono: "", documento_identidad: "", vehiculo: "", anio: new Date().getFullYear(), mensaje: "", tipo_cliente: "Particular" });
                 }}
                 className="px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-blue-400 hover:bg-blue-600/10 transition-all border border-blue-500/20 ml-1 flex items-center gap-2"
@@ -599,36 +709,47 @@ function EmpleadoContent() {
                   <p className="text-[10px] uppercase font-black tracking-widest">Cargando Sistema...</p>
                 </div>
               ) : view === "stock" ? (
-                /* ... mismo código de stock ... */
                 <div className="bg-[#0f0f12] rounded-[40px] border border-white/5 overflow-hidden shadow-2xl">
-                  {/* (código de stock sin cambios) */}
                   <div className="p-8 border-b border-white/5 bg-white/[0.01] flex justify-between items-center">
                     <div>
-                      <h3 className="text-white font-black italic uppercase tracking-tighter">Últimos artículos utilizados</h3>
-                      <p className="text-[9px] text-gray-500 uppercase tracking-widest">Mostrando los 5 más recientes</p>
+                      <h3 className="text-white font-black italic uppercase tracking-tighter">Artículos en Almacén</h3>
                     </div>
                     <div className="bg-white/5 rounded-2xl flex items-center px-6 border border-white/5 flex-1 max-w-md ml-8">
                       <Search size={16} className="text-gray-600 mr-4" />
-                      <input type="text" value={filtroStock} onChange={(e) => setFiltroStock(e.target.value)} placeholder="FILTRAR..." className="bg-transparent border-none focus:ring-0 text-xs text-white w-full py-4 uppercase font-bold tracking-tight" />
+                      <input
+                        type="text"
+                        value={filtroStock}
+                        onChange={(e) => setFiltroStock(e.target.value)}
+                        placeholder="FILTRAR..."
+                        className="bg-transparent border-none focus:ring-0 text-xs text-white w-full py-4 uppercase font-bold tracking-tight"
+                      />
                     </div>
                   </div>
+
                   <div className="max-h-[600px] overflow-y-auto custom-scrollbar">
                     <table className="w-full text-left text-sm">
                       <thead className="bg-black/20 text-[10px] font-black uppercase tracking-widest text-gray-500 sticky top-0 backdrop-blur-md">
-                        <tr><th className="p-8">Referencia</th><th className="p-8">Descripción</th><th className="p-8 text-center">En Stock</th></tr>
+                        <tr>
+                          <th className="p-8">Referencia</th>
+                          <th className="p-8">Descripción</th>
+                          <th className="p-8 text-center">En Stock</th>
+                        </tr>
                       </thead>
                       <tbody className="divide-y divide-white/5">
                         {articulos
                           .filter(a => {
                             const termino = filtroStock.toLowerCase();
-                            return a.codigo?.toLowerCase().includes(termino) || a.descripcion?.toLowerCase().includes(termino);
+                            return a.codigo?.toLowerCase().includes(termino) ||
+                              a.descripcion?.toLowerCase().includes(termino);
                           })
                           .sort((a, b) => b.id - a.id)
                           .map(art => (
                             <tr key={art.id} className="hover:bg-white/[0.02] transition-colors group">
                               <td className="p-8 font-mono text-blue-400 font-bold">{art.codigo}</td>
                               <td className="p-8 text-gray-300 uppercase text-[11px] font-bold">{art.descripcion}</td>
-                              <td className={`p-8 text-center font-black text-lg italic ${art.stock < 5 ? 'text-red-500' : 'text-white'}`}>{art.stock}</td>
+                              <td className={`p-8 text-center font-black text-lg italic ${art.stock < 5 ? 'text-red-500' : 'text-white'}`}>
+                                {art.stock}
+                              </td>
                             </tr>
                           ))
                         }
@@ -652,10 +773,16 @@ function EmpleadoContent() {
                       </div>
                       <div className="flex items-center gap-8">
                         <div className="text-right">
-                          <p className="text-3xl font-black text-white italic tracking-tighter">{Number(f.total).toFixed(2)}€</p>
+                          <p className="text-3xl font-black text-white italic tracking-tighter">
+                            {Number(f.total || 0).toFixed(2)}€
+                          </p>
                           <div className="flex items-center gap-3 justify-end mt-2">
                             <span className="text-[9px] bg-green-500/10 text-green-500 px-4 py-1.5 rounded-full font-black uppercase tracking-widest border border-green-500/20">Liquidada</span>
-                            <button onClick={() => imprimirFacturaExistente(f)} className="p-2 bg-blue-600/10 text-blue-500 hover:bg-blue-600 hover:text-white rounded-xl transition-all border border-blue-500/20" title="Imprimir Factura">
+                            <button
+                              onClick={() => imprimirFacturaExistente(f)}
+                              className="p-2 bg-blue-600/10 text-blue-500 hover:bg-blue-600 hover:text-white rounded-xl transition-all border border-blue-500/20"
+                              title="Imprimir Factura"
+                            >
                               <Printer size={18} />
                             </button>
                           </div>
@@ -698,7 +825,6 @@ function EmpleadoContent() {
               <div className="bg-[#0f0f12] rounded-[56px] border border-white/5 overflow-hidden shadow-2xl min-h-[600px] flex flex-col">
                 {seleccionado ? (
                   <div className="p-12 space-y-10 animate-in slide-in-from-right-8 duration-500 flex-1 flex flex-col">
-                    {/* ... todo el contenido del aside sin cambios ... */}
                     <div className="flex justify-between items-center">
                       <span className="text-[10px] font-black uppercase tracking-[0.5em] text-blue-500">Expediente Detallado</span>
                       <button onClick={() => { setSeleccionado(null); setSugerencias([]); }} className="bg-white/5 p-3 rounded-2xl text-gray-600 hover:text-white transition-all"><X size={20} /></button>
@@ -826,10 +952,22 @@ function EmpleadoContent() {
                       </div>
                     )}
 
-                    {view === "mantenimientos" && (
-                      <div className="mt-auto">
-                        <button onClick={procesarFactura} disabled={facturando} className="w-full bg-white text-black py-8 rounded-[40px] font-black text-[11px] uppercase tracking-[0.5em] flex items-center justify-center gap-4 shadow-2xl hover:bg-gray-200 transition-all active:scale-95">
-                          {facturando ? <Loader2 className="animate-spin" size={20} /> : <Printer size={20} />} Finalizar y Facturar
+                    {view === "mantenimientos" && seleccionado && (
+                      <div className="mt-auto space-y-4">
+                        <button
+                          onClick={procesarFactura}
+                          disabled={facturando}
+                          className="w-full bg-white text-black py-8 rounded-[40px] font-black text-[11px] uppercase tracking-[0.5em] flex items-center justify-center gap-4 shadow-2xl hover:bg-gray-200 transition-all active:scale-95"
+                        >
+                          {facturando ? <Loader2 className="animate-spin" size={20} /> : <Printer size={20} />}
+                          Finalizar y Facturar
+                        </button>
+
+                        <button
+                          onClick={() => setShowCancelModal(true)}
+                          className="w-full bg-red-600/90 hover:bg-red-600 text-white py-6 rounded-[40px] font-black text-[11px] uppercase tracking-[0.5em] flex items-center justify-center gap-3 transition-all active:scale-95 border border-red-500/30"
+                        >
+                          <X size={20} /> Cancelar Mantenimiento
                         </button>
                       </div>
                     )}
@@ -847,11 +985,10 @@ function EmpleadoContent() {
         </div>
       </main>
 
-      {/* MODAL NUEVA FICHA */}
+      {/* ====================== MODAL NUEVA FICHA ====================== */}
       {showNuevoPresupuesto && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-3xl p-6">
           <div className="bg-[#0f0f12] border border-white/10 w-full max-w-3xl rounded-[64px] overflow-hidden shadow-3xl animate-in zoom-in duration-500 flex flex-col max-h-[90vh]">
-            {/* ... todo el contenido del modal paso 1 y 2 sin cambios ... */}
             <div className="p-12 border-b border-white/5 flex justify-between items-center bg-gradient-to-r from-blue-600/10 via-transparent to-transparent">
               <div>
                 <h2 className="text-white text-4xl font-black italic uppercase tracking-tighter leading-none">Apertura de Ficha</h2>
@@ -866,7 +1003,7 @@ function EmpleadoContent() {
                   </div>
                 </div>
               </div>
-              <button onClick={() => { setShowNuevoPresupuesto(false); setModalStep(1); setLineas([]); setSugerencias([]); }} className="bg-white/5 p-6 rounded-full text-gray-500 hover:text-white transition-all hover:rotate-90"><X size={24} /></button>
+              <button onClick={() => { setShowNuevoPresupuesto(false); setModalStep(1); setLineas([]); setSugerencias([]); setDniError(""); }} className="bg-white/5 p-6 rounded-full text-gray-500 hover:text-white transition-all hover:rotate-90"><X size={24} /></button>
             </div>
 
             <div className="p-12 overflow-y-auto custom-scrollbar flex-1">
@@ -875,9 +1012,28 @@ function EmpleadoContent() {
                   <div className="space-y-3">
                     <p className="text-[10px] font-black text-gray-600 uppercase ml-5 tracking-widest">DNI / CIF del Cliente</p>
                     <div className="flex gap-4">
-                      <input placeholder="00000000X o CIF" className="flex-1 bg-white/5 border border-white/10 rounded-[28px] p-6 text-sm text-white uppercase outline-none focus:border-blue-500 transition-all font-bold tracking-tight shadow-inner" value={nuevoCliente.documento_identidad} onChange={(e) => { setNuevoCliente({ ...nuevoCliente, documento_identidad: e.target.value.toUpperCase() }); setUsuarioExiste(false); }} onBlur={verificarUsuario} />
-                      <button onClick={verificarUsuario} disabled={verificando || !nuevoCliente.documento_identidad} className="bg-blue-600 px-8 rounded-[28px] text-white font-black uppercase text-xs tracking-widest hover:bg-blue-500 disabled:opacity-50">{verificando ? <Loader2 className="animate-spin" size={20} /> : "Verificar"}</button>
+                      <input
+                        placeholder="00000000X o CIF"
+                        className={`flex-1 bg-white/5 border rounded-[28px] p-6 text-sm text-white uppercase outline-none focus:border-blue-500 transition-all font-bold tracking-tight shadow-inner ${dniError ? "border-red-500" : "border-white/10"
+                          }`}
+                        value={nuevoCliente.documento_identidad}
+                        onChange={(e) => {
+                          const valor = e.target.value.toUpperCase().trim();
+                          setNuevoCliente({ ...nuevoCliente, documento_identidad: valor });
+                          setUsuarioExiste(false);
+                          validarDNI(valor);
+                        }}
+                        onBlur={() => validarDNI(nuevoCliente.documento_identidad)}
+                      />
+                      <button
+                        onClick={verificarUsuario}
+                        disabled={verificando || !nuevoCliente.documento_identidad || !!dniError}
+                        className="bg-blue-600 px-8 rounded-[28px] text-white font-black uppercase text-xs tracking-widest hover:bg-blue-500 disabled:opacity-50"
+                      >
+                        {verificando ? <Loader2 className="animate-spin" size={20} /> : "Verificar"}
+                      </button>
                     </div>
+                    {dniError && <p className="text-red-500 text-xs ml-5 font-medium">{dniError}</p>}
                   </div>
 
                   {usuarioExiste && (
@@ -914,12 +1070,17 @@ function EmpleadoContent() {
                     <textarea placeholder="DETALLA LOS SÍNTOMAS O LAS PIEZAS A REVISAR..." className="w-full bg-white/5 border border-white/10 rounded-[40px] p-8 text-sm text-white uppercase outline-none focus:border-blue-500 h-32 resize-none font-bold shadow-inner leading-relaxed" value={nuevoCliente.mensaje} onChange={(e) => setNuevoCliente({ ...nuevoCliente, mensaje: e.target.value.toUpperCase() })} />
                   </div>
 
-                  <button onClick={() => setModalStep(2)} disabled={!usuarioExiste || verificando || !nuevoCliente.nombre} className={`w-full font-black py-8 rounded-[40px] uppercase text-[11px] tracking-[0.5em] transition-all flex items-center justify-center gap-4 shadow-2xl ${(!usuarioExiste || verificando || !nuevoCliente.nombre) ? 'bg-gray-800 text-gray-600 cursor-not-allowed opacity-50' : 'bg-blue-600 text-white hover:bg-blue-500 shadow-blue-600/30'}`}>
+                  <button
+                    onClick={() => setModalStep(2)}
+                    disabled={!usuarioExiste || verificando || !nuevoCliente.nombre || !!dniError}
+                    className={`w-full font-black py-8 rounded-[40px] uppercase text-[11px] tracking-[0.5em] transition-all flex items-center justify-center gap-4 shadow-2xl ${(!usuarioExiste || verificando || !nuevoCliente.nombre || !!dniError) ? 'bg-gray-800 text-gray-600 cursor-not-allowed opacity-50' : 'bg-blue-600 text-white hover:bg-blue-500 shadow-blue-600/30'}`}
+                  >
                     {verificando ? <Loader2 className="animate-spin" size={20} /> : "Siguiente Paso"} <ChevronRight size={20} />
                   </button>
                 </div>
               ) : (
                 <div className="space-y-8 animate-in slide-in-from-right-8 duration-500">
+                  {/* Paso 2 - Configuración (sin cambios) */}
                   <div className="flex gap-4 relative">
                     <div className="flex-1 bg-white/5 border border-white/10 rounded-[32px] flex items-center px-8 focus-within:border-blue-500 transition-all shadow-inner relative">
                       <Package size={20} className="text-gray-600 mr-4" />
@@ -994,8 +1155,7 @@ function EmpleadoContent() {
         </div>
       )}
 
-      {/* MODAL REGISTRO NUEVO CLIENTE */}
-      {/* MODAL REGISTRO NUEVO CLIENTE */}
+      {/* MODAL REGISTRO NUEVO CLIENTE (sin cambios) */}
       {showModalNuevoUsuario && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/98 backdrop-blur-2xl p-6">
           <div className="bg-[#16161a] border border-blue-600/30 w-full max-w-lg rounded-[70px] p-16 text-center shadow-3xl relative overflow-hidden">
@@ -1010,7 +1170,6 @@ function EmpleadoContent() {
             </p>
 
             <div className="space-y-5 mb-12 text-left">
-              {/* Régimen del Cliente */}
               <div className="space-y-2">
                 <p className="text-[8px] font-black text-blue-500 uppercase ml-5 tracking-widest flex items-center gap-2">
                   <Briefcase size={10} /> Régimen del Cliente
@@ -1025,7 +1184,6 @@ function EmpleadoContent() {
                 </select>
               </div>
 
-              {/* DNI (deshabilitado) */}
               <div className="space-y-2">
                 <p className="text-[8px] font-black text-blue-500 uppercase ml-5 tracking-widest">Documento de Identidad (DNI/CIF)</p>
                 <input
@@ -1036,7 +1194,6 @@ function EmpleadoContent() {
                 />
               </div>
 
-              {/* Nombre y Apellidos */}
               <div className="grid grid-cols-2 gap-5">
                 <div className="space-y-2">
                   <p className="text-[8px] font-black text-blue-500 uppercase ml-5 tracking-widest">Nombre</p>
@@ -1058,7 +1215,6 @@ function EmpleadoContent() {
                 </div>
               </div>
 
-              {/* Teléfono + Email */}
               <div className="grid grid-cols-2 gap-5">
                 <div className="space-y-2">
                   <p className="text-[8px] font-black text-blue-500 uppercase ml-5 tracking-widest">Móvil / Teléfono</p>
@@ -1073,10 +1229,19 @@ function EmpleadoContent() {
                   <p className="text-[8px] font-black text-blue-500 uppercase ml-5 tracking-widest">E-mail</p>
                   <input
                     placeholder="INFO@CLIENTE.COM"
-                    className="w-full bg-white/5 border border-white/10 rounded-[24px] p-6 text-xs text-white outline-none focus:border-blue-500 transition-all font-bold shadow-inner"
+                    className={`w-full bg-white/5 border rounded-[24px] p-6 text-xs text-white outline-none focus:border-blue-500 transition-all font-bold shadow-inner ${emailError ? "border-red-500" : "border-white/10"
+                      }`}
                     value={nuevoCliente.email}
-                    onChange={(e) => setNuevoCliente({ ...nuevoCliente, email: e.target.value.toLowerCase() })}
+                    onChange={(e) => {
+                      const valor = e.target.value.toLowerCase().trim();
+                      setNuevoCliente({ ...nuevoCliente, email: valor });
+                      setEmailError(validarEmail(valor)); // validación en tiempo real
+                    }}
+                    onBlur={() => setEmailError(validarEmail(nuevoCliente.email))}
                   />
+                  {emailError && (
+                    <p className="text-red-500 text-xs ml-5 font-medium">{emailError}</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -1101,7 +1266,7 @@ function EmpleadoContent() {
         </div>
       )}
 
-      {/* ====================== ALERT MODAL ====================== */}
+      {/* ALERT MODAL */}
       <AlertModal
         isOpen={alert.isOpen}
         onClose={closeAlert}
@@ -1109,6 +1274,66 @@ function EmpleadoContent() {
         message={alert.message}
         type={alert.type}
       />
+
+      {/* ====================== MODAL CANCELAR MANTENIMIENTO ====================== */}
+      {showCancelModal && seleccionado && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/95 backdrop-blur-3xl p-6">
+          <div className="bg-[#0f0f12] border border-red-500/30 w-full max-w-lg rounded-[64px] overflow-hidden shadow-3xl">
+            <div className="p-12 border-b border-white/5">
+              <div className="flex items-center gap-4 text-red-500 mb-6">
+                <AlertCircle size={32} />
+                <h3 className="text-3xl font-black italic uppercase tracking-tighter text-white">
+                  Cancelar Mantenimiento
+                </h3>
+              </div>
+              <p className="text-gray-400 text-sm">
+                Estás a punto de cancelar el mantenimiento del vehículo:<br />
+                <span className="font-bold text-white">{seleccionado.vehiculo}</span>
+              </p>
+            </div>
+
+            <div className="p-12 space-y-8">
+              <div className="space-y-3">
+                <p className="text-[10px] font-black uppercase tracking-widest text-red-400">
+                  MOTIVO DE LA CANCELACIÓN (obligatorio)
+                </p>
+                <textarea
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  placeholder="Explica detalladamente la razón por la que no se puede completar el mantenimiento..."
+                  className="w-full bg-white/5 border border-white/10 rounded-[32px] p-8 text-sm text-white outline-none focus:border-red-500 h-40 resize-y min-h-[140px] font-medium"
+                />
+              </div>
+
+              <div className="flex gap-4">
+                <button
+                  onClick={() => {
+                    setShowCancelModal(false);
+                    setCancelReason("");
+                  }}
+                  className="flex-1 py-6 bg-white/5 hover:bg-white/10 rounded-[32px] font-black uppercase tracking-widest text-sm transition-all"
+                >
+                  Volver
+                </button>
+                <button
+                  onClick={cancelarMantenimiento}
+                  disabled={cancelando || !cancelReason.trim()}
+                  className="flex-1 py-6 bg-red-600 hover:bg-red-700 disabled:bg-red-900 disabled:opacity-50 rounded-[32px] font-black uppercase tracking-widest text-sm transition-all flex items-center justify-center gap-3"
+                >
+                  {cancelando ? (
+                    <Loader2 className="animate-spin" size={20} />
+                  ) : (
+                    <>
+                      <X size={20} /> Confirmar Cancelación
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

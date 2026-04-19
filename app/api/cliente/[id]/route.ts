@@ -1,35 +1,35 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 
 export async function GET(
-  request: NextRequest,
+  req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await context.params;
-
-    if (!id) {
-      return NextResponse.json({ error: "ID de usuario requerido" }, { status: 400 });
-    }
-
     const sql = neon(process.env.DATABASE_URL!);
 
-    // Datos del cliente
+    // 1. Obtener datos del cliente
     const clienteData = await sql`
-      SELECT id, nombre, apellido1, apellido2, email, telefono, tipo_cliente
+      SELECT 
+        id, 
+        nombre, 
+        apellido1 as apellido, 
+        email, 
+        telefono 
       FROM usuarios 
       WHERE id = ${id}
       LIMIT 1
     `;
 
-    if (clienteData.length === 0) {
+    if (!clienteData.length) {
       return NextResponse.json({ error: "Cliente no encontrado" }, { status: 404 });
     }
 
     const cliente = clienteData[0];
 
-    // 1. Obtenemos la información principal de presupuestos_pedidos (estado, vehículo, etc.)
-    const pedidos = await sql`
+    // 2. Presupuestos ACTIVOS (Pendiente, En Taller, Cancelado, etc.)
+    const presupuestosActivos = await sql`
       SELECT 
         id,
         vehiculo,
@@ -37,46 +37,62 @@ export async function GET(
         mensaje,
         creado_en,
         fecha_cita,
-        hora_cita
+        hora_cita,
+        motivo_cancelacion
       FROM presupuestos_pedidos 
-      WHERE usuario_id = ${id}
+      WHERE (email = ${cliente.email} OR usuario_id = ${id})
+        AND estado NOT IN ('Facturado', 'facturado', 'Facturada')
       ORDER BY creado_en DESC
     `;
 
-    // 2. Obtenemos el total (subtotal) desde lineas_presupuestos
-    const totales = await sql`
-      SELECT 
-        presupuesto_id,
-        SUM(subtotal) as total
-      FROM lineas_presupuestos 
-      WHERE presupuesto_id IN (SELECT id FROM presupuestos_pedidos WHERE usuario_id = ${id})
-      GROUP BY presupuesto_id
-    `;
-
-    // Combinamos ambos resultados
-    const presupuestos = pedidos.map((pedido: any) => {
-      const totalData = totales.find((t: any) => t.presupuesto_id === pedido.id);
-      return {
-        ...pedido,
-        total: totalData ? Number(totalData.total) : 0
-      };
-    });
-
-    // Facturas
-    const facturas = await sql`
+    // 3. Presupuestos FACTURADOS (para "Mis Facturas")
+    const presupuestosFacturados = await sql`
       SELECT 
         id,
-        numero_factura,
-        total,
-        fecha_emision,
+        vehiculo,
         estado,
-        vehiculo
-      FROM facturas 
-      WHERE cliente_nombre ILIKE '%' || ${cliente.nombre} || '%'
-      ORDER BY fecha_emision DESC
+        mensaje,
+        creado_en,
+        fecha_cita,
+        hora_cita,
+        motivo_cancelacion
+      FROM presupuestos_pedidos 
+      WHERE (email = ${cliente.email} OR usuario_id = ${id})
+        AND estado IN ('Facturado', 'facturado', 'Facturada')
+      ORDER BY creado_en DESC
     `;
 
-    console.log(`✅ API cliente cargada | Presupuestos: ${presupuestos.length} | Facturas: ${facturas.length}`);
+    // 4. Calcular totales de forma segura
+    const allIds = [
+      ...presupuestosActivos.map((p: any) => p.id),
+      ...presupuestosFacturados.map((p: any) => p.id)
+    ];
+
+    let totalesData: any[] = [];
+    if (allIds.length > 0) {
+      // Usamos ANY para el IN clause de forma segura
+      totalesData = await sql`
+        SELECT 
+          presupuesto_id,
+          SUM(subtotal) as total
+        FROM lineas_presupuestos 
+        WHERE presupuesto_id = ANY(${allIds})
+        GROUP BY presupuesto_id
+      `;
+    }
+
+    const agregarTotal = (p: any) => {
+      const totalInfo = totalesData.find((t: any) => t.presupuesto_id === p.id);
+      return {
+        ...p,
+        total: totalInfo ? Number(totalInfo.total) : 0
+      };
+    };
+
+    const presupuestos = presupuestosActivos.map(agregarTotal);
+    const facturas = presupuestosFacturados.map(agregarTotal);
+
+    console.log(`✅ Cliente: ${cliente.nombre} | Activos: ${presupuestos.length} | Facturados: ${facturas.length}`);
 
     return NextResponse.json({
       cliente,
@@ -85,7 +101,7 @@ export async function GET(
     });
 
   } catch (error: any) {
-    console.error("❌ Error en /api/cliente/[id]:", error);
+    console.error("Error en /api/cliente/[id]:", error);
     return NextResponse.json({ 
       error: "Error interno del servidor",
       detalle: error.message 
