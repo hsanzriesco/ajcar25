@@ -3,10 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Eye, EyeOff } from "lucide-react";   // ← Añadido
 
 export default function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);   // ← Nuevo estado
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -25,8 +27,6 @@ export default function LoginForm() {
 
       const data = await res.json();
 
-      console.log("📥 Respuesta del servidor:", data);   // ← Log importante
-
       if (res.ok) {
         localStorage.clear();
 
@@ -35,23 +35,13 @@ export default function LoginForm() {
         localStorage.setItem("user_id", data.id);
 
         const role = (data.role || "").toLowerCase().trim();
-        console.log("🔑 Rol recibido (normalizado):", `"${role}"`);
 
         let destination = "/";
 
-        if (role === "cliente") {
-          destination = "/cliente";
-          console.log("→ Redirigiendo a /cliente");
-        } else if (role === "empleado") {
-          destination = "/gestion/tareas";
-          console.log("→ Redirigiendo a /gestion/tareas");
-        } else if (role === "jefe" || role === "admin") {
-          destination = "/admin/dashboard";
-          console.log("→ Redirigiendo a /admin/dashboard");
-        } else {
-          destination = "/mi-perfil";
-          console.log("→ Redirigiendo a /mi-perfil");
-        }
+        if (role === "cliente") destination = "/cliente";
+        else if (role === "empleado") destination = "/gestion/tareas";
+        else if (role === "jefe" || role === "admin") destination = "/admin/dashboard";
+        else destination = "/mi-perfil";
 
         router.push(destination);
 
@@ -90,16 +80,28 @@ export default function LoginForm() {
         />
       </div>
 
+      {/* Campo de Contraseña con icono de ojo */}
       <div>
         <label className="block text-sm font-medium mb-1 text-gray-300">Contraseña</label>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full p-3 rounded-lg bg-white/5 border border-white/10 focus:border-white/30 outline-none transition text-white placeholder:text-gray-600"
-          placeholder="••••••••"
-          required
-        />
+        <div className="relative">
+          <input
+            type={showPassword ? "text" : "password"}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full p-3 rounded-lg bg-white/5 border border-white/10 focus:border-white/30 outline-none transition text-white placeholder:text-gray-600 pr-12"
+            placeholder="••••••••"
+            required
+          />
+          
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors p-1"
+            aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+          >
+            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+          </button>
+        </div>
       </div>
 
       <button

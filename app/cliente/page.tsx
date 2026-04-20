@@ -22,9 +22,10 @@ interface Factura {
     id: string;
     vehiculo: string;
     total: number;
-    creado_en: string;           // ← AÑADIDO
-    fecha_emision?: string;      // ← Mantenido por compatibilidad
+    creado_en: string;
+    fecha_emision?: string;
     estado: string;
+    numero_factura?: string;
 }
 
 export default function ClientePage() {
@@ -73,6 +74,12 @@ export default function ClientePage() {
     const handleLogout = () => {
         localStorage.clear();
         router.push("/login");
+    };
+
+    // Función para descargar factura usando tu API existente
+    const descargarFactura = (facturaId: string) => {
+        // Llamada a tu ruta /api/facturas con el ID
+        window.open(`/api/facturas/${facturaId}`, "_blank");
     };
 
     if (loading) {
@@ -250,7 +257,9 @@ export default function ClientePage() {
                                                 <FileText size={28} className="text-green-500" />
                                             </div>
                                             <div>
-                                                <p className="text-green-400 font-mono text-sm">Factura #{f.id.slice(0, 8)}</p>
+                                                <p className="text-green-400 font-mono text-sm">
+                                                    Factura #{f.numero_factura || f.id.slice(0, 8)}
+                                                </p>
                                                 <h3 className="text-xl font-bold text-white mt-1">{f.vehiculo}</h3>
                                             </div>
                                         </div>
@@ -264,7 +273,7 @@ export default function ClientePage() {
                                             {Number(f.total).toFixed(2)} €
                                         </p>
                                         <button
-                                            onClick={() => alert("Funcionalidad de descarga de factura en desarrollo")}
+                                            onClick={() => descargarFactura(f.id)}
                                             className="mt-6 bg-green-600 hover:bg-green-700 text-white px-8 py-4 rounded-2xl font-bold transition-all flex items-center gap-2"
                                         >
                                             <Download size={18} /> Descargar Factura PDF
