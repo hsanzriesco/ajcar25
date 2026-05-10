@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Eye, EyeOff } from "lucide-react";   // ← Añadido
+import { Eye, EyeOff } from "lucide-react";
 
 export default function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);   // ← Nuevo estado
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -28,27 +28,21 @@ export default function LoginForm() {
       const data = await res.json();
 
       if (res.ok) {
-        localStorage.clear();
-
-        localStorage.setItem("user_role", data.role);
-        localStorage.setItem("user_name", data.nombre || "");
-        localStorage.setItem("user_id", data.id);
+        sessionStorage.clear();
+        sessionStorage.setItem("user_role", data.role);
+        sessionStorage.setItem("user_name", data.nombre || "");
+        sessionStorage.setItem("user_id", data.id);
 
         const role = (data.role || "").toLowerCase().trim();
 
         let destination = "/";
-
         if (role === "cliente") destination = "/cliente";
         else if (role === "empleado") destination = "/gestion/tareas";
-        else if (role === "jefe" || role === "admin") destination = "/admin/dashboard";
+        else if (role === "jefe") destination = "/jefe";
+        else if (role === "admin") destination = "/admin/dashboard";
         else destination = "/mi-perfil";
 
-        router.push(destination);
-
-        setTimeout(() => {
-          window.location.reload();
-        }, 300);
-
+        window.location.href = destination;
       } else {
         setError(data.message || "Credenciales incorrectas");
       }
@@ -61,38 +55,42 @@ export default function LoginForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 w-full max-w-sm mx-auto">
+    <form onSubmit={handleSubmit} className="space-y-4 w-full">
       {error && (
-        <div className="bg-red-500/20 border border-red-500 text-red-200 p-3 rounded-lg text-sm text-center">
+        <div className="bg-red-500/20 border border-red-500 text-red-200 p-3 rounded-xl text-sm text-center">
           {error}
         </div>
       )}
 
       <div>
-        <label className="block text-sm font-medium mb-1 text-gray-300">Email</label>
+        <label className="block text-sm font-medium mb-1.5 text-gray-300">
+          Email o Matrícula
+        </label>
         <input
-          type="email"
+          type="text"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full p-3 rounded-lg bg-white/5 border border-white/10 focus:border-white/30 outline-none transition text-white placeholder:text-gray-600"
+          className="w-full p-3 sm:p-3.5 rounded-xl bg-white/5 border border-white/10 focus:border-white/30 outline-none transition text-white placeholder:text-gray-600 text-sm sm:text-base"
           placeholder="ejemplo@correo.com"
           required
+          autoComplete="username"
         />
       </div>
 
-      {/* Campo de Contraseña con icono de ojo */}
       <div>
-        <label className="block text-sm font-medium mb-1 text-gray-300">Contraseña</label>
+        <label className="block text-sm font-medium mb-1.5 text-gray-300">
+          Contraseña
+        </label>
         <div className="relative">
           <input
             type={showPassword ? "text" : "password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full p-3 rounded-lg bg-white/5 border border-white/10 focus:border-white/30 outline-none transition text-white placeholder:text-gray-600 pr-12"
+            className="w-full p-3 sm:p-3.5 rounded-xl bg-white/5 border border-white/10 focus:border-white/30 outline-none transition text-white placeholder:text-gray-600 pr-12 text-sm sm:text-base"
             placeholder="••••••••"
             required
+            autoComplete="current-password"
           />
-          
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
@@ -107,15 +105,18 @@ export default function LoginForm() {
       <button
         type="submit"
         disabled={loading}
-        className="w-full bg-white text-black font-bold py-3 rounded-lg hover:bg-gray-200 active:scale-[0.98] transition-all disabled:opacity-50 mt-2 shadow-lg"
+        className="w-full bg-white text-black font-bold py-3 sm:py-3.5 rounded-xl hover:bg-gray-200 active:scale-[0.98] transition-all disabled:opacity-50 mt-2 shadow-lg text-sm sm:text-base"
       >
         {loading ? "Verificando..." : "Entrar"}
       </button>
 
-      <div className="text-center mt-6 space-y-4 border-t border-white/10 pt-6">
+      <div className="text-center mt-5 sm:mt-6 border-t border-white/10 pt-5 sm:pt-6">
         <p className="text-sm text-gray-400">
           ¿No tienes cuenta?{" "}
-          <Link href="/registro" className="text-white font-bold hover:text-red-500 transition-colors underline underline-offset-4">
+          <Link
+            href="/registro"
+            className="text-white font-bold hover:text-red-500 transition-colors underline underline-offset-4"
+          >
             Regístrate aquí
           </Link>
         </p>

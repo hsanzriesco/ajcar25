@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
+import bcrypt from "bcryptjs";
 
 export async function GET(
   req: NextRequest,
@@ -14,7 +15,8 @@ export async function GET(
       SELECT 
         id, 
         nombre, 
-        apellido1 as apellido, 
+        apellido1, 
+        apellido2,
         email, 
         telefono 
       FROM usuarios 
@@ -45,21 +47,27 @@ export async function GET(
       ORDER BY creado_en DESC
     `;
 
-    // 3. Presupuestos FACTURADOS (para "Mis Facturas")
+    // 3. Presupuestos FACTURADOS — con datos reales de la factura
     const presupuestosFacturados = await sql`
       SELECT 
-        id,
-        vehiculo,
-        estado,
-        mensaje,
-        creado_en,
-        fecha_cita,
-        hora_cita,
-        motivo_cancelacion
-      FROM presupuestos_pedidos 
-      WHERE (email = ${cliente.email} OR usuario_id = ${id})
-        AND estado IN ('Facturado', 'facturado', 'Facturada')
-      ORDER BY creado_en DESC
+        pp.id,
+        pp.vehiculo,
+        pp.estado,
+        pp.mensaje,
+        pp.creado_en,
+        pp.fecha_cita,
+        pp.hora_cita,
+        pp.email         AS cliente_email,
+        f.id             AS factura_id,
+        f.numero_factura,
+        f.cliente_nombre,
+        f.articulos,
+        f.total          AS total_factura
+      FROM presupuestos_pedidos pp
+      LEFT JOIN facturas f ON f.presupuesto_id = pp.id::text
+      WHERE (pp.email = ${cliente.email} OR pp.usuario_id = ${id})
+        AND pp.estado IN ('Facturado', 'facturado', 'Facturada')
+      ORDER BY pp.creado_en DESC
     `;
 
     // 4. Calcular totales de forma segura
@@ -70,7 +78,6 @@ export async function GET(
 
     let totalesData: any[] = [];
     if (allIds.length > 0) {
-      // Usamos ANY para el IN clause de forma segura
       totalesData = await sql`
         SELECT 
           presupuesto_id,
@@ -82,6 +89,7 @@ export async function GET(
     }
 
     const agregarTotal = (p: any) => {
+      if (p.total_factura) return { ...p, total: Number(p.total_factura) };
       const totalInfo = totalesData.find((t: any) => t.presupuesto_id === p.id);
       return {
         ...p,
@@ -102,9 +110,75 @@ export async function GET(
 
   } catch (error: any) {
     console.error("Error en /api/cliente/[id]:", error);
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: "Error interno del servidor",
-      detalle: error.message 
+      detalle: error.message
+    }, { status: 500 });
+  }
+}
+
+export async function PATCH(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await context.params;
+    const sql = neon(process.env.DATABASE_URL!);
+    const body = await req.json();
+
+    const { nombre, apellido1, apellido2, telefono, password_actual, password_nueva } = body;
+
+    // Cambio de contraseña
+    if (password_nueva) {
+      if (!password_actual) {
+        return NextResponse.json({ error: "Debes introducir tu contraseña actual" }, { status: 400 });
+      }
+
+      // Obtener hash actual
+      const userResult = await sql`
+        SELECT password_hash FROM usuarios WHERE id = ${id} LIMIT 1
+      `;
+
+      if (!userResult.length) {
+        return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
+      }
+
+      const passwordValida = await bcrypt.compare(password_actual, userResult[0].password_hash);
+      if (!passwordValida) {
+        return NextResponse.json({ error: "La contraseña actual no es correcta" }, { status: 401 });
+      }
+
+      if (password_nueva.length < 6) {
+        return NextResponse.json({ error: "La nueva contraseña debe tener al menos 6 caracteres" }, { status: 400 });
+      }
+
+      const nuevoHash = await bcrypt.hash(password_nueva, 10);
+      await sql`UPDATE usuarios SET password_hash = ${nuevoHash} WHERE id = ${id}`;
+    }
+
+    if (nombre !== undefined) {
+      await sql`UPDATE usuarios SET nombre = ${nombre} WHERE id = ${id}`;
+    }
+
+    if (apellido1 !== undefined) {
+      await sql`UPDATE usuarios SET apellido1 = ${apellido1} WHERE id = ${id}`;
+    }
+
+    if (apellido2 !== undefined) {
+      await sql`UPDATE usuarios SET apellido2 = ${apellido2} WHERE id = ${id}`;
+    }
+
+    if (telefono !== undefined) {
+      await sql`UPDATE usuarios SET telefono = ${telefono} WHERE id = ${id}`;
+    }
+
+    return NextResponse.json({ success: true });
+
+  } catch (error: any) {
+    console.error("Error en PATCH /api/cliente/[id]:", error);
+    return NextResponse.json({
+      error: "Error interno del servidor",
+      detalle: error.message
     }, { status: 500 });
   }
 }

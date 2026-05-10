@@ -30,13 +30,12 @@ export async function POST(req: Request) {
       vehiculo, 
       total, 
       articulos, 
-      pdfBase64 
+      pdfBase64,
+      empleado_id
     } = body;
 
-    // Usamos el ID que venga (presupuesto_id o taller_id)
     const final_id = presupuesto_id || taller_id;
 
-    // Validaciones estrictas
     if (!final_id) {
       return NextResponse.json({ error: "Falta el ID del presupuesto/taller" }, { status: 400 });
     }
@@ -53,10 +52,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Faltan datos del cliente o total" }, { status: 400 });
     }
 
-    // Generar número de factura único
     const numero_factura = `FAC-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
-    // Insertar la factura en la base de datos
+    // Insertar la factura con empleado_id
     await sql`
       INSERT INTO facturas (
         numero_factura, 
@@ -64,7 +62,8 @@ export async function POST(req: Request) {
         cliente_nombre, 
         vehiculo, 
         total, 
-        articulos
+        articulos,
+        empleado_id
       )
       VALUES (
         ${numero_factura}, 
@@ -72,11 +71,12 @@ export async function POST(req: Request) {
         ${cliente_nombre}, 
         ${vehiculo || null}, 
         ${Number(total)}, 
-        ${JSON.stringify(articulos)}
+        ${JSON.stringify(articulos)},
+        ${empleado_id || null}
       )
     `;
 
-    // Actualizar stock de los artículos
+    // Actualizar stock
     for (const item of articulos) {
       const cant = Number(item.cantidad);
       if (!isNaN(cant) && item.codigo) {
@@ -89,14 +89,14 @@ export async function POST(req: Request) {
       }
     }
 
-    // Cambiar estado del presupuesto / expediente
+    // Cambiar estado del presupuesto
     await sql`
       UPDATE presupuestos_pedidos 
       SET estado = 'Facturado' 
       WHERE id = ${final_id}
     `;
 
-    // ==================== ENVÍO DE EMAIL ====================
+    // Envío de email
     if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
       const transporter = nodemailer.createTransport({
         service: "gmail",
@@ -106,7 +106,6 @@ export async function POST(req: Request) {
         },
       });
 
-      // Limpiar base64
       const base64Clean = pdfBase64.includes(",") ? pdfBase64.split(",")[1] : pdfBase64;
 
       const mailOptions = {
@@ -119,10 +118,8 @@ export async function POST(req: Request) {
                <h2 style="color: #2563eb; margin: 0;">FACTURA DE SERVICIO</h2>
                <p style="text-transform: uppercase; font-size: 10px; letter-spacing: 2px; color: #999;">AJCAR 25 Taller Mecánico</p>
             </div>
-            
             <p>Estimado/a <strong>${cliente_nombre}</strong>,</p>
             <p>Le informamos que el servicio para su vehículo <strong>${vehiculo || "—"}</strong> ha finalizado satisfactoriamente. Adjunto encontrará la factura oficial.</p>
-            
             <div style="background-color: #f0f7ff; padding: 25px; border-radius: 15px; margin: 25px 0; text-align: center; border: 1px dashed #2563eb;">
               <p style="margin: 0; font-size: 12px; color: #1e40af; font-weight: bold; text-transform: uppercase;">Referencia Factura</p>
               <p style="margin: 5px 0; font-size: 24px; color: #2563eb; font-weight: 900;">${numero_factura}</p>
@@ -131,9 +128,7 @@ export async function POST(req: Request) {
                  <p style="margin: 0; font-size: 32px; color: #16a34a; font-weight: 900;">${Number(total).toFixed(2)}€</p>
               </div>
             </div>
-
             <p style="font-size: 14px; color: #555; line-height: 1.5;">Este documento sirve como comprobante de pago y garantía.</p>
-            
             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #888; text-align: center;">
               <p>Si tiene cualquier duda, responda a este email.</p>
               <p style="font-weight: bold; color: #333; margin-top: 10px;">Gracias por su confianza.</p>

@@ -13,14 +13,14 @@ export default function Navbar() {
     const router = useRouter();
 
     useEffect(() => {
-        const storedRole = localStorage.getItem("user_role");
-        const storedName = localStorage.getItem("user_name");
+        const storedRole = sessionStorage.getItem("user_role");
+        const storedName = sessionStorage.getItem("user_name");
         setRole(storedRole);
         setName(storedName);
     }, []);
 
     const handleLogout = () => {
-        localStorage.clear();
+        sessionStorage.clear();
         setRole(null);
         setName(null);
         setIsOpen(false);
@@ -52,10 +52,9 @@ export default function Navbar() {
                         </span>
                     </Link>
 
-                    {/* ================= DESKTOP MENU (SOLO DINÁMICOS Y LOGIN) ================= */}
+                    {/* DESKTOP MENU */}
                     <nav className="hidden md:flex items-center gap-8 text-sm text-gray-300">
                         
-                        {/* LINKS DINÁMICOS POR ROL */}
                         {role === "Jefe" && (
                             <Link href="/admin/dashboard" className="text-red-500 font-bold hover:text-red-400">
                                 Panel Jefe
@@ -67,7 +66,6 @@ export default function Navbar() {
                             </Link>
                         )}
 
-                        {/* BOTÓN USUARIO / LOGOUT */}
                         <div className="flex items-center gap-4 ml-4 pl-4 border-l border-white/10">
                             {role ? (
                                 <div className="flex items-center gap-4">
@@ -95,7 +93,7 @@ export default function Navbar() {
                         </div>
                     </nav>
 
-                    {/* ================= MOBILE BUTTON ================= */}
+                    {/* MOBILE BUTTON */}
                     <button
                         onClick={() => setIsOpen(!isOpen)}
                         className="md:hidden text-white"
@@ -107,13 +105,12 @@ export default function Navbar() {
                 </div>
             </div>
 
-            {/* ================= MOBILE MENU (SOLO DINÁMICOS Y LOGIN) ================= */}
+            {/* MOBILE MENU */}
             <div
                 className={`md:hidden bg-black/95 backdrop-blur-lg border-b border-white/10 transition-all duration-300 ${isOpen ? "max-h-[300px] opacity-100" : "max-h-0 opacity-0 overflow-hidden"
                     }`}
             >
                 <nav className="flex flex-col px-6 py-6 space-y-4 text-gray-300">
-                    {/* LINKS MÓVIL POR ROL */}
                     {role === "Jefe" && (
                         <Link href="/admin/dashboard" onClick={() => setIsOpen(false)} className="text-red-500 font-bold text-lg">
                             Panel Jefe
@@ -125,7 +122,6 @@ export default function Navbar() {
                         </Link>
                     )}
 
-                    {/* LOGIN / LOGOUT MOBILE */}
                     <div className="pt-4 border-t border-white/10">
                         {role ? (
                             <div className="space-y-4">

@@ -1,121 +1,131 @@
+// app/api/facturas/[id]/route.ts
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
-  try {
-    const sql = neon(process.env.DATABASE_URL!);
-    const facturaId = params.id;
+export const dynamic = "force-dynamic";
 
-    // 1️⃣ Obtener datos de la factura desde la base de datos
+export async function GET(
+  req: Request,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id: paramId } = await context.params;
+    console.log("🔍 [PDF] ID recibido:", paramId);
+
+    const sql = neon(process.env.DATABASE_URL!);
+
+    // Consulta simple
     const result = await sql`
-      SELECT id, numero_factura, cliente_nombre, vehiculo, total, articulos, creado_en, fecha_emision
-      FROM facturas
-      WHERE id = ${facturaId}
+      SELECT * FROM facturas 
+      WHERE id = ${paramId} OR presupuesto_id = ${paramId}
       LIMIT 1
     `;
 
-    if (!result.length) {
+    console.log("📊 Filas encontradas:", result.length);
+
+    if (result.length === 0) {
+      console.log("❌ No se encontró la factura");
       return NextResponse.json({ error: "Factura no encontrada" }, { status: 404 });
     }
 
     const factura = result[0];
-    const articulos = Array.isArray(factura.articulos)
-      ? factura.articulos
-      : JSON.parse(factura.articulos || "[]");
+    console.log("✅ Factura encontrada:", factura.numero_factura);
 
-    // 2️⃣ Generar el PDF (mismo estilo que usa el empleado)
+    // Parseo seguro de artículos
+    let articulos: any[] = [];
+    try {
+      articulos = Array.isArray(factura.articulos) 
+        ? factura.articulos 
+        : JSON.parse(factura.articulos || "[]");
+    } catch (e) {
+      console.warn("⚠️ Error parseando artículos");
+    }
+
+    // === GENERACIÓN DEL PDF ===
     const doc = new jsPDF();
+
     const pageWidth = doc.internal.pageSize.getWidth();
-    const margin = 15;
 
     doc.setFillColor(17, 24, 39);
-    doc.rect(0, 0, pageWidth, 55, "F");
+    doc.rect(0, 0, pageWidth, 60, "F");
 
-    doc.setTextColor(255, 255, 255);
+    doc.setTextColor(255);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(26);
-    doc.text("AJCAR 25 - FACTURA", margin, 35);
+    doc.text("AJCAR 25 - FACTURA", pageWidth / 2, 38, { align: "center" });
 
     doc.setFontSize(11);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Nº FACTURA: ${factura.numero_factura}`, margin, 70);
+    doc.text(`Nº: ${factura.numero_factura || "N/A"}`, 20, 75);
     doc.text(
-      `FECHA: ${new Date(factura.fecha_emision || factura.creado_en).toLocaleDateString("es-ES")}`,
-      pageWidth - margin,
-      70,
+      `Fecha: ${factura.fecha_emision ? new Date(factura.fecha_emision).toLocaleDateString("es-ES") : "Sin fecha"}`,
+      pageWidth - 20,
+      75,
       { align: "right" }
     );
 
-    let y = 85;
-    doc.setTextColor(0, 0, 0);
+    let y = 95;
+    doc.setTextColor(0);
     doc.setFont("helvetica", "bold");
-    doc.text("DATOS DEL CLIENTE", margin, y);
-    y += 8;
+    doc.text("DATOS DEL CLIENTE", 20, y);
+    y += 10;
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
-    doc.text(`Cliente: ${factura.cliente_nombre}`, margin, y); y += 7;
-    if (factura.vehiculo) doc.text(`Vehículo: ${factura.vehiculo}`, margin, y); y += 12;
+    doc.text(`Cliente: ${factura.cliente_nombre || "Sin nombre"}`, 20, y); y += 7;
+    doc.text(`Vehículo: ${factura.vehiculo || "—"}`, 20, y); y += 7;
 
+    // Tabla
     const tableBody = articulos.map((art: any) => [
       art.descripcion || art.nombre || "Artículo",
-      art.cantidad?.toString() || "1",
+      String(art.cantidad || 1),
       `${Number(art.precio_unitario || art.precio || 0).toFixed(2)}€`,
-      `${(Number(art.cantidad || 0) * Number(art.precio_unitario || art.precio || 0)).toFixed(2)}€`
+      `${(Number(art.cantidad || 1) * Number(art.precio_unitario || art.precio || 0)).toFixed(2)}€`,
     ]);
 
     autoTable(doc, {
       startY: y,
-      head: [["DESCRIPCIÓN", "CANT.", "PRECIO UNIT.", "TOTAL"]],
+      head: [["DESCRIPCIÓN", "CANT.", "PRECIO UN.", "TOTAL"]],
       body: tableBody,
       theme: "grid",
-      headStyles: {
-        fillColor: [17, 24, 39],
-        textColor: 255,
-        fontStyle: "bold",
-        fontSize: 10,
-        halign: "center",
-      },
-      styles: { fontSize: 9, cellPadding: 6, lineColor: [200, 200, 200] },
-      columnStyles: {
-        0: { halign: "left" },
-        1: { halign: "center", cellWidth: 25 },
-        2: { halign: "right", cellWidth: 35 },
-        3: { halign: "right", cellWidth: 35 },
-      },
-      margin: { left: margin, right: margin },
+      headStyles: { fillColor: [17, 24, 39], textColor: 255 },
+      margin: { left: 20, right: 20 },
     });
 
-    const finalY = (doc as any).lastAutoTable.finalY + 8;
-    doc.setFillColor(41, 128, 185);
-    doc.rect(margin, finalY, pageWidth - margin * 2, 12, "F");
+    const finalY = (doc as any).lastAutoTable?.finalY || y + 40;
 
-    doc.setTextColor(255, 255, 255);
+    doc.setFillColor(37, 99, 235);
+    doc.rect(20, finalY, pageWidth - 40, 18, "F");
+
+    doc.setTextColor(255);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.text("TOTAL", margin + 8, finalY + 8.5);
     doc.setFontSize(14);
-    doc.text(`${Number(factura.total).toFixed(2)}€`, pageWidth - margin - 8, finalY + 8.5, { align: "right" });
+    doc.text("TOTAL FACTURA", 25, finalY + 12);
+    doc.text(
+      `${Number(factura.total || 0).toFixed(2)}€`,
+      pageWidth - 25,
+      finalY + 12,
+      { align: "right" }
+    );
 
-    doc.setTextColor(100, 100, 100);
-    doc.setFontSize(9);
-    doc.text("Gracias por su confianza, AJCAR 25", margin, finalY + 30);
+    const dataUri = doc.output("datauristring");
+    const base64 = dataUri.split(",")[1];
+    const pdfBuffer = Buffer.from(base64, "base64");
 
-    const pdfBuffer = Buffer.from(doc.output("arraybuffer"));
+    console.log("✅ PDF generado correctamente");
 
-    // 3️⃣ Responder con el archivo PDF
     return new NextResponse(pdfBuffer, {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="Factura_${factura.numero_factura}.pdf"`,
+        "Content-Disposition": `attachment; filename="Factura_${factura.numero_factura || paramId}.pdf"`,
       },
     });
 
-  } catch (error: any) {
-    console.error("Error al generar factura PDF:", error);
-    return NextResponse.json({ error: "No se pudo generar la factura." }, { status: 500 });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error("❌ ERROR EN ROUTE:", msg);
+    return NextResponse.json({ error: "Error interno al generar la factura" }, { status: 500 });
   }
 }

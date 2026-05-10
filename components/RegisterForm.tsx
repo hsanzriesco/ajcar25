@@ -1,63 +1,36 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import PhoneInput, { isValidPhoneNumber } from "react-phone-number-input";
-import "react-phone-number-input/style.css";
-import { CountryCode } from "libphonenumber-js";
-import countries from "@/data/countries-full.json";
-// Importamos los iconos necesarios
 import { Eye, EyeOff } from "lucide-react";
+import PhoneInput from "@/components/PhoneInput";
 
 export default function RegisterForm() {
   const [tipoRegistro, setTipoRegistro] = useState<"particular" | "empresa">("particular");
   const [loading, setLoading] = useState(false);
   const [serverError, setServerError] = useState("");
-
-  // Estados para controlar la visibilidad de las contraseñas
   const [showPassword, setShowPassword] = useState(false);
   const [showRepeatPassword, setShowRepeatPassword] = useState(false);
 
   const [form, setForm] = useState({
-    nombre: "",
-    apellido1: "",
-    apellido2: "",
-    nombreEmpresa: "",
-    direccion: "",
-    dni: "",
-    email: "",
-    password: "",
-    repeatPassword: "",
+    nombre: "", apellido1: "", apellido2: "", nombreEmpresa: "",
+    direccion: "", dni: "", email: "", password: "", repeatPassword: "",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [phone, setPhone] = useState<string | undefined>();
-  const [selectedCountry, setSelectedCountry] = useState<CountryCode>("ES");
-
-  const countryData = useMemo(() => {
-    const match = countries.find((c) => c.iso2 === selectedCountry);
-    return {
-      maxLength: match ? match.maxLength : 15,
-      dialCode: match ? match.dialCode : "+34"
-    };
-  }, [selectedCountry]);
-
-  const [maxInputLength, setMaxInputLength] = useState(countryData.maxLength + 5);
+  const [phone, setPhone] = useState("");
+  const [phoneValid, setPhoneValid] = useState(false);
+  const [phoneFull, setPhoneFull] = useState("");
 
   const validateDocument = (value: string) => {
     const str = value.toUpperCase().trim();
     if (!str) return true;
-
     if (tipoRegistro === "empresa") {
-      const cifRegex = /^[ABCDEFGHJNPQRSUVW][0-9]{7}[0-9A-J]$/;
-      return cifRegex.test(str);
+      return /^[ABCDEFGHJNPQRSUVW][0-9]{7}[0-9A-J]$/.test(str);
     }
-
     const validChars = "TRWAGMYFPDXBNJZSQVHLCKE";
     const dniRegex = /^[0-9]{8}[TRWAGMYFPDXBNJZSQVHLCKE]$/i;
     const nieRegex = /^[XYZ][0-9]{7}[TRWAGMYFPDXBNJZSQVHLCKE]$/i;
-
     if (!dniRegex.test(str) && !nieRegex.test(str)) return false;
-
     let tempStr = str.replace('X', '0').replace('Y', '1').replace('Z', '2');
     const letter = str.charAt(8);
     const number = parseInt(tempStr.substring(0, 8));
@@ -66,29 +39,17 @@ export default function RegisterForm() {
 
   useEffect(() => {
     const newErrors: Record<string, string> = {};
-
-    if (form.dni && !validateDocument(form.dni)) {
+    if (form.dni && !validateDocument(form.dni))
       newErrors.dni = tipoRegistro === "particular" ? "DNI/NIE no válido" : "CIF no válido";
-    }
-
-    if (form.email && !/^\S+@\S+\.\S+$/.test(form.email)) {
+    if (form.email && !/^\S+@\S+\.\S+$/.test(form.email))
       newErrors.email = "Email no válido";
-    }
-
     const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>])[A-Za-z\d!@#$%^&*(),.?":{}|<>]{8,}$/;
-
-    if (form.password && !passwordRegex.test(form.password)) {
+    if (form.password && !passwordRegex.test(form.password))
       newErrors.password = "Debe tener 8+ caracteres, mayúscula, número y símbolo";
-    }
-
-    if (form.password && form.repeatPassword && form.password !== form.repeatPassword) {
+    if (form.password && form.repeatPassword && form.password !== form.repeatPassword)
       newErrors.repeatPassword = "Las contraseñas no coinciden";
-    }
-
-    if (phone && !isValidPhoneNumber(phone)) {
+    if (phone && !phoneValid)
       newErrors.phone = "Teléfono incompleto o inválido";
-    }
-
     setErrors(newErrors);
   }, [form, phone, tipoRegistro]);
 
@@ -96,13 +57,11 @@ export default function RegisterForm() {
     const mandatoryFields = tipoRegistro === "particular"
       ? ["nombre", "apellido1", "dni", "email", "password", "repeatPassword"]
       : ["nombreEmpresa", "direccion", "dni", "email", "password", "repeatPassword"];
-
     const hasEmptyFields = mandatoryFields.some(key => !form[key as keyof typeof form]?.trim());
     const hasErrors = Object.keys(errors).length > 0;
-    const isPhoneValid = phone && isValidPhoneNumber(phone);
-
+    const isPhoneValid = phone.length > 0 && phoneValid;
     return hasEmptyFields || hasErrors || !isPhoneValid;
-  }, [form, errors, phone, tipoRegistro]);
+  }, [form, errors, phone, phoneValid, tipoRegistro]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -110,44 +69,50 @@ export default function RegisterForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setServerError("");
-
+    setLoading(true); setServerError("");
     try {
       const response = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          tipoRegistro,
-          telefono: phone,
-        }),
+        body: JSON.stringify({ ...form, tipoRegistro, telefono: phoneFull }),
       });
-
       const data = await response.json();
-
-      if (!response.ok) {
-        setServerError(data.message || "Error al registrar usuario");
-      } else {
-        alert("¡Registro exitoso!");
-      }
+      if (!response.ok) setServerError(data.message || "Error al registrar usuario");
+      else alert("¡Registro exitoso!");
     } catch (error) {
       setServerError("Error de conexión con el servidor.");
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
+  const inputClass = (errorKey?: string) =>
+    `w-full p-3 rounded-xl bg-neutral-800 border outline-none text-white text-sm transition-colors ${
+      errorKey && errors[errorKey] ? "border-red-500" : "border-white/10 focus:border-red-500"
+    }`;
+
+  const PasswordInput = ({
+    name, label, show, onToggle,
+  }: { name: "password" | "repeatPassword"; label: string; show: boolean; onToggle: () => void }) => (
+    <div className="flex-1 min-w-0">
+      <label className="block text-sm mb-1 text-gray-300">{label}</label>
+      <div className="relative">
+        <input name={name} type={show ? "text" : "password"} value={form[name]} onChange={handleChange}
+          className={`${inputClass(name)} pr-10`} autoComplete={name === "password" ? "new-password" : "new-password"} />
+        <button type="button" onClick={onToggle}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-red-500 transition-colors p-1">
+          {show ? <EyeOff size={16} /> : <Eye size={16} />}
+        </button>
+      </div>
+    </div>
+  );
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 w-full max-w-md">
-      {/* SELECTOR DE TIPO */}
+    <form onSubmit={handleSubmit} className="space-y-4 w-full">
+
+      {/* TIPO DE CLIENTE */}
       <div>
         <label className="block text-sm mb-1 text-red-500 font-bold uppercase tracking-wider">Tipo de Cliente</label>
-        <select
-          value={tipoRegistro}
-          onChange={(e) => setTipoRegistro(e.target.value as "particular" | "empresa")}
-          className="w-full p-3 rounded bg-neutral-800 border border-white/10 text-white outline-none focus:border-red-500 cursor-pointer"
-        >
+        <select value={tipoRegistro} onChange={(e) => setTipoRegistro(e.target.value as "particular" | "empresa")}
+          className="w-full p-3 rounded-xl bg-neutral-800 border border-white/10 text-white outline-none focus:border-red-500 cursor-pointer text-sm">
           <option value="particular">Particular (DNI / NIE)</option>
           <option value="empresa">Empresa (CIF)</option>
         </select>
@@ -157,144 +122,90 @@ export default function RegisterForm() {
       {tipoRegistro === "particular" ? (
         <>
           <div>
-            <label className="block text-sm mb-1">Nombre</label>
-            <input name="nombre" value={form.nombre} onChange={handleChange} className="w-full p-3 rounded bg-neutral-800 border border-white/10 outline-none focus:border-red-500 text-white" />
+            <label className="block text-sm mb-1 text-gray-300">Nombre</label>
+            <input name="nombre" value={form.nombre} onChange={handleChange}
+              placeholder="Tu nombre" className={inputClass()} autoComplete="given-name" />
           </div>
-          <div className="flex gap-2">
-            <div className="w-1/2">
-              <label className="block text-sm mb-1">Primer Apellido</label>
-              <input name="apellido1" value={form.apellido1} onChange={handleChange} className="w-full p-3 rounded bg-neutral-800 border border-white/10 outline-none focus:border-red-500 text-white" />
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-2">
+            <div className="flex-1">
+              <label className="block text-sm mb-1 text-gray-300">Primer Apellido</label>
+              <input name="apellido1" value={form.apellido1} onChange={handleChange}
+                placeholder="Primer apellido" className={inputClass()} autoComplete="family-name" />
             </div>
-            <div className="w-1/2">
-              <label className="block text-sm mb-1">Segundo Apellido</label>
-              <input name="apellido2" value={form.apellido2} onChange={handleChange} className="w-full p-3 rounded bg-neutral-800 border border-white/10 outline-none focus:border-red-500 text-white" />
+            <div className="flex-1">
+              <label className="block text-sm mb-1 text-gray-300">Segundo Apellido</label>
+              <input name="apellido2" value={form.apellido2} onChange={handleChange}
+                placeholder="Segundo apellido" className={inputClass()} />
             </div>
           </div>
         </>
       ) : (
         <>
           <div>
-            <label className="block text-sm mb-1">Nombre de Empresa</label>
-            <input name="nombreEmpresa" value={form.nombreEmpresa} onChange={handleChange} className="w-full p-3 rounded bg-neutral-800 border border-white/10 outline-none focus:border-red-500 text-white" />
+            <label className="block text-sm mb-1 text-gray-300">Nombre de Empresa</label>
+            <input name="nombreEmpresa" value={form.nombreEmpresa} onChange={handleChange}
+              placeholder="Razón social" className={inputClass()} autoComplete="organization" />
           </div>
           <div>
-            <label className="block text-sm mb-1">Dirección Fiscal</label>
-            <input name="direccion" value={form.direccion} onChange={handleChange} className="w-full p-3 rounded bg-neutral-800 border border-white/10 outline-none focus:border-red-500 text-white" />
+            <label className="block text-sm mb-1 text-gray-300">Dirección Fiscal</label>
+            <input name="direccion" value={form.direccion} onChange={handleChange}
+              placeholder="Calle, número, ciudad..." className={inputClass()} autoComplete="street-address" />
           </div>
         </>
       )}
 
-      {/* DOCUMENTO IDENTIDAD */}
+      {/* DOCUMENTO */}
       <div>
-        <label className="block text-sm mb-1">{tipoRegistro === "particular" ? "DNI / NIE" : "CIF"}</label>
-        <input
-          name="dni"
-          value={form.dni}
-          onChange={handleChange}
+        <label className="block text-sm mb-1 text-gray-300">
+          {tipoRegistro === "particular" ? "DNI / NIE" : "CIF"}
+        </label>
+        <input name="dni" value={form.dni} onChange={handleChange}
           placeholder={tipoRegistro === "particular" ? "12345678A" : "A12345678"}
-          className={`w-full p-3 rounded bg-neutral-800 border outline-none text-white ${errors.dni ? "border-red-500" : "border-white/10 focus:border-red-500"}`}
-        />
+          className={inputClass("dni")} />
         {errors.dni && <p className="text-red-500 text-[11px] mt-1">{errors.dni}</p>}
       </div>
 
       {/* EMAIL */}
       <div>
-        <label className="block text-sm mb-1">Correo Electrónico</label>
-        <input
-          name="email"
-          type="email"
-          value={form.email}
-          onChange={handleChange}
-          className={`w-full p-3 rounded bg-neutral-800 border outline-none text-white ${errors.email ? "border-red-500" : "border-white/10 focus:border-red-500"}`}
-        />
+        <label className="block text-sm mb-1 text-gray-300">Correo Electrónico</label>
+        <input name="email" type="email" value={form.email} onChange={handleChange}
+          placeholder="ejemplo@correo.com" className={inputClass("email")} autoComplete="email" />
         {errors.email && <p className="text-red-500 text-[11px] mt-1">{errors.email}</p>}
       </div>
 
       {/* TELÉFONO */}
       <div>
-        <label className="block text-sm mb-1">Número de Teléfono</label>
-        <div className={`bg-neutral-800 border rounded p-2 focus-within:border-red-500 ${errors.phone ? "border-red-500" : "border-white/10"}`}>
+        <label className="block text-sm mb-1 text-gray-300">Número de Teléfono</label>
+        <div className="relative">
           <PhoneInput
-            defaultCountry="ES"
             value={phone}
-            onChange={setPhone}
-            onKeyUp={(e: any) => {
-              const value = e.currentTarget.value;
-              const formatCount = (value.match(/[ -]/g) || []).length;
-              setMaxInputLength(countryData.maxLength + countryData.dialCode.length + formatCount);
-            }}
-            onCountryChange={(c) => c && setSelectedCountry(c as CountryCode)}
-            international
-            className="text-white"
-            numberInputProps={{ maxLength: maxInputLength, className: "bg-transparent outline-none w-full ml-2 text-white" }}
+            onChange={(val, valid, full) => { setPhone(val); setPhoneValid(valid); setPhoneFull(full); }}
+            error={errors.phone}
           />
         </div>
-        {errors.phone && <p className="text-red-500 text-[11px] mt-1">{errors.phone}</p>}
       </div>
 
-      {/* SECCIÓN DE CONTRASEÑAS MODIFICADA */}
-      <div className="flex gap-2">
-        {/* Input Password */}
-        <div className="w-1/2">
-          <label className="block text-sm mb-1">Contraseña</label>
-          <div className="relative">
-            <input
-              name="password"
-              type={showPassword ? "text" : "password"}
-              value={form.password}
-              onChange={handleChange}
-              className={`w-full p-3 pr-10 rounded bg-neutral-800 border outline-none text-white transition-all ${errors.password ? "border-red-500" : "border-white/10 focus:border-red-500"}`}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-red-500 transition-colors"
-            >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
-          </div>
-        </div>
-
-        {/* Input Repeat Password */}
-        <div className="w-1/2">
-          <label className="block text-sm mb-1">Repetir Contraseña</label>
-          <div className="relative">
-            <input
-              name="repeatPassword"
-              type={showRepeatPassword ? "text" : "password"}
-              value={form.repeatPassword}
-              onChange={handleChange}
-              className={`w-full p-3 pr-10 rounded bg-neutral-800 border outline-none text-white transition-all ${errors.repeatPassword ? "border-red-500" : "border-white/10 focus:border-red-500"}`}
-            />
-            <button
-              type="button"
-              onClick={() => setShowRepeatPassword(!showRepeatPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-red-500 transition-colors"
-            >
-              {showRepeatPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
-          </div>
-        </div>
+      {/* CONTRASEÑAS */}
+      <div className="flex flex-col sm:flex-row gap-3 sm:gap-2">
+        <PasswordInput name="password" label="Contraseña" show={showPassword} onToggle={() => setShowPassword(!showPassword)} />
+        <PasswordInput name="repeatPassword" label="Repetir Contraseña" show={showRepeatPassword} onToggle={() => setShowRepeatPassword(!showRepeatPassword)} />
       </div>
+      {errors.password && <p className="text-red-500 text-[11px] -mt-2">{errors.password}</p>}
+      {errors.repeatPassword && <p className="text-red-500 text-[11px] -mt-2">{errors.repeatPassword}</p>}
 
-      {errors.password && <p className="text-red-500 text-[11px] mt-1">{errors.password}</p>}
-      {errors.repeatPassword && <p className="text-red-500 text-[11px] mt-1">{errors.repeatPassword}</p>}
-
-      {/* ERROR DEL SERVIDOR */}
+      {/* ERROR SERVIDOR */}
       {serverError && (
-        <div className="bg-red-500/10 border border-red-500 text-red-500 p-3 rounded text-sm text-center">
+        <div className="bg-red-500/10 border border-red-500 text-red-500 p-3 rounded-xl text-sm text-center">
           {serverError}
         </div>
       )}
 
-      <button
-        type="submit"
-        disabled={isFormInvalid || loading}
-        className={`w-full p-3 rounded font-semibold transition-all ${isFormInvalid || loading
-            ? "bg-gray-600 opacity-50 cursor-not-allowed"
-            : "bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/20"
-          }`}
-      >
+      <button type="submit" disabled={isFormInvalid || loading}
+        className={`w-full p-3 sm:p-3.5 rounded-xl font-semibold text-sm sm:text-base transition-all ${
+          isFormInvalid || loading
+            ? "bg-gray-600 opacity-50 cursor-not-allowed text-gray-400"
+            : "bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/20 active:scale-[0.98]"
+        }`}>
         {loading ? "Registrando..." : "Registrarse"}
       </button>
     </form>

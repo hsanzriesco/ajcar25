@@ -12,8 +12,12 @@ export async function POST(req: Request) {
 
     const sql = neon(process.env.DATABASE_URL);
 
-    // 1. Buscamos al usuario por email
-    const users = await sql`SELECT * FROM usuarios WHERE email = ${email} LIMIT 1`;
+    // 1. Buscamos al usuario por email O por matrícula
+    const users = await sql`
+      SELECT * FROM usuarios 
+      WHERE email = ${email} OR matricula = ${email}
+      LIMIT 1
+    `;
 
     if (users.length === 0) {
       return NextResponse.json({ message: "Usuario no encontrado" }, { status: 401 });
@@ -29,10 +33,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Contraseña incorrecta" }, { status: 401 });
     }
 
-    // 3. Obtenemos el rol correctamente (normalizado a minúsculas)
+    // 3. Verificamos que el usuario no esté bloqueado
+    if (user.esta_activo === false) {
+      return NextResponse.json({ 
+        message: "Tu cuenta ha sido bloqueada. Contacta con el taller para más información." 
+      }, { status: 403 });
+    }
+
+    // 4. Obtenemos el rol correctamente (normalizado a minúsculas)
     let userRole = (user.role || "cliente").toLowerCase().trim();
 
-    // Si existe id_rol, intentamos obtener el nombre del rol desde la tabla roles
     if (user.id_rol && !isNaN(Number(user.id_rol))) {
       const roleData = await sql`SELECT nombre FROM roles WHERE id = ${user.id_rol} LIMIT 1`;
       if (roleData.length > 0) {
@@ -40,11 +50,10 @@ export async function POST(req: Request) {
       }
     }
 
-    // ✅ IMPORTANTE: Devolvemos el rol siempre en minúsculas para evitar problemas
     return NextResponse.json({
       id: user.id,
       nombre: user.nombre,
-      role: userRole,           // ← Ahora siempre viene en minúsculas ("cliente", "empleado", etc.)
+      role: userRole,
       email: user.email
     }, { status: 200 });
 

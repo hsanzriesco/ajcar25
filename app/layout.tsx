@@ -16,7 +16,9 @@ export default function RootLayout({
     "/gestion/tareas", 
     "/forgot-password", 
     "/reset-password",
-    "/cliente"
+    "/cliente",
+    "/jefe",
+    "/forgot-password"
   ];
   
   const ocultarNavbar = rutasSinNavbar.includes(pathname);
