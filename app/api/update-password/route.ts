@@ -1,7 +1,15 @@
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
-// Importante: Instala bcryptjs para seguridad: npm install bcryptjs
 import bcrypt from "bcryptjs";
+
+const validarPassword = (password: string): string | null => {
+  if (!password || password.length < 6) return "La contraseña debe tener al menos 6 caracteres.";
+  if (!/[a-z]/.test(password)) return "La contraseña debe tener al menos una letra minúscula.";
+  if (!/[A-Z]/.test(password)) return "La contraseña debe tener al menos una letra mayúscula.";
+  if (!/[0-9]/.test(password)) return "La contraseña debe tener al menos un número.";
+  if (!/[^a-zA-Z0-9]/.test(password)) return "La contraseña debe tener al menos un carácter especial (!@#$...).";
+  return null;
+};
 
 export async function POST(req: Request) {
   try {
@@ -9,6 +17,12 @@ export async function POST(req: Request) {
 
     if (!token || !password) {
       return NextResponse.json({ message: "Datos insuficientes" }, { status: 400 });
+    }
+
+    // ✅ Validación igual que en el panel cliente
+    const errorPassword = validarPassword(password);
+    if (errorPassword) {
+      return NextResponse.json({ message: errorPassword }, { status: 400 });
     }
 
     const sql = neon(process.env.DATABASE_URL!);
@@ -29,13 +43,12 @@ export async function POST(req: Request) {
 
     const email = resetRequest[0].email;
 
-    // 2. Encriptar la nueva contraseña (SEGURIDAD OBLIGATORIA)
-    // No la guardes en texto plano porque no funcionará el Login si este usa bcrypt
+    // 2. Encriptar la nueva contraseña
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // 3. Actualizar en la tabla 'usuarios' usando el nombre de columna 'password_hash'
-    const updateResult = await sql`
+    // 3. Actualizar en la tabla usuarios
+    await sql`
       UPDATE usuarios 
       SET password_hash = ${hashedPassword} 
       WHERE email = ${email}

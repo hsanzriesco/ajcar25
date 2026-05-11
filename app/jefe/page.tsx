@@ -25,7 +25,7 @@ interface Presupuesto {
 }
 interface Factura {
     id: number; numero_factura: string; cliente_nombre: string;
-    vehiculo: string; total: number; fecha_emision: string; articulos?: any;
+    vehiculo: string; matricula?: string | null; total: number; fecha_emision: string; articulos?: any;
     empleado_nombre: string | null; empleado_apellido1: string | null;
 }
 interface Articulo {
@@ -318,6 +318,7 @@ export default function JefePage() {
     const [guardandoAcceso, setGuardandoAcceso] = useState(false);
 
     const [filtroStock, setFiltroStock] = useState("");
+    const [filtroFacturas, setFiltroFacturas] = useState("");
     const [editandoStock, setEditandoStock] = useState<number | null>(null);
     const [valorStockEdit, setValorStockEdit] = useState<number>(0);
     const [guardandoStock, setGuardandoStock] = useState(false);
@@ -876,38 +877,64 @@ export default function JefePage() {
                 {/* FACTURAS */}
                 {view === "facturas" && (
                     <div className="space-y-4 sm:space-y-6">
-                        <h2 className="text-2xl sm:text-4xl font-black text-white mb-6 sm:mb-10">Facturas <span className="text-gray-500 text-lg sm:text-2xl font-normal">({facturas.length})</span></h2>
-                        {facturas.length > 0 ? facturas.map((f) => (
-                            <div key={f.id} className="bg-[#0f0f12] border border-green-500/20 rounded-[24px] sm:rounded-[40px] p-5 sm:p-10 flex flex-col sm:flex-row justify-between gap-4 sm:gap-6 items-start">
-                                <div className="min-w-0 flex-1">
-                                    <p className="text-green-400 font-mono text-sm mb-1">#{f.numero_factura}</p>
-                                    <h3 className="text-white font-black text-base sm:text-xl mb-1 truncate">{f.vehiculo}</h3>
-                                    <p className="text-gray-400 text-sm truncate">{f.cliente_nombre}</p>
-                                    <p className="text-gray-600 text-xs mt-1">{f.fecha_emision ? new Date(f.fecha_emision).toLocaleDateString("es-ES") : "—"}</p>
-                                    {f.empleado_nombre ? (
-                                        <div className="mt-2 sm:mt-3 inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 rounded-xl px-3 py-1.5">
-                                            <Wrench size={12} className="text-blue-400" />
-                                            <span className="text-blue-400 text-xs font-bold">{f.empleado_nombre} {f.empleado_apellido1 || ""}</span>
-                                        </div>
-                                    ) : (
-                                        <div className="mt-2 sm:mt-3 inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-1.5">
-                                            <span className="text-gray-500 text-xs">Sin empleado asignado</span>
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="flex flex-row sm:flex-col items-center sm:items-end gap-3 sm:gap-4 flex-shrink-0 w-full sm:w-auto">
-                                    <p className="text-2xl sm:text-4xl font-black text-green-400 tracking-tighter">{Number(f.total || 0).toFixed(2)} €</p>
-                                    <button onClick={() => generarFacturaPDF(f, false)} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-2xl font-bold transition-all text-sm ml-auto sm:ml-0">
-                                        <Download size={14} /> <span className="hidden sm:inline">Descargar </span>PDF
-                                    </button>
-                                </div>
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-10">
+                            <h2 className="text-2xl sm:text-4xl font-black text-white">Facturas <span className="text-gray-500 text-lg sm:text-2xl font-normal">({facturas.length})</span></h2>
+                            <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-2xl px-3 sm:px-4 py-2 w-full sm:w-72">
+                                <Search size={15} className="text-gray-500 flex-shrink-0" />
+                                <input type="text" value={filtroFacturas} onChange={(e) => setFiltroFacturas(e.target.value)}
+                                    placeholder="Filtrar por matrícula o vehículo..."
+                                    className="bg-transparent text-white text-sm focus:outline-none w-full placeholder:text-gray-600" />
+                                {filtroFacturas && (
+                                    <button onClick={() => setFiltroFacturas("")} className="text-gray-500 hover:text-white transition-colors flex-shrink-0"><X size={14} /></button>
+                                )}
                             </div>
-                        )) : (
-                            <div className="bg-[#0f0f12] rounded-[24px] sm:rounded-[40px] p-12 sm:p-20 text-center border border-white/5">
-                                <FileText size={60} className="mx-auto mb-6 text-gray-600" />
-                                <p className="text-xl sm:text-2xl font-bold text-white mb-3">No hay facturas emitidas</p>
-                            </div>
-                        )}
+                        </div>
+                        {(() => {
+                            const facturasFiltradas = filtroFacturas.trim()
+                                ? facturas.filter(f => {
+                                    const t = filtroFacturas.toLowerCase();
+                                    return (f.vehiculo || "").toLowerCase().includes(t) ||
+                                           (f.matricula || "").toLowerCase().includes(t) ||
+                                           (f.cliente_nombre || "").toLowerCase().includes(t);
+                                  })
+                                : facturas;
+                            if (facturasFiltradas.length === 0) return (
+                                <div className="bg-[#0f0f12] rounded-[24px] sm:rounded-[40px] p-12 sm:p-20 text-center border border-white/5">
+                                    <FileText size={60} className="mx-auto mb-6 text-gray-600" />
+                                    <p className="text-xl sm:text-2xl font-bold text-white mb-3">
+                                        {filtroFacturas ? "Sin resultados" : "No hay facturas emitidas"}
+                                    </p>
+                                    {filtroFacturas && <p className="text-gray-500 text-sm">No hay facturas con "{filtroFacturas}"</p>}
+                                </div>
+                            );
+                            return facturasFiltradas.map((f) => (
+                                <div key={f.id} className="bg-[#0f0f12] border border-green-500/20 rounded-[24px] sm:rounded-[40px] p-5 sm:p-10 flex flex-col sm:flex-row justify-between gap-4 sm:gap-6 items-start">
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-green-400 font-mono text-sm mb-1">#{f.numero_factura}</p>
+                                        <h3 className="text-white font-black text-base sm:text-xl mb-1 truncate">{f.vehiculo}</h3>
+                                        {f.matricula && <p className="text-blue-400 font-mono text-xs font-bold mb-1">{f.matricula}</p>}
+                                        <p className="text-gray-400 text-sm truncate">{f.cliente_nombre}</p>
+                                        <p className="text-gray-600 text-xs mt-1">{f.fecha_emision ? new Date(f.fecha_emision).toLocaleDateString("es-ES") : "—"}</p>
+                                        {f.empleado_nombre ? (
+                                            <div className="mt-2 sm:mt-3 inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 rounded-xl px-3 py-1.5">
+                                                <Wrench size={12} className="text-blue-400" />
+                                                <span className="text-blue-400 text-xs font-bold">{f.empleado_nombre} {f.empleado_apellido1 || ""}</span>
+                                            </div>
+                                        ) : (
+                                            <div className="mt-2 sm:mt-3 inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-1.5">
+                                                <span className="text-gray-500 text-xs">Sin empleado asignado</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="flex flex-row sm:flex-col items-center sm:items-end gap-3 sm:gap-4 flex-shrink-0 w-full sm:w-auto">
+                                        <p className="text-2xl sm:text-4xl font-black text-green-400 tracking-tighter">{Number(f.total || 0).toFixed(2)} €</p>
+                                        <button onClick={() => generarFacturaPDF(f, false)} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-2xl font-bold transition-all text-sm ml-auto sm:ml-0">
+                                            <Download size={14} /> <span className="hidden sm:inline">Descargar </span>PDF
+                                        </button>
+                                    </div>
+                                </div>
+                            ));
+                        })()}
                     </div>
                 )}
 

@@ -41,23 +41,19 @@ export async function POST(request: Request) {
   try {
     const sql = neon(process.env.DATABASE_URL!);
     const body = await request.json();
-    // AÑADIDO: apellidos
-    const { nombre, apellidos, email, telefono, vehiculo, anio, mensaje, articulos } = body;
+    const { nombre, apellidos, email, telefono, vehiculo, anio, matricula, mensaje, articulos } = body;
 
-    // Valores por defecto para evitar nulos en SQL si no vienen del front
     const fecha = new Date().toISOString().split('T')[0];
     const hora = "10:00";
 
-    // 1. Insertamos la cabecera (Incluyendo apellidos)
     const resultadoPresupuesto = await sql`
-      INSERT INTO presupuestos_pedidos (nombre, apellidos, email, telefono, vehiculo, anio, fecha_cita, hora_cita, mensaje, estado) 
-      VALUES (${nombre}, ${apellidos}, ${email}, ${telefono}, ${vehiculo}, ${anio}, ${fecha}, ${hora}, ${mensaje}, 'Pendiente')
+      INSERT INTO presupuestos_pedidos (nombre, apellidos, email, telefono, vehiculo, anio, matricula, fecha_cita, hora_cita, mensaje, estado) 
+      VALUES (${nombre}, ${apellidos}, ${email}, ${telefono}, ${vehiculo}, ${anio}, ${matricula ?? null}, ${fecha}, ${hora}, ${mensaje}, 'Pendiente')
       RETURNING id
     `;
 
     const nuevoId = resultadoPresupuesto[0].id;
 
-    // 2. Insertar líneas si existen
     if (articulos && Array.isArray(articulos) && articulos.length > 0) {
       for (const item of articulos) {
         await sql`
@@ -67,17 +63,17 @@ export async function POST(request: Request) {
       }
     }
 
-    // Retornamos el objeto completo para que el Front lo añada a la lista sin recargar
     return NextResponse.json({ 
-        id: nuevoId, 
-        nombre, 
-        apellidos, 
-        email, 
-        telefono, 
-        vehiculo, 
-        anio, 
-        estado: 'Pendiente', 
-        articulos: articulos || [] 
+      id: nuevoId, 
+      nombre, 
+      apellidos, 
+      email, 
+      telefono, 
+      vehiculo,
+      anio,
+      matricula: matricula ?? null,
+      estado: 'Pendiente', 
+      articulos: articulos || [] 
     }, { status: 200 });
     
   } catch (error: any) {

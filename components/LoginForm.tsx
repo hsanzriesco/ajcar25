@@ -110,7 +110,7 @@ export default function LoginForm() {
         {loading ? "Verificando..." : "Entrar"}
       </button>
 
-      <div className="text-center mt-5 sm:mt-6 border-t border-white/10 pt-5 sm:pt-6">
+      <div className="text-center mt-5 sm:mt-6 border-t border-white/10 pt-5 sm:pt-6 space-y-3">
         <p className="text-sm text-gray-400">
           ¿No tienes cuenta?{" "}
           <Link
@@ -118,6 +118,15 @@ export default function LoginForm() {
             className="text-white font-bold hover:text-red-500 transition-colors underline underline-offset-4"
           >
             Regístrate aquí
+          </Link>
+        </p>
+        <p className="text-sm text-gray-500">
+          ¿Olvidaste tu contraseña?{" "}
+          <Link
+            href="/forgot-password"
+            className="text-gray-300 hover:text-white transition-colors underline underline-offset-4"
+          >
+            Restablécela aquí
           </Link>
         </p>
       </div>

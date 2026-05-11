@@ -76,7 +76,7 @@ export default function QuoteForm() {
   const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
 
   const [form, setForm] = useState({
-    nombre: "", email: "", vehiculo: "", anio: "",
+    nombre: "", email: "", vehiculo: "", anio: "", matricula: "",
     fechaCita: "", horaCita: "", mensaje: "",
   });
 
@@ -140,7 +140,7 @@ export default function QuoteForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           nombre: form.nombre, email: form.email, telefono: phoneFull,
-          vehiculo: form.vehiculo, anio: parseInt(form.anio),
+          vehiculo: form.vehiculo, anio: parseInt(form.anio), matricula: form.matricula,
           fecha_cita: form.fechaCita, hora_cita: form.horaCita, mensaje: form.mensaje,
         }),
       });
@@ -150,7 +150,7 @@ export default function QuoteForm() {
         showCustomAlert("Error", data.message || "No se pudo enviar el presupuesto", "error");
       } else {
         showCustomAlert("¡Éxito!", "Presupuesto solicitado correctamente. Te contactaremos pronto.", "success");
-        setForm({ nombre: "", email: "", vehiculo: "", anio: "", fechaCita: "", horaCita: "", mensaje: "" });
+        setForm({ nombre: "", email: "", vehiculo: "", anio: "", matricula: "", fechaCita: "", horaCita: "", mensaje: "" });
         setPhone(""); setPhoneValid(false); setPhoneFull("");
       }
     } catch (error) {
@@ -238,6 +238,17 @@ export default function QuoteForm() {
               <input name="horaCita" type="time" value={form.horaCita} onChange={handleChange}
                 className={`${inputBase} color-scheme-dark`} />
             </div>
+          </div>
+        </div>
+
+        {/* Matrícula */}
+        <div>
+          <label className="block text-sm mb-1 text-gray-300 font-medium">Matrícula del Vehículo</label>
+          <div className={`${wrapBase} border-white/10`}>
+            <Car size={16} className="text-gray-500 flex-shrink-0" />
+            <input name="matricula" value={form.matricula} onChange={handleChange}
+              placeholder="Ej: 1234 ABC"
+              className={`${inputBase} uppercase`} />
           </div>
         </div>
 

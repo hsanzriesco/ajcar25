@@ -25,6 +25,17 @@ interface LineaPresupuesto extends Articulo {
   cantidad: number;
 }
 
+interface Factura {
+  id: string;
+  numero_factura?: string;
+  cliente_nombre: string;
+  vehiculo: string;
+  matricula?: string;
+  total: number;
+  fecha_emision: string;
+  articulos?: any[];
+}
+
 interface PresupuestoPedido {
   id: string;
   nombre: string;
@@ -127,6 +138,7 @@ function EmpleadoContent() {
 
   const [codigoBusqueda, setCodigoBusqueda] = useState("");
   const [filtroStock, setFiltroStock] = useState("");
+  const [filtroFacturas, setFiltroFacturas] = useState("");
   const [lineas, setLineas] = useState<LineaPresupuesto[]>([]);
   const [enviandoEmail, setEnviandoEmail] = useState(false);
   const [facturando, setFacturando] = useState(false);
@@ -466,36 +478,64 @@ function EmpleadoContent() {
                   </div>
                 </div>
               ) : view === "facturas" ? (
-                <div className="grid grid-cols-1 gap-3 sm:gap-4">
-                  {facturas.length === 0 ? (
-                    <div className="bg-[#0f0f12] rounded-[32px] sm:rounded-[40px] p-12 sm:p-20 text-center border border-white/5">
-                      <FileText size={60} className="mx-auto mb-6 text-gray-600" />
-                      <p className="text-xl sm:text-2xl font-black italic uppercase text-white mb-3">No hay facturas emitidas</p>
-                      <p className="text-gray-500 text-sm">Las facturas generadas aparecerán aquí.</p>
-                    </div>
-                  ) : facturas.map(f => (
-                    <div key={f.id} className="bg-[#0f0f12] p-5 sm:p-10 rounded-[32px] sm:rounded-[40px] border border-white/5 flex flex-col sm:flex-row justify-between gap-4 sm:gap-0 items-start sm:items-center group hover:border-blue-500/30 transition-all shadow-xl">
-                      <div className="flex items-center gap-4 sm:gap-6 min-w-0">
-                        <div className="w-10 h-10 sm:w-14 sm:h-14 bg-white/5 rounded-2xl flex items-center justify-center text-gray-500 group-hover:text-blue-500 transition-colors flex-shrink-0">
-                          <FileText size={20} />
+                <div className="space-y-3 sm:space-y-4">
+                  {/* Buscador matrícula */}
+                  <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-4 py-2">
+                    <Search size={14} className="text-gray-500 flex-shrink-0" />
+                    <input type="text" value={filtroFacturas} onChange={(e) => setFiltroFacturas(e.target.value)}
+                      placeholder="FILTRAR POR MATRÍCULA O VEHÍCULO..."
+                      className="bg-transparent text-white text-xs font-bold uppercase focus:outline-none w-full placeholder:text-gray-600 tracking-widest" />
+                    {filtroFacturas && (
+                      <button onClick={() => setFiltroFacturas("")} className="text-gray-500 hover:text-white transition-colors flex-shrink-0">
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+                  {(() => {
+                    const facturasFiltradas = filtroFacturas.trim()
+                      ? facturas.filter(f => {
+                          const t = filtroFacturas.toLowerCase();
+                          return (f.vehiculo || "").toLowerCase().includes(t) ||
+                                 (f.matricula || "").toLowerCase().includes(t) ||
+                                 (f.cliente_nombre || "").toLowerCase().includes(t);
+                        })
+                      : facturas;
+                    if (facturasFiltradas.length === 0) return (
+                      <div className="bg-[#0f0f12] rounded-[32px] sm:rounded-[40px] p-12 sm:p-20 text-center border border-white/5">
+                        <FileText size={60} className="mx-auto mb-6 text-gray-600" />
+                        <p className="text-xl sm:text-2xl font-black italic uppercase text-white mb-3">
+                          {filtroFacturas ? "Sin resultados" : "No hay facturas emitidas"}
+                        </p>
+                        <p className="text-gray-500 text-sm">
+                          {filtroFacturas ? `No hay facturas con "${filtroFacturas}"` : "Las facturas generadas aparecerán aquí."}
+                        </p>
+                      </div>
+                    );
+                    return facturasFiltradas.map(f => (
+                      <div key={f.id} className="bg-[#0f0f12] p-5 sm:p-10 rounded-[32px] sm:rounded-[40px] border border-white/5 flex flex-col sm:flex-row justify-between gap-4 sm:gap-0 items-start sm:items-center group hover:border-blue-500/30 transition-all shadow-xl">
+                        <div className="flex items-center gap-4 sm:gap-6 min-w-0">
+                          <div className="w-10 h-10 sm:w-14 sm:h-14 bg-white/5 rounded-2xl flex items-center justify-center text-gray-500 group-hover:text-blue-500 transition-colors flex-shrink-0">
+                            <FileText size={20} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-black text-gray-600 uppercase mb-1 tracking-widest">Factura No. {String(f.id).slice(0, 8)}</p>
+                            <h4 className="text-white text-base sm:text-xl font-black italic uppercase tracking-tighter truncate">{f.cliente_nombre}</h4>
+                            <p className="text-xs text-gray-500 font-bold uppercase truncate">{f.vehiculo} • {new Date(f.fecha_emision).toLocaleDateString()}</p>
+                            {f.matricula && <p className="text-xs text-blue-400 font-mono font-bold mt-0.5">{f.matricula}</p>}
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-[10px] font-black text-gray-600 uppercase mb-1 tracking-widest">Factura No. {String(f.id).slice(0, 8)}</p>
-                          <h4 className="text-white text-base sm:text-xl font-black italic uppercase tracking-tighter truncate">{f.cliente_nombre}</h4>
-                          <p className="text-xs text-gray-500 font-bold uppercase truncate">{f.vehiculo} • {new Date(f.fecha_emision).toLocaleDateString()}</p>
+                        <div className="flex sm:flex-col items-center sm:items-end gap-3 sm:gap-2 w-full sm:w-auto">
+                          <p className="text-2xl sm:text-3xl font-black text-white italic tracking-tighter">{Number(f.total || 0).toFixed(2)}€</p>
+                          <div className="flex items-center gap-2 sm:gap-3">
+                            <span className="text-[9px] bg-green-500/10 text-green-500 px-3 py-1 rounded-full font-black uppercase tracking-widest border border-green-500/20 hidden sm:inline">Liquidada</span>
+                            <button onClick={() => imprimirFacturaExistente(f)} className="p-2 bg-blue-600/10 text-blue-500 hover:bg-blue-600 hover:text-white rounded-xl transition-all border border-blue-500/20">
+                              <Printer size={16} />
+                            </button>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex sm:flex-col items-center sm:items-end gap-3 sm:gap-2 w-full sm:w-auto">
-                        <p className="text-2xl sm:text-3xl font-black text-white italic tracking-tighter">{Number(f.total || 0).toFixed(2)}€</p>
-                        <div className="flex items-center gap-2 sm:gap-3">
-                          <span className="text-[9px] bg-green-500/10 text-green-500 px-3 py-1 rounded-full font-black uppercase tracking-widest border border-green-500/20 hidden sm:inline">Liquidada</span>
-                          <button onClick={() => imprimirFacturaExistente(f)} className="p-2 bg-blue-600/10 text-blue-500 hover:bg-blue-600 hover:text-white rounded-xl transition-all border border-blue-500/20">
-                            <Printer size={16} />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                    ));
+                  })()}
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">

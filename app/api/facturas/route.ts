@@ -7,8 +7,10 @@ export async function GET() {
   try {
     const sql = neon(process.env.DATABASE_URL!);
     const data = await sql`
-      SELECT * FROM facturas 
-      ORDER BY fecha_emision DESC
+      SELECT f.*, p.matricula
+      FROM facturas f
+      LEFT JOIN presupuestos_pedidos p ON f.presupuesto_id::uuid = p.id
+      ORDER BY f.fecha_emision DESC
     `;
     return NextResponse.json(data);
   } catch (error: any) {
