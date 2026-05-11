@@ -204,6 +204,20 @@ export default function ClientePage() {
         const role = sessionStorage.getItem("user_role");
         if (!userId || role?.toLowerCase() !== "cliente") { router.push("/login"); return; }
         cargarDatosCliente(userId);
+
+        // ✅ Refresco automático cada 15 segundos sin mostrar spinner
+        const intervalo = setInterval(async () => {
+            try {
+                const res = await fetch(`/api/cliente/${userId}`);
+                if (!res.ok) return;
+                const data = await res.json();
+                setCliente(data.cliente);
+                setPresupuestos(data.presupuestos || []);
+                setFacturas(data.facturas || []);
+            } catch { /* silencioso */ }
+        }, 15000);
+
+        return () => clearInterval(intervalo);
     }, [router]);
 
     const cargarDatosCliente = async (userId: string) => {
