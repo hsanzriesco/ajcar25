@@ -306,6 +306,7 @@ export default function JefePage() {
     const [statsEmpleados, setStatsEmpleados] = useState<StatsEmpleado[]>([]);
     const [stats, setStats] = useState<Stats | null>(null);
     const [loading, setLoading] = useState(true);
+    const [autorizado, setAutorizado] = useState(false);
     const [view, setView] = useState<"dashboard" | "empleados" | "presupuestos" | "clientes" | "facturas" | "stock" | "rendimiento">("dashboard");
 
     const [modalEmpleadoAbierto, setModalEmpleadoAbierto] = useState(false);
@@ -345,7 +346,8 @@ export default function JefePage() {
 
     useEffect(() => {
         const role = sessionStorage.getItem("user_role");
-        if (!role || !["jefe", "admin"].includes(role.toLowerCase())) { router.push("/login"); return; }
+        if (!role || !["jefe", "admin"].includes(role.toLowerCase())) { sessionStorage.clear(); router.push("/login"); return; }
+        setAutorizado(true);
         cargarDatos();
 
         // ✅ Refresco automático cada 15 segundos sin mostrar spinner
@@ -551,6 +553,12 @@ export default function JefePage() {
     };
 
     const maxFacturado = Math.max(...statsEmpleados.map(e => Number(e.total_facturado)), 1);
+
+    if (!autorizado) return (
+        <div className="min-h-screen bg-[#0a0a0c] flex items-center justify-center">
+            <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+    );
 
     if (loading) return (
         <div className="min-h-screen bg-[#0a0a0c] flex items-center justify-center">

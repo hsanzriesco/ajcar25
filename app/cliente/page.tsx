@@ -174,6 +174,7 @@ export default function ClientePage() {
     const [presupuestos, setPresupuestos] = useState<Presupuesto[]>([]);
     const [facturas, setFacturas] = useState<Factura[]>([]);
     const [loading, setLoading] = useState(true);
+    const [autorizado, setAutorizado] = useState(false);
     const [view, setView] = useState<"estado" | "facturas" | "cancelados" | "perfil" | "presupuesto">("estado");
 
     const [editando, setEditando] = useState<string | null>(null);
@@ -209,7 +210,8 @@ export default function ClientePage() {
     useEffect(() => {
         const userId = sessionStorage.getItem("user_id");
         const role = sessionStorage.getItem("user_role");
-        if (!userId || role?.toLowerCase() !== "cliente") { router.push("/login"); return; }
+        if (!userId || role?.toLowerCase() !== "cliente") { sessionStorage.clear(); router.push("/login"); return; }
+        setAutorizado(true);
         cargarDatosCliente(userId);
 
         // ✅ Refresco automático cada 15 segundos sin mostrar spinner
@@ -326,6 +328,12 @@ export default function ClientePage() {
             doc.save(`Factura_${factura.numero_factura || factura.id}.pdf`);
         } catch (error) { console.error(error); mostrarAlerta("Error al generar el PDF."); }
     };
+
+    if (!autorizado) return (
+        <div className="min-h-screen bg-[#070b14] flex items-center justify-center">
+            <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+    );
 
     if (loading) return (
         <div className="min-h-screen bg-[#0a0a0c] flex items-center justify-center">

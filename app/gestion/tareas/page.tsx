@@ -128,6 +128,7 @@ export default function EmpleadoPage() {
 function EmpleadoContent() {
   const [nombreUsuario, setNombreUsuario] = useState("");
   const [loading, setLoading] = useState(true);
+  const [autorizado, setAutorizado] = useState(false);
   const [view, setView] = useState<"mantenimientos" | "presupuestos" | "aceptados" | "stock" | "facturas">("presupuestos");
   const [panelAbierto, setPanelAbierto] = useState(false);
 
@@ -189,7 +190,8 @@ function EmpleadoContent() {
 
   useEffect(() => {
     const role = sessionStorage.getItem("user_role");
-    if (!role) { router.push("/login"); return; }
+    if (!role || role.toLowerCase() !== "empleado") { sessionStorage.clear(); router.push("/login"); return; }
+    setAutorizado(true);
     setNombreUsuario(sessionStorage.getItem("user_name") || "Trabajador");
     cargarTodo();
 
@@ -394,6 +396,12 @@ function EmpleadoContent() {
     if (view === "mantenimientos") return p.estado === "En Taller";
     return false;
   });
+
+  if (!autorizado) return (
+    <div className="min-h-screen bg-[#0a0a0c] flex items-center justify-center">
+      <Loader2 className="animate-spin text-blue-600" size={48} />
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-[#0a0a0c] text-gray-400 font-sans selection:bg-blue-500/30">
