@@ -4,6 +4,12 @@ import {
   Paintbrush, SprayCan, Hammer, Sparkles,
   ShieldCheck, Gauge, MapPin, Phone, Mail, Clock,
 } from "lucide-react";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "AJCAR 25 - Taller de Chapa y Pintura",
+  description: "Taller especializado en chapa y pintura. Calidad, precisión y confianza en cada reparación.",
+};
 
 export default function Home() {
   return (
