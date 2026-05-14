@@ -855,11 +855,16 @@ function EmpleadoContent() {
             <div className="space-y-4 sm:space-y-5 mb-8 sm:mb-12 text-left">
               <div className="space-y-2">
                 <p className="text-[8px] font-black text-blue-500 uppercase ml-3 sm:ml-5 tracking-widest flex items-center gap-2"><Briefcase size={10} /> Régimen del Cliente</p>
-                <select value={nuevoCliente.tipo_cliente} onChange={(e) => setNuevoCliente({ ...nuevoCliente, tipo_cliente: e.target.value })}
-                  className="w-full bg-white/5 border border-white/10 rounded-[20px] sm:rounded-[24px] p-4 sm:p-6 text-xs text-white uppercase outline-none focus:border-blue-500 transition-all font-bold shadow-inner appearance-none cursor-pointer">
-                  <option value="particular">Persona Física / Particular</option>
-                  <option value="empresa">Persona Jurídica / Empresa / Autónomo</option>
-                </select>
+                <div className="relative">
+                  <select value={nuevoCliente.tipo_cliente} onChange={(e) => setNuevoCliente({ ...nuevoCliente, tipo_cliente: e.target.value })}
+                    className="w-full bg-[#16161a] border border-white/10 rounded-[20px] sm:rounded-[24px] p-4 sm:p-6 text-xs text-white uppercase outline-none focus:border-blue-500 transition-all font-bold shadow-inner appearance-none cursor-pointer pr-10">
+                    <option value="particular" className="bg-[#16161a] text-white">Persona Física / Particular</option>
+                    <option value="empresa" className="bg-[#16161a] text-white">Persona Jurídica / Empresa / Autónomo</option>
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M6 8L1 3h10z"/></svg>
+                  </div>
+                </div>
               </div>
               <div className="space-y-2">
                 <p className="text-[8px] font-black text-blue-500 uppercase ml-3 sm:ml-5 tracking-widest">Documento de Identidad</p>

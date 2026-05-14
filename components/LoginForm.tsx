@@ -64,7 +64,7 @@ export default function LoginForm() {
 
       <div>
         <label className="block text-sm font-medium mb-1.5 text-gray-300">
-          Email o Matrícula
+          Email
         </label>
         <input
           type="text"

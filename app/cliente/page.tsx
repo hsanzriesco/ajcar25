@@ -84,7 +84,7 @@ const CampoPassword = ({ label, value, onChange, ver, setVer }: {
         <p className="text-gray-500 text-xs uppercase tracking-widest mb-2">{label}</p>
         <div className="relative">
             <input type={ver ? "text" : "password"} value={value} onChange={(e) => onChange(e.target.value)} placeholder="••••••••"
-                className="w-full bg-white/5 border border-white/10 text-white rounded-xl px-4 py-3 pr-12 text-sm focus:outline-none focus:border-blue-500" />
+                className="w-full bg-white/5 border border-white/10 text-white rounded-xl px-4 py-3 pr-12 text-sm focus:outline-none focus:border-emerald-500" />
             <button type="button" onClick={() => setVer(!ver)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors">
                 {ver ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -117,9 +117,9 @@ const CampoEditable = ({ label, campo, valor, editando, valorEdit, guardando, on
                 <div className="flex items-center gap-2 mt-1">
                     <input type="text" value={valorEdit} onChange={(e) => onCambio(e.target.value)}
                         onKeyDown={(e) => { if (e.key === "Enter") onGuardar(campo); if (e.key === "Escape") onCancelar(); }}
-                        autoFocus className="flex-1 bg-white/5 border border-blue-500/50 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500 min-w-0" />
+                        autoFocus className="flex-1 bg-white/5 border border-emerald-500/50 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 min-w-0" />
                     <button onClick={() => onGuardar(campo)} disabled={guardando}
-                        className="w-9 h-9 bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center justify-center transition-all flex-shrink-0">
+                        className="w-9 h-9 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl flex items-center justify-center transition-all flex-shrink-0">
                         <Check size={16} />
                     </button>
                     <button onClick={onCancelar}
@@ -131,7 +131,7 @@ const CampoEditable = ({ label, campo, valor, editando, valorEdit, guardando, on
                 <div className="flex items-center justify-between gap-4 mt-1">
                     <p className="text-white font-medium break-all">{valor || "—"}</p>
                     <button onClick={() => onEditar(campo, valor)}
-                        className="w-8 h-8 bg-white/5 hover:bg-blue-500/20 text-gray-500 hover:text-blue-400 rounded-xl flex items-center justify-center transition-all flex-shrink-0">
+                        className="w-8 h-8 bg-white/5 hover:bg-emerald-500/20 text-gray-500 hover:text-emerald-400 rounded-xl flex items-center justify-center transition-all flex-shrink-0">
                         <Pencil size={14} />
                     </button>
                 </div>
@@ -174,7 +174,7 @@ export default function ClientePage() {
     const [presupuestos, setPresupuestos] = useState<Presupuesto[]>([]);
     const [facturas, setFacturas] = useState<Factura[]>([]);
     const [loading, setLoading] = useState(true);
-    const [view, setView] = useState<"estado" | "facturas" | "cancelados" | "perfil">("estado");
+    const [view, setView] = useState<"estado" | "facturas" | "cancelados" | "perfil" | "presupuesto">("estado");
 
     const [editando, setEditando] = useState<string | null>(null);
     const [valorEdit, setValorEdit] = useState<string>("");
@@ -193,9 +193,16 @@ export default function ClientePage() {
     const [verConfirm, setVerConfirm] = useState(false);
 
     const [alerta, setAlerta] = useState<string | null>(null);
+
+    // Estado formulario nuevo presupuesto
+    const [formPres, setFormPres] = useState({ vehiculo: "", matricula: "", anio: new Date().getFullYear().toString(), mensaje: "" });
+    const [enviandoPres, setEnviandoPres] = useState(false);
+    const [okPres, setOkPres] = useState(false);
+    const [erroresPres, setErroresPres] = useState<Record<string, string>>({});
     const mostrarAlerta = (msg: string) => setAlerta(msg);
     const [confirmLogout, setConfirmLogout] = useState(false);
     const [confirmPassword, setConfirmPassword] = useState(false);
+    const [confirmCampo, setConfirmCampo] = useState<string | null>(null);
 
     const router = useRouter();
 
@@ -236,7 +243,14 @@ export default function ClientePage() {
     const iniciarEdicion = (campo: string, valorActual: string) => { setEditando(campo); setValorEdit(valorActual || ""); };
     const cancelarEdicion = () => { setEditando(null); setValorEdit(""); };
 
-    const guardarCampo = async (campo: string) => {
+    const guardarCampo = (campo: string) => {
+        setConfirmCampo(campo);
+    };
+
+    const ejecutarGuardarCampo = async () => {
+        const campo = confirmCampo;
+        if (!campo) return;
+        setConfirmCampo(null);
         const userId = sessionStorage.getItem("user_id");
         if (!userId) return;
         setGuardando(true);
@@ -323,36 +337,42 @@ export default function ClientePage() {
     );
 
     return (
-        <div className="min-h-screen bg-[#0a0a0c] text-gray-400 font-sans">
-            <div className="p-4 sm:p-8 lg:p-16 max-w-7xl mx-auto">
+        <div className="min-h-screen bg-[#070b14] text-gray-400 font-sans">
+            <div className="p-4 sm:p-8 lg:p-16 max-w-5xl mx-auto">
 
                 {/* Header */}
-                <header className="flex justify-between items-center mb-8 sm:mb-16 gap-4">
-                    <div className="flex items-center gap-3 min-w-0">
-                        <img src="/imagenes/logo_ajcar25.png" alt="AJCAR 25" className="w-10 h-10 sm:w-14 sm:h-14 rounded-2xl object-contain flex-shrink-0" />
-                        <div className="min-w-0">
-                            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black italic text-white tracking-tighter truncate">
-                                Hola, {cliente?.nombre}
-                            </h1>
-                            <p className="text-blue-500 text-xs sm:text-sm font-bold uppercase tracking-widest">ÁREA DE CLIENTE</p>
+                <header className="mb-8 sm:mb-12">
+                    <div className="flex justify-between items-start gap-4">
+                        <div className="flex items-center gap-4 min-w-0">
+                            <img src="/imagenes/logo_ajcar25.png" alt="AJCAR 25" className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl object-contain flex-shrink-0" />
+                            <div className="min-w-0">
+                                <p className="text-emerald-400 text-xs font-semibold tracking-widest uppercase mb-1">Área de Cliente</p>
+                                <h1 className="text-2xl sm:text-4xl font-bold text-white truncate">
+                                    Hola, <span className="text-emerald-400">{cliente?.nombre}</span> 👋
+                                </h1>
+                                <p className="text-gray-500 text-sm mt-0.5">{cliente?.email}</p>
+                            </div>
                         </div>
+                        <button onClick={() => setConfirmLogout(true)}
+                            className="flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-white/5 hover:bg-red-500/10 text-gray-400 hover:text-red-400 border border-white/10 hover:border-red-500/30 rounded-2xl transition-all flex-shrink-0 text-sm">
+                            <LogOut size={16} /> <span className="hidden sm:inline">Salir</span>
+                        </button>
                     </div>
-                    <button onClick={() => setConfirmLogout(true)}
-                        className="flex items-center gap-2 px-3 sm:px-6 py-2 sm:py-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-2xl transition-all flex-shrink-0 text-sm">
-                        <LogOut size={18} /> <span className="hidden sm:inline">Cerrar Sesión</span>
-                    </button>
+                    {/* Divider */}
+                    <div className="mt-6 sm:mt-8 h-px bg-gradient-to-r from-emerald-500/30 via-white/10 to-transparent" />
                 </header>
 
                 {/* Tabs */}
-                <div className="flex flex-wrap gap-1 sm:gap-2 mb-8 sm:mb-12 bg-white/[0.03] p-1 sm:p-1.5 rounded-2xl sm:rounded-3xl border border-white/5 w-full sm:w-fit">
+                <div className="flex gap-1 sm:gap-2 mb-8 sm:mb-10 w-full overflow-x-auto pb-1">
                     {([
                         { key: "estado", label: "Estado" },
+                        { key: "presupuesto", label: "+ Presupuesto" },
                         { key: "facturas", label: "Facturas" },
                         { key: "cancelados", label: "Cancelados" },
                         { key: "perfil", label: "Perfil" }
-                    ] as { key: "estado" | "facturas" | "cancelados" | "perfil", label: string }[]).map((tab) => (
+                    ] as { key: "estado" | "facturas" | "cancelados" | "perfil" | "presupuesto", label: string }[]).map((tab) => (
                         <button key={tab.key} onClick={() => setView(tab.key)}
-                            className={`flex-1 sm:flex-none px-3 sm:px-8 py-2 sm:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold transition-all ${view === tab.key ? "bg-blue-600 text-white shadow-lg" : "text-gray-400 hover:bg-white/5 hover:text-white"}`}>
+                            className={`flex-1 sm:flex-none px-4 sm:px-6 py-2.5 sm:py-3 rounded-full text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${view === tab.key ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white border border-white/10"}`}>
                             {tab.label}
                         </button>
                     ))}
@@ -371,7 +391,7 @@ export default function ClientePage() {
                                 if (estaEnTaller) { estadoColor = "bg-orange-600 text-white"; estadoTexto = "En Taller"; }
                                 const totalFormateado = (p.total != null && !isNaN(Number(p.total))) ? `${Number(p.total).toFixed(2)} €` : "Pendiente";
                                 return (
-                                    <div key={p.id} className={`bg-[#0f0f12] border rounded-[24px] sm:rounded-[40px] p-6 sm:p-12 transition-all ${estaEnTaller ? "border-orange-500/50 bg-orange-500/5" : "border-white/10"}`}>
+                                    <div key={p.id} className={`bg-[#0c1220] border rounded-2xl sm:rounded-3xl p-6 sm:p-10 transition-all ${estaEnTaller ? "border-orange-500/40 bg-orange-500/5" : "border-white/[0.08] hover:border-emerald-500/20"}`}>
                                         <div className="flex justify-between items-start gap-4 mb-6 sm:mb-10">
                                             <div className="min-w-0">
                                                 <p className="uppercase text-xs tracking-widest text-gray-500 mb-1 sm:mb-2">Mi vehículo</p>
@@ -407,10 +427,129 @@ export default function ClientePage() {
                                 );
                             })
                         ) : (
-                            <div className="bg-[#0f0f12] rounded-[24px] sm:rounded-[40px] p-12 sm:p-20 text-center border border-white/5">
+                            <div className="bg-[#0c1220] rounded-2xl sm:rounded-3xl p-12 sm:p-20 text-center border border-white/5">
                                 <Car size={60} className="mx-auto mb-6 sm:mb-8 text-gray-600" />
-                                <p className="text-xl sm:text-3xl font-black text-white mb-3 sm:mb-4">No tienes vehículos activos en taller</p>
+                                <p className="text-xl sm:text-3xl font-bold text-white mb-3 sm:mb-4">No tienes vehículos activos en taller</p>
                                 <p className="text-gray-500 max-w-md mx-auto text-sm">Cuando envíes un presupuesto y sea aceptado, podrás ver aquí el estado en tiempo real.</p>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* NUEVO PRESUPUESTO */}
+                {view === "presupuesto" && (
+                    <div className="space-y-6 sm:space-y-8">
+                        <div>
+                            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1">Solicitar Presupuesto</h2>
+                            <p className="text-gray-500 text-sm">Rellena los datos de tu vehículo y te contactaremos lo antes posible.</p>
+                        </div>
+
+                        {okPres ? (
+                            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-8 sm:p-12 text-center">
+                                <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <Check size={32} className="text-emerald-400" />
+                                </div>
+                                <p className="text-xl font-bold text-white mb-2">¡Presupuesto enviado!</p>
+                                <p className="text-gray-400 text-sm mb-6">Nos pondremos en contacto contigo lo antes posible.</p>
+                                <button onClick={() => { setOkPres(false); setFormPres({ vehiculo: "", matricula: "", anio: new Date().getFullYear().toString(), mensaje: "" }); setView("estado"); }}
+                                    className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3 rounded-2xl font-semibold transition-all text-sm">
+                                    Ver mis vehículos
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="bg-[#0c1220] border border-white/[0.08] rounded-2xl sm:rounded-3xl p-6 sm:p-10 space-y-5">
+                                {/* Datos del cliente — solo lectura */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 sm:p-5">
+                                        <p className="text-gray-500 text-xs uppercase tracking-widest mb-1">Nombre</p>
+                                        <p className="text-white font-medium">{cliente?.nombre} {cliente?.apellido1 || ""}</p>
+                                    </div>
+                                    <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 sm:p-5">
+                                        <p className="text-gray-500 text-xs uppercase tracking-widest mb-1">Email</p>
+                                        <p className="text-white font-medium truncate">{cliente?.email}</p>
+                                    </div>
+                                    <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 sm:p-5">
+                                        <p className="text-gray-500 text-xs uppercase tracking-widest mb-1">Teléfono</p>
+                                        <p className="text-white font-medium">{cliente?.telefono || "—"}</p>
+                                    </div>
+                                </div>
+
+                                <div className="h-px bg-white/5" />
+
+                                {/* Vehículo + Año */}
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                    <div className="sm:col-span-2">
+                                        <label className="block text-gray-500 text-xs uppercase tracking-widest mb-2">Vehículo *</label>
+                                        <input type="text" value={formPres.vehiculo} onChange={(e) => setFormPres(p => ({ ...p, vehiculo: e.target.value }))}
+                                            placeholder="Marca, modelo y motorización"
+                                            className={`w-full bg-white/5 border rounded-2xl px-4 py-3 text-white text-sm focus:outline-none focus:border-emerald-500 transition-all ${erroresPres.vehiculo ? "border-red-500" : "border-white/10"}`} />
+                                        {erroresPres.vehiculo && <p className="text-red-400 text-xs mt-1">{erroresPres.vehiculo}</p>}
+                                    </div>
+                                    <div>
+                                        <label className="block text-gray-500 text-xs uppercase tracking-widest mb-2">Año *</label>
+                                        <input type="number" value={formPres.anio} onChange={(e) => setFormPres(p => ({ ...p, anio: e.target.value }))}
+                                            placeholder="2024"
+                                            className={`w-full bg-white/5 border rounded-2xl px-4 py-3 text-white text-sm focus:outline-none focus:border-emerald-500 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${erroresPres.anio ? "border-red-500" : "border-white/10"}`} />
+                                        {erroresPres.anio && <p className="text-red-400 text-xs mt-1">{erroresPres.anio}</p>}
+                                    </div>
+                                </div>
+
+                                {/* Matrícula */}
+                                <div>
+                                    <label className="block text-gray-500 text-xs uppercase tracking-widest mb-2">Matrícula</label>
+                                    <input type="text" value={formPres.matricula} onChange={(e) => setFormPres(p => ({ ...p, matricula: e.target.value.toUpperCase() }))}
+                                        placeholder="Ej: 1234 ABC"
+                                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white text-sm focus:outline-none focus:border-emerald-500 transition-all uppercase" />
+                                </div>
+
+                                {/* Mensaje */}
+                                <div>
+                                    <label className="block text-gray-500 text-xs uppercase tracking-widest mb-2">Descripción del problema *</label>
+                                    <textarea value={formPres.mensaje} onChange={(e) => setFormPres(p => ({ ...p, mensaje: e.target.value }))}
+                                        rows={4} placeholder="Describe el daño o el servicio que necesitas..."
+                                        className={`w-full bg-white/5 border rounded-2xl px-4 py-3 text-white text-sm focus:outline-none focus:border-emerald-500 transition-all resize-none ${erroresPres.mensaje ? "border-red-500" : "border-white/10"}`} />
+                                    {erroresPres.mensaje && <p className="text-red-400 text-xs mt-1">{erroresPres.mensaje}</p>}
+                                </div>
+
+                                <button
+                                    disabled={enviandoPres}
+                                    onClick={async () => {
+                                        const errs: Record<string, string> = {};
+                                        if (!formPres.vehiculo.trim()) errs.vehiculo = "El vehículo es obligatorio";
+                                        if (!formPres.anio || parseInt(formPres.anio) < 1900 || parseInt(formPres.anio) > 2030) errs.anio = "Año no válido";
+                                        if (!formPres.mensaje.trim()) errs.mensaje = "Describe el problema";
+                                        setErroresPres(errs);
+                                        if (Object.keys(errs).length > 0) return;
+                                        setEnviandoPres(true);
+                                        try {
+                                            const res = await fetch("/api/presupuestos", {
+                                                method: "POST",
+                                                headers: { "Content-Type": "application/json" },
+                                                body: JSON.stringify({
+                                                    nombre: cliente?.nombre || "",
+                                                    apellidos: `${cliente?.apellido1 || ""} ${cliente?.apellido2 || ""}`.trim(),
+                                                    email: cliente?.email || "",
+                                                    telefono: cliente?.telefono || "",
+                                                    vehiculo: formPres.vehiculo,
+                                                    anio: parseInt(formPres.anio),
+                                                    mensaje: formPres.mensaje,
+                                                    matricula: formPres.matricula || null,
+                                                    estado: "Pendiente",
+                                                    articulos: []
+                                                })
+                                            });
+                                            if (res.ok) { setOkPres(true); }
+                                            else { mostrarAlerta("No se pudo enviar el presupuesto. Inténtalo de nuevo."); }
+                                        } catch { mostrarAlerta("Error de conexión."); }
+                                        finally { setEnviandoPres(false); }
+                                    }}
+                                    className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white py-3.5 rounded-2xl font-semibold transition-all flex items-center justify-center gap-2 text-sm">
+                                    {enviandoPres ? (
+                                        <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Enviando...</>
+                                    ) : (
+                                        <><Car size={16} /> Solicitar Presupuesto</>
+                                    )}
+                                </button>
                             </div>
                         )}
                     </div>
@@ -421,11 +560,11 @@ export default function ClientePage() {
                     <div className="space-y-4 sm:space-y-6">
                         <h2 className="text-2xl sm:text-4xl font-black text-white mb-6 sm:mb-10">Mis Facturas</h2>
                         {facturas.length > 0 ? facturas.map((f) => (
-                            <div key={f.id} className="bg-[#0f0f12] p-6 sm:p-10 rounded-[24px] sm:rounded-[40px] border border-green-500/30 hover:border-green-500/50 transition-all flex flex-col sm:flex-row justify-between gap-6 items-start">
+                            <div key={f.id} className="bg-[#0c1220] p-5 sm:p-8 rounded-2xl sm:rounded-3xl border border-emerald-500/20 hover:border-emerald-500/40 transition-all flex flex-col sm:flex-row justify-between gap-6 items-start">
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-3 sm:gap-4">
-                                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-600/20 rounded-2xl flex items-center justify-center flex-shrink-0">
-                                            <FileText size={22} className="text-green-500" />
+                                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center flex-shrink-0">
+                                            <FileText size={22} className="text-emerald-400" />
                                         </div>
                                         <div className="min-w-0">
                                             <p className="text-green-400 font-mono text-xs sm:text-sm">Factura #{f.numero_factura || f.id.slice(0, 8)}</p>
@@ -435,8 +574,8 @@ export default function ClientePage() {
                                     <p className="text-gray-500 mt-3 sm:mt-4 text-sm">Fecha: {new Date(f.creado_en || f.fecha_emision || Date.now()).toLocaleDateString('es-ES')}</p>
                                 </div>
                                 <div className="w-full sm:w-auto sm:text-right">
-                                    <p className="text-3xl sm:text-4xl font-black text-green-400 tracking-tighter">{Number(f.total).toFixed(2)} €</p>
-                                    <button onClick={() => descargarFactura(f)} className="mt-4 sm:mt-6 w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 text-sm">
+                                    <p className="text-3xl sm:text-4xl font-bold text-emerald-400 tracking-tight">{Number(f.total).toFixed(2)} €</p>
+                                    <button onClick={() => descargarFactura(f)} className="mt-4 sm:mt-6 w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-white px-6 sm:px-8 py-3 rounded-2xl font-semibold transition-all flex items-center justify-center gap-2 text-sm">
                                         <Download size={16} /> Descargar PDF
                                     </button>
                                 </div>
@@ -459,7 +598,7 @@ export default function ClientePage() {
                             presupuestos.filter(p => p.estado?.toLowerCase() === "cancelado").map((p) => {
                                 const totalFormateado = (p.total != null && !isNaN(Number(p.total))) ? `${Number(p.total).toFixed(2)} €` : "—";
                                 return (
-                                    <div key={p.id} className="bg-[#0f0f12] border border-red-500/30 bg-red-500/5 rounded-[24px] sm:rounded-[40px] p-6 sm:p-12 transition-all">
+                                    <div key={p.id} className="bg-[#0c1220] border border-red-500/20 bg-red-500/5 rounded-2xl sm:rounded-3xl p-6 sm:p-10 transition-all">
                                         <div className="flex justify-between items-start gap-4 mb-6 sm:mb-10">
                                             <div className="min-w-0">
                                                 <p className="uppercase text-xs tracking-widest text-gray-500 mb-1 sm:mb-2">Vehículo</p>
@@ -499,8 +638,8 @@ export default function ClientePage() {
                 {/* MI PERFIL */}
                 {view === "perfil" && (
                     <div className="space-y-4 sm:space-y-6">
-                        <div className="bg-[#0f0f12] rounded-[24px] sm:rounded-[40px] p-6 sm:p-12 border border-white/5">
-                            <h2 className="text-2xl sm:text-3xl font-black text-white mb-6 sm:mb-8">Mi Perfil</h2>
+                        <div className="bg-[#0c1220] rounded-2xl sm:rounded-3xl p-6 sm:p-10 border border-white/[0.08]">
+                            <h2 className="text-xl sm:text-2xl font-bold text-white mb-6 sm:mb-8">Mi Perfil</h2>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                                 <CampoEditable label="Nombre" campo="nombre" valor={cliente?.nombre || ""}
                                     editando={editando} valorEdit={valorEdit} guardando={guardando}
@@ -523,11 +662,11 @@ export default function ClientePage() {
                         </div>
 
                         {/* CAMBIO DE CONTRASEÑA */}
-                        <div className="bg-[#0f0f12] rounded-[24px] sm:rounded-[40px] p-6 sm:p-12 border border-white/5">
+                        <div className="bg-[#0c1220] rounded-2xl sm:rounded-3xl p-6 sm:p-10 border border-white/[0.08]">
                             <div className="flex items-center justify-between mb-5 sm:mb-6 gap-4">
                                 <div className="flex items-center gap-3 sm:gap-4">
-                                    <div className="w-9 h-9 sm:w-10 sm:h-10 bg-blue-600/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                                        <KeyRound size={18} className="text-blue-400" />
+                                    <div className="w-9 h-9 sm:w-10 sm:h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                                        <KeyRound size={18} className="text-emerald-400" />
                                     </div>
                                     <h3 className="text-base sm:text-xl font-black text-white">Cambiar Contraseña</h3>
                                 </div>
@@ -547,7 +686,7 @@ export default function ClientePage() {
                                     {errorPassword && <p className="text-red-400 text-sm">{errorPassword}</p>}
                                     {okPassword && <p className="text-green-400 text-sm">✓ Contraseña actualizada correctamente</p>}
                                     <button onClick={guardarPassword} disabled={guardandoPassword}
-                                        className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-3 rounded-xl font-bold transition-all mt-2 text-sm">
+                                        className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white py-3 rounded-xl font-semibold transition-all mt-2 text-sm">
                                         {guardandoPassword ? "Guardando..." : "Guardar nueva contraseña"}
                                     </button>
                                 </div>
@@ -557,6 +696,15 @@ export default function ClientePage() {
                 )}
             </div>
 
+            {confirmCampo && (
+                <ModalConfirmar titulo="Guardar cambio"
+                    mensaje="¿Estás seguro de que quieres guardar este cambio en tu perfil?"
+                    detalle="El dato se actualizará inmediatamente."
+                    onConfirmar={ejecutarGuardarCampo}
+                    onCerrar={() => { setConfirmCampo(null); }}
+                    guardando={guardando}
+                    colorBoton="bg-emerald-500 hover:bg-emerald-600" />
+            )}
             {confirmLogout && (
                 <ModalConfirmar titulo="Cerrar Sesión" mensaje="¿Estás seguro de que quieres cerrar sesión?" detalle="Tendrás que volver a introducir tus credenciales para acceder."
                     onConfirmar={() => { setConfirmLogout(false); handleLogout(); }} onCerrar={() => setConfirmLogout(false)} colorBoton="bg-red-600 hover:bg-red-700" />
