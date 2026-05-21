@@ -2,9 +2,44 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { Eye, EyeOff } from "lucide-react";
+import { useRouter } from "next/navigation";
 import PhoneInput from "@/components/PhoneInput";
 
+// ✅ Definido FUERA del componente para evitar pérdida de foco en cada render
+const PasswordInput = ({
+  name, label, show, onToggle, value, onChange, error,
+}: {
+  name: "password" | "repeatPassword";
+  label: string;
+  show: boolean;
+  onToggle: () => void;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  error?: string;
+}) => (
+  <div className="flex-1 min-w-0">
+    <label className="block text-sm mb-1 text-gray-300">{label}</label>
+    <div className="relative">
+      <input
+        name={name}
+        type={show ? "text" : "password"}
+        value={value}
+        onChange={onChange}
+        className={`w-full p-3 rounded-xl bg-neutral-800 border outline-none text-white text-sm transition-colors pr-10 ${
+          error ? "border-red-500" : "border-white/10 focus:border-red-500"
+        }`}
+        autoComplete="new-password"
+      />
+      <button type="button" onClick={onToggle}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-red-500 transition-colors p-1">
+        {show ? <EyeOff size={16} /> : <Eye size={16} />}
+      </button>
+    </div>
+  </div>
+);
+
 export default function RegisterForm() {
+  const router = useRouter();
   const [tipoRegistro, setTipoRegistro] = useState<"particular" | "empresa">("particular");
   const [loading, setLoading] = useState(false);
   const [serverError, setServerError] = useState("");
@@ -77,8 +112,12 @@ export default function RegisterForm() {
         body: JSON.stringify({ ...form, tipoRegistro, telefono: phoneFull }),
       });
       const data = await response.json();
-      if (!response.ok) setServerError(data.message || "Error al registrar usuario");
-      else alert("¡Registro exitoso!");
+      if (!response.ok) {
+        setServerError(data.message || "Error al registrar usuario");
+      } else {
+        // ✅ Redirigir al login tras registro exitoso
+        router.push("/login");
+      }
     } catch (error) {
       setServerError("Error de conexión con el servidor.");
     } finally { setLoading(false); }
@@ -88,22 +127,6 @@ export default function RegisterForm() {
     `w-full p-3 rounded-xl bg-neutral-800 border outline-none text-white text-sm transition-colors ${
       errorKey && errors[errorKey] ? "border-red-500" : "border-white/10 focus:border-red-500"
     }`;
-
-  const PasswordInput = ({
-    name, label, show, onToggle,
-  }: { name: "password" | "repeatPassword"; label: string; show: boolean; onToggle: () => void }) => (
-    <div className="flex-1 min-w-0">
-      <label className="block text-sm mb-1 text-gray-300">{label}</label>
-      <div className="relative">
-        <input name={name} type={show ? "text" : "password"} value={form[name]} onChange={handleChange}
-          className={`${inputClass(name)} pr-10`} autoComplete={name === "password" ? "new-password" : "new-password"} />
-        <button type="button" onClick={onToggle}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-red-500 transition-colors p-1">
-          {show ? <EyeOff size={16} /> : <Eye size={16} />}
-        </button>
-      </div>
-    </div>
-  );
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 w-full">
@@ -176,19 +199,27 @@ export default function RegisterForm() {
       {/* TELÉFONO */}
       <div>
         <label className="block text-sm mb-1 text-gray-300">Número de Teléfono</label>
-        <div className="relative">
-          <PhoneInput
-            value={phone}
-            onChange={(val, valid, full) => { setPhone(val); setPhoneValid(valid); setPhoneFull(full); }}
-            error={errors.phone}
-          />
-        </div>
+        <PhoneInput
+          value={phone}
+          onChange={(val, valid, full) => { setPhone(val); setPhoneValid(valid); setPhoneFull(full); }}
+          error={errors.phone}
+        />
       </div>
 
       {/* CONTRASEÑAS */}
       <div className="flex flex-col sm:flex-row gap-3 sm:gap-2">
-        <PasswordInput name="password" label="Contraseña" show={showPassword} onToggle={() => setShowPassword(!showPassword)} />
-        <PasswordInput name="repeatPassword" label="Repetir Contraseña" show={showRepeatPassword} onToggle={() => setShowRepeatPassword(!showRepeatPassword)} />
+        <PasswordInput
+          name="password" label="Contraseña"
+          show={showPassword} onToggle={() => setShowPassword(p => !p)}
+          value={form.password} onChange={handleChange}
+          error={errors.password}
+        />
+        <PasswordInput
+          name="repeatPassword" label="Repetir Contraseña"
+          show={showRepeatPassword} onToggle={() => setShowRepeatPassword(p => !p)}
+          value={form.repeatPassword} onChange={handleChange}
+          error={errors.repeatPassword}
+        />
       </div>
       {errors.password && <p className="text-red-500 text-[11px] -mt-2">{errors.password}</p>}
       {errors.repeatPassword && <p className="text-red-500 text-[11px] -mt-2">{errors.repeatPassword}</p>}

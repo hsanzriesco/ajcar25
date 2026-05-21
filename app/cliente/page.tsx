@@ -32,28 +32,28 @@ interface Factura {
 
 // ====================== SUBCOMPONENTES ======================
 
-const ModalConfirmar = ({ titulo, mensaje, detalle, onConfirmar, onCerrar, guardando, colorBoton = "bg-blue-600 hover:bg-blue-700" }: {
+const ModalConfirmar = ({ titulo, mensaje, detalle, onConfirmar, onCerrar, guardando, colorBoton = "bg-violet-600 hover:bg-violet-700" }: {
     titulo: string; mensaje: string; detalle?: string;
     onConfirmar: () => void; onCerrar: () => void;
     guardando?: boolean; colorBoton?: string;
 }) => (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-        <div className="bg-[#0f0f12] border border-white/10 rounded-[30px] sm:rounded-[40px] p-6 sm:p-10 w-full max-w-md">
-            <div className="flex items-center gap-4 mb-6">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-500/10 rounded-2xl flex items-center justify-center flex-shrink-0">
-                    <AlertTriangle size={20} className="text-yellow-400" />
+    <div className="fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center z-50 p-4">
+        <div className="bg-[#110d20] border border-white/10 rounded-2xl p-6 sm:p-8 w-full max-w-sm shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+                <div className="w-9 h-9 bg-yellow-500/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <AlertTriangle size={18} className="text-yellow-400" />
                 </div>
-                <h3 className="text-xl sm:text-2xl font-black text-white">{titulo}</h3>
+                <h3 className="text-base font-semibold text-white">{titulo}</h3>
             </div>
-            <p className="text-gray-300 text-sm mb-2">{mensaje}</p>
-            {detalle && <p className="text-gray-500 text-xs">{detalle}</p>}
-            <div className="flex gap-3 mt-8">
-                <button onClick={onCerrar} className="flex-1 bg-white/5 hover:bg-white/10 text-gray-400 py-3 rounded-xl font-bold transition-all">
+            <p className="text-gray-400 text-sm mb-1">{mensaje}</p>
+            {detalle && <p className="text-gray-600 text-xs mt-1">{detalle}</p>}
+            <div className="flex gap-2 mt-6">
+                <button onClick={onCerrar} className="flex-1 bg-white/5 hover:bg-white/8 text-gray-400 py-2.5 rounded-xl text-sm font-medium transition-all border border-white/8">
                     Cancelar
                 </button>
                 <button onClick={onConfirmar} disabled={guardando}
-                    className={`flex-1 ${colorBoton} disabled:opacity-50 text-white py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2`}>
-                    <Check size={16} /> {guardando ? "Procesando..." : "Confirmar"}
+                    className={`flex-1 ${colorBoton} disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2`}>
+                    <Check size={14} /> {guardando ? "Procesando..." : "Confirmar"}
                 </button>
             </div>
         </div>
@@ -61,16 +61,16 @@ const ModalConfirmar = ({ titulo, mensaje, detalle, onConfirmar, onCerrar, guard
 );
 
 const ModalAlerta = ({ mensaje, onCerrar }: { mensaje: string; onCerrar: () => void }) => (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-        <div className="bg-[#0f0f12] border border-white/10 rounded-[30px] sm:rounded-[40px] p-6 sm:p-10 w-full max-w-md">
-            <div className="flex items-center gap-4 mb-6">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-500/10 rounded-2xl flex items-center justify-center flex-shrink-0">
-                    <AlertTriangle size={20} className="text-red-400" />
+    <div className="fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center z-[60] p-4">
+        <div className="bg-[#110d20] border border-white/10 rounded-2xl p-6 sm:p-8 w-full max-w-sm shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+                <div className="w-9 h-9 bg-red-500/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <AlertTriangle size={18} className="text-red-400" />
                 </div>
-                <h3 className="text-xl sm:text-2xl font-black text-white">Aviso</h3>
+                <h3 className="text-base font-semibold text-white">Aviso</h3>
             </div>
-            <p className="text-gray-300 text-sm mb-8">{mensaje}</p>
-            <button onClick={onCerrar} className="w-full bg-white/5 hover:bg-white/10 text-white py-3 rounded-xl font-bold transition-all">
+            <p className="text-gray-400 text-sm mb-6">{mensaje}</p>
+            <button onClick={onCerrar} className="w-full bg-white/5 hover:bg-white/8 text-white py-2.5 rounded-xl text-sm font-medium transition-all border border-white/8">
                 Entendido
             </button>
         </div>
@@ -84,20 +84,20 @@ const CampoPassword = ({ label, value, onChange, ver, setVer }: {
         <p className="text-gray-500 text-xs uppercase tracking-widest mb-2">{label}</p>
         <div className="relative">
             <input type={ver ? "text" : "password"} value={value} onChange={(e) => onChange(e.target.value)} placeholder="••••••••"
-                className="w-full bg-white/5 border border-white/10 text-white rounded-xl px-4 py-3 pr-12 text-sm focus:outline-none focus:border-emerald-500" />
+                className="w-full bg-white/5 border border-white/10 text-white rounded-xl px-4 py-3 pr-12 text-sm focus:outline-none focus:border-violet-500/50 transition-all" />
             <button type="button" onClick={() => setVer(!ver)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors">
-                {ver ? <EyeOff size={18} /> : <Eye size={18} />}
+                {ver ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
         </div>
     </div>
 );
 
 const CampoSoloLectura = ({ label, valor, nota }: { label: string; valor: string; nota?: string }) => (
-    <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 sm:p-6">
-        <p className="text-gray-500 text-xs uppercase tracking-widest mb-2">{label}</p>
-        <p className="text-white font-medium mt-1 capitalize break-all">{valor || "—"}</p>
-        {nota && <p className="text-gray-600 text-xs mt-2">{nota}</p>}
+    <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4">
+        <p className="text-gray-600 text-[10px] uppercase tracking-widest mb-2">{label}</p>
+        <p className="text-gray-300 text-sm break-all">{valor || "—"}</p>
+        {nota && <p className="text-gray-700 text-[11px] mt-2">{nota}</p>}
     </div>
 );
 
@@ -111,28 +111,28 @@ const CampoEditable = ({ label, campo, valor, editando, valorEdit, guardando, on
 }) => {
     const esteEditando = editando === campo;
     return (
-        <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 sm:p-6 transition-all hover:border-white/10">
-            <p className="text-gray-500 text-xs uppercase tracking-widest mb-2">{label}</p>
+        <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 transition-all hover:border-white/[0.1]">
+            <p className="text-gray-600 text-[10px] uppercase tracking-widest mb-2">{label}</p>
             {esteEditando ? (
-                <div className="flex items-center gap-2 mt-1">
+                <div className="flex items-center gap-2">
                     <input type="text" value={valorEdit} onChange={(e) => onCambio(e.target.value)}
                         onKeyDown={(e) => { if (e.key === "Enter") onGuardar(campo); if (e.key === "Escape") onCancelar(); }}
-                        autoFocus className="flex-1 bg-white/5 border border-emerald-500/50 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 min-w-0" />
+                        autoFocus className="flex-1 bg-white/5 border border-violet-500/40 text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-violet-500/60 min-w-0" />
                     <button onClick={() => onGuardar(campo)} disabled={guardando}
-                        className="w-9 h-9 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl flex items-center justify-center transition-all flex-shrink-0">
-                        <Check size={16} />
+                        className="w-7 h-7 text-white rounded-lg flex items-center justify-center transition-all flex-shrink-0" style={{background:"rgba(139,92,246,0.9)"}}>
+                        <Check size={13} />
                     </button>
                     <button onClick={onCancelar}
-                        className="w-9 h-9 bg-white/5 hover:bg-white/10 text-gray-400 rounded-xl flex items-center justify-center transition-all flex-shrink-0">
-                        <X size={16} />
+                        className="w-7 h-7 bg-white/5 hover:bg-white/10 text-gray-500 rounded-lg flex items-center justify-center transition-all flex-shrink-0">
+                        <X size={13} />
                     </button>
                 </div>
             ) : (
-                <div className="flex items-center justify-between gap-4 mt-1">
-                    <p className="text-white font-medium break-all">{valor || "—"}</p>
+                <div className="flex items-center justify-between gap-3">
+                    <p className="text-gray-200 text-sm break-all">{valor || "—"}</p>
                     <button onClick={() => onEditar(campo, valor)}
-                        className="w-8 h-8 bg-white/5 hover:bg-emerald-500/20 text-gray-500 hover:text-emerald-400 rounded-xl flex items-center justify-center transition-all flex-shrink-0">
-                        <Pencil size={14} />
+                        className="w-7 h-7 bg-white/[0.04] hover:bg-violet-500/15 text-gray-600 hover:text-violet-400 rounded-lg flex items-center justify-center transition-all flex-shrink-0">
+                        <Pencil size={12} />
                     </button>
                 </div>
             )}
@@ -156,10 +156,10 @@ const IndicadorPassword = ({ password }: { password: string }) => {
                 const cumple = r.regex.test(password);
                 return (
                     <div key={r.label} className="flex items-center gap-2">
-                        <div className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 transition-all ${cumple ? "bg-green-500" : "bg-white/10"}`}>
-                            {cumple && <Check size={10} className="text-white" />}
+                        <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center flex-shrink-0 transition-all ${cumple ? "bg-emerald-500" : "bg-white/10"}`}>
+                            {cumple && <Check size={8} className="text-white" />}
                         </div>
-                        <span className={`text-xs transition-colors ${cumple ? "text-green-400" : "text-gray-500"}`}>{r.label}</span>
+                        <span className={`text-xs transition-colors ${cumple ? "text-violet-400" : "text-gray-600"}`}>{r.label}</span>
                     </div>
                 );
             })}
@@ -194,8 +194,6 @@ export default function ClientePage() {
     const [verConfirm, setVerConfirm] = useState(false);
 
     const [alerta, setAlerta] = useState<string | null>(null);
-
-    // Estado formulario nuevo presupuesto
     const [formPres, setFormPres] = useState({ vehiculo: "", matricula: "", anio: new Date().getFullYear().toString(), mensaje: "" });
     const [enviandoPres, setEnviandoPres] = useState(false);
     const [okPres, setOkPres] = useState(false);
@@ -207,14 +205,17 @@ export default function ClientePage() {
 
     const router = useRouter();
 
+    // Iniciales del cliente para el avatar
+    const iniciales = cliente
+        ? `${(cliente.nombre || "").charAt(0)}${(cliente.apellido1 || "").charAt(0)}`.toUpperCase()
+        : "??";
+
     useEffect(() => {
         const userId = sessionStorage.getItem("user_id");
         const role = sessionStorage.getItem("user_role");
         if (!userId || role?.toLowerCase() !== "cliente") { sessionStorage.clear(); router.push("/login"); return; }
         setAutorizado(true);
         cargarDatosCliente(userId);
-
-        // ✅ Refresco automático cada 15 segundos sin mostrar spinner
         const intervalo = setInterval(async () => {
             try {
                 const res = await fetch(`/api/cliente/${userId}`);
@@ -223,9 +224,8 @@ export default function ClientePage() {
                 setCliente(data.cliente);
                 setPresupuestos(data.presupuestos || []);
                 setFacturas(data.facturas || []);
-            } catch { /* silencioso */ }
+            } catch { }
         }, 15000);
-
         return () => clearInterval(intervalo);
     }, [router]);
 
@@ -245,9 +245,7 @@ export default function ClientePage() {
     const iniciarEdicion = (campo: string, valorActual: string) => { setEditando(campo); setValorEdit(valorActual || ""); };
     const cancelarEdicion = () => { setEditando(null); setValorEdit(""); };
 
-    const guardarCampo = (campo: string) => {
-        setConfirmCampo(campo);
-    };
+    const guardarCampo = (campo: string) => setConfirmCampo(campo);
 
     const ejecutarGuardarCampo = async () => {
         const campo = confirmCampo;
@@ -319,7 +317,7 @@ export default function ClientePage() {
                     columnStyles: { 0: { halign: "left", cellWidth: 95 }, 1: { halign: "center", cellWidth: 22 }, 2: { halign: "right", cellWidth: 35 }, 3: { halign: "right", cellWidth: 35 } } });
             } else { doc.text("No hay artículos registrados en esta factura.", 20, y + 10); }
             const finalY = (doc as any).lastAutoTable?.finalY || y + 40;
-            doc.setFillColor(37, 99, 235); doc.rect(20, finalY, pageWidth - 40, 20, "F");
+            doc.setFillColor(5, 150, 105); doc.rect(20, finalY, pageWidth - 40, 20, "F");
             doc.setTextColor(255); doc.setFont("helvetica", "bold"); doc.setFontSize(14);
             doc.text("TOTAL FACTURA", 25, finalY + 13);
             doc.text(`${Number(factura.total || 0).toFixed(2)}€`, pageWidth - 25, finalY + 13, { align: "right" });
@@ -330,396 +328,394 @@ export default function ClientePage() {
     };
 
     if (!autorizado) return (
-        <div className="min-h-screen bg-[#070b14] flex items-center justify-center">
-            <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+        <div className="min-h-screen bg-[#0d0a1a] flex items-center justify-center">
+            <div className="w-10 h-10 border-2 border-violet-500/30 border-t-violet-500 rounded-full animate-spin" />
         </div>
     );
 
     if (loading) return (
-        <div className="min-h-screen bg-[#0a0a0c] flex items-center justify-center">
-            <div className="text-center">
-                <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                <p className="text-gray-400">Cargando tu información...</p>
-            </div>
+        <div className="min-h-screen bg-[#0d0a1a] flex items-center justify-center">
+            <div className="w-10 h-10 border-2 border-violet-500/30 border-t-violet-500 rounded-full animate-spin" />
         </div>
     );
 
-    return (
-        <div className="min-h-screen bg-[#070b14] text-gray-400 font-sans">
-            <div className="p-4 sm:p-8 lg:p-16 max-w-5xl mx-auto">
+    const tabs = [
+        { key: "estado", label: "Estado" },
+        { key: "presupuesto", label: "+ Presupuesto" },
+        { key: "facturas", label: "Facturas" },
+        { key: "cancelados", label: "Cancelados" },
+        { key: "perfil", label: "Perfil" },
+    ] as { key: "estado" | "facturas" | "cancelados" | "perfil" | "presupuesto"; label: string }[];
 
-                {/* Header */}
-                <header className="mb-8 sm:mb-12">
-                    <div className="flex justify-between items-start gap-4">
+    return (
+        <div className="min-h-screen font-sans" style={{ background: "#0d0a1a" }}>
+            {/* Orbes de fondo */}
+            <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+                <div className="absolute w-[500px] h-[500px] rounded-full top-[-100px] right-[-80px]"
+                    style={{ background: "radial-gradient(circle, rgba(139,92,246,0.12) 0%, transparent 70%)" }} />
+                <div className="absolute w-[350px] h-[350px] rounded-full bottom-[60px] left-[-60px]"
+                    style={{ background: "radial-gradient(circle, rgba(167,139,250,0.06) 0%, transparent 70%)" }} />
+            </div>
+
+            <div className="relative z-10 max-w-3xl mx-auto">
+                {/* HEADER */}
+                <header className="px-5 sm:px-8 pt-7 pb-0">
+                    <div className="flex justify-between items-center mb-5">
                         <div className="flex items-center gap-4 min-w-0">
-                            <img src="/imagenes/logo_ajcar25.png" alt="AJCAR 25" className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl object-contain flex-shrink-0" />
+                            {/* Avatar con iniciales */}
+                            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center flex-shrink-0 text-sm font-semibold text-violet-400"
+                                style={{ background: "rgba(16,185,129,0.12)", border: "0.5px solid rgba(16,185,129,0.2)" }}>
+                                {iniciales}
+                            </div>
                             <div className="min-w-0">
-                                <p className="text-emerald-400 text-xs font-semibold tracking-widest uppercase mb-1">Área de Cliente</p>
-                                <h1 className="text-2xl sm:text-4xl font-bold text-white truncate">
-                                    Hola, <span className="text-emerald-400">{cliente?.nombre}</span> 👋
+                                <p className="text-violet-400 text-[10px] font-medium uppercase tracking-widest mb-1">Área de cliente</p>
+                                <h1 className="text-lg sm:text-2xl font-semibold text-white leading-none truncate">
+                                    {cliente?.nombre} {cliente?.apellido1 || ""}
                                 </h1>
-                                <p className="text-gray-500 text-sm mt-0.5">{cliente?.email}</p>
+                                <p className="text-gray-600 text-xs mt-1 truncate">{cliente?.email}</p>
                             </div>
                         </div>
                         <button onClick={() => setConfirmLogout(true)}
-                            className="flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-white/5 hover:bg-red-500/10 text-gray-400 hover:text-red-400 border border-white/10 hover:border-red-500/30 rounded-2xl transition-all flex-shrink-0 text-sm">
-                            <LogOut size={16} /> <span className="hidden sm:inline">Salir</span>
+                            className="flex items-center gap-1.5 px-3 py-2 text-gray-600 hover:text-red-400 text-xs transition-all flex-shrink-0 rounded-xl border border-transparent hover:border-red-500/20 hover:bg-red-500/5">
+                            <LogOut size={14} /> <span className="hidden sm:inline">Salir</span>
                         </button>
                     </div>
-                    {/* Divider */}
-                    <div className="mt-6 sm:mt-8 h-px bg-gradient-to-r from-emerald-500/30 via-white/10 to-transparent" />
+                    {/* Divider con gradiente */}
+                    <div className="h-px mb-0" style={{ background: "linear-gradient(90deg, rgba(139,92,246,0.35), rgba(167,139,250,0.08), transparent)" }} />
                 </header>
 
-                {/* Tabs */}
-                <div className="flex gap-1 sm:gap-2 mb-8 sm:mb-10 w-full overflow-x-auto pb-1">
-                    {([
-                        { key: "estado", label: "Estado" },
-                        { key: "presupuesto", label: "+ Presupuesto" },
-                        { key: "facturas", label: "Facturas" },
-                        { key: "cancelados", label: "Cancelados" },
-                        { key: "perfil", label: "Perfil" }
-                    ] as { key: "estado" | "facturas" | "cancelados" | "perfil" | "presupuesto", label: string }[]).map((tab) => (
+                {/* TABS */}
+                <div className="px-5 sm:px-8 flex overflow-x-auto" style={{ borderBottom: "0.5px solid rgba(255,255,255,0.05)" }}>
+                    {tabs.map((tab) => (
                         <button key={tab.key} onClick={() => setView(tab.key)}
-                            className={`flex-1 sm:flex-none px-4 sm:px-6 py-2.5 sm:py-3 rounded-full text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${view === tab.key ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white border border-white/10"}`}>
+                            className={`px-4 py-3.5 text-xs font-medium whitespace-nowrap transition-all border-b-[1.5px] ${
+                                view === tab.key
+                                    ? "text-violet-400 border-violet-500"
+                                    : "text-gray-600 border-transparent hover:text-gray-400"
+                            }`}>
                             {tab.label}
                         </button>
                     ))}
                 </div>
 
-                {/* ESTADO */}
-                {view === "estado" && (
-                    <div className="space-y-6 sm:space-y-8">
-                        <h2 className="text-2xl sm:text-4xl font-black text-white mb-6 sm:mb-10">Estado de mis Vehículos</h2>
-                        {presupuestos.filter(p => p.estado?.toLowerCase() !== "cancelado").length > 0 ? (
-                            presupuestos.filter(p => p.estado?.toLowerCase() !== "cancelado").map((p) => {
-                                const estadoLower = (p.estado || "").toLowerCase().trim();
-                                const estaEnTaller = estadoLower.includes("taller") || estadoLower === "en taller";
-                                let estadoColor = "bg-gray-600 text-white";
-                                let estadoTexto = p.estado || "Pendiente";
-                                if (estaEnTaller) { estadoColor = "bg-orange-600 text-white"; estadoTexto = "En Taller"; }
-                                const totalFormateado = (p.total != null && !isNaN(Number(p.total))) ? `${Number(p.total).toFixed(2)} €` : "Pendiente";
-                                return (
-                                    <div key={p.id} className={`bg-[#0c1220] border rounded-2xl sm:rounded-3xl p-6 sm:p-10 transition-all ${estaEnTaller ? "border-orange-500/40 bg-orange-500/5" : "border-white/[0.08] hover:border-emerald-500/20"}`}>
-                                        <div className="flex justify-between items-start gap-4 mb-6 sm:mb-10">
-                                            <div className="min-w-0">
-                                                <p className="uppercase text-xs tracking-widest text-gray-500 mb-1 sm:mb-2">Mi vehículo</p>
-                                                <h3 className="text-xl sm:text-3xl font-black text-white truncate">{p.vehiculo}</h3>
-                                            </div>
-                                            <div className={`px-3 sm:px-8 py-2 sm:py-3 rounded-full font-bold uppercase tracking-widest text-xs sm:text-sm flex-shrink-0 ${estadoColor}`}>{estadoTexto}</div>
-                                        </div>
-                                        {estaEnTaller && (
-                                            <div className="mb-6 sm:mb-10 bg-orange-500/10 border border-orange-500/30 rounded-2xl sm:rounded-3xl p-6 sm:p-10">
-                                                <div className="flex items-center gap-4 sm:gap-5 mb-4 sm:mb-6">
-                                                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-orange-500/20 rounded-2xl flex items-center justify-center flex-shrink-0">
-                                                        <Wrench size={24} className="text-orange-400" />
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-orange-400 font-black text-base sm:text-xl">Tu vehículo está en taller</p>
-                                                        <p className="text-gray-400 mt-1 text-sm">Estamos trabajando en él</p>
-                                                    </div>
+                {/* CONTENIDO */}
+                <div className="px-5 sm:px-8 py-6 sm:py-8">
+
+                    {/* ── ESTADO ── */}
+                    {view === "estado" && (
+                        <div className="space-y-3">
+                            <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-4">Mis vehículos</p>
+                            {presupuestos.filter(p => p.estado?.toLowerCase() !== "cancelado").length > 0 ? (
+                                presupuestos.filter(p => p.estado?.toLowerCase() !== "cancelado").map((p) => {
+                                    const estadoLower = (p.estado || "").toLowerCase().trim();
+                                    const estaEnTaller = estadoLower.includes("taller") || estadoLower === "en taller";
+                                    const totalFormateado = (p.total != null && !isNaN(Number(p.total))) ? `${Number(p.total).toFixed(2)} €` : "Pendiente";
+                                    return (
+                                        <div key={p.id} className="rounded-2xl p-5 sm:p-6 transition-all"
+                                            style={{
+                                                background: estaEnTaller ? "rgba(249,115,22,0.04)" : "rgba(255,255,255,0.02)",
+                                                border: estaEnTaller ? "0.5px solid rgba(249,115,22,0.2)" : "0.5px solid rgba(255,255,255,0.06)"
+                                            }}>
+                                            <div className="flex justify-between items-start gap-4 mb-4">
+                                                <div className="min-w-0">
+                                                    <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-1">Vehículo</p>
+                                                    <h3 className="text-base sm:text-lg font-semibold text-white truncate">{p.vehiculo}</h3>
                                                 </div>
-                                                {p.mensaje && <div className="italic text-gray-300 border-l-4 border-orange-500 pl-4 sm:pl-6 py-1 text-sm">"{p.mensaje}"</div>}
+                                                <span className={`px-3 py-1 rounded-full text-[11px] font-medium flex-shrink-0 ${
+                                                    estaEnTaller
+                                                        ? "text-orange-400 bg-orange-500/10 border border-orange-500/20"
+                                                        : "text-gray-500 bg-white/5 border border-white/8"
+                                                }`}>
+                                                    {estaEnTaller ? "En taller" : (p.estado || "Pendiente")}
+                                                </span>
                                             </div>
-                                        )}
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8">
-                                            <div>
-                                                <p className="text-xs uppercase tracking-widest text-gray-500 mb-1 sm:mb-2">Fecha de solicitud</p>
-                                                <p className="text-white font-medium text-base sm:text-lg">{new Date(p.creado_en).toLocaleDateString('es-ES')}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs uppercase tracking-widest text-gray-500 mb-1 sm:mb-2">Importe estimado</p>
-                                                <p className="text-2xl sm:text-3xl font-black text-white tracking-tighter">{totalFormateado}</p>
+                                            {estaEnTaller && (
+                                                <div className="flex items-start gap-3 p-3 rounded-xl mb-4"
+                                                    style={{ background: "rgba(16,185,129,0.04)", border: "0.5px solid rgba(139,92,246,0.12)" }}>
+                                                    <Wrench size={14} className="text-violet-400 mt-0.5 flex-shrink-0" />
+                                                    <p className="text-gray-400 text-xs leading-relaxed">
+                                                        {p.mensaje || "Estamos trabajando en tu vehículo"}
+                                                    </p>
+                                                </div>
+                                            )}
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div className="p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.02)", border: "0.5px solid rgba(255,255,255,0.05)" }}>
+                                                    <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-1">Solicitud</p>
+                                                    <p className="text-gray-200 text-sm font-medium">{new Date(p.creado_en).toLocaleDateString('es-ES')}</p>
+                                                </div>
+                                                <div className="p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.02)", border: "0.5px solid rgba(255,255,255,0.05)" }}>
+                                                    <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-1">Importe estimado</p>
+                                                    <p className="text-violet-400 text-sm font-semibold">{totalFormateado}</p>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                );
-                            })
-                        ) : (
-                            <div className="bg-[#0c1220] rounded-2xl sm:rounded-3xl p-12 sm:p-20 text-center border border-white/5">
-                                <Car size={60} className="mx-auto mb-6 sm:mb-8 text-gray-600" />
-                                <p className="text-xl sm:text-3xl font-bold text-white mb-3 sm:mb-4">No tienes vehículos activos en taller</p>
-                                <p className="text-gray-500 max-w-md mx-auto text-sm">Cuando envíes un presupuesto y sea aceptado, podrás ver aquí el estado en tiempo real.</p>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* NUEVO PRESUPUESTO */}
-                {view === "presupuesto" && (
-                    <div className="space-y-6 sm:space-y-8">
-                        <div>
-                            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1">Solicitar Presupuesto</h2>
-                            <p className="text-gray-500 text-sm">Rellena los datos de tu vehículo y te contactaremos lo antes posible.</p>
+                                    );
+                                })
+                            ) : (
+                                <div className="text-center py-16 rounded-2xl" style={{ background: "rgba(255,255,255,0.02)", border: "0.5px solid rgba(255,255,255,0.05)" }}>
+                                    <Car size={36} className="mx-auto mb-4 text-gray-700" />
+                                    <p className="text-gray-400 text-sm font-medium mb-1">No tienes vehículos activos</p>
+                                    <p className="text-gray-700 text-xs max-w-xs mx-auto">Solicita un presupuesto y cuando sea aceptado aparecerá aquí.</p>
+                                </div>
+                            )}
                         </div>
+                    )}
 
-                        {okPres ? (
-                            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-8 sm:p-12 text-center">
-                                <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                                    <Check size={32} className="text-emerald-400" />
-                                </div>
-                                <p className="text-xl font-bold text-white mb-2">¡Presupuesto enviado!</p>
-                                <p className="text-gray-400 text-sm mb-6">Nos pondremos en contacto contigo lo antes posible.</p>
-                                <button onClick={() => { setOkPres(false); setFormPres({ vehiculo: "", matricula: "", anio: new Date().getFullYear().toString(), mensaje: "" }); setView("estado"); }}
-                                    className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3 rounded-2xl font-semibold transition-all text-sm">
-                                    Ver mis vehículos
-                                </button>
-                            </div>
-                        ) : (
-                            <div className="bg-[#0c1220] border border-white/[0.08] rounded-2xl sm:rounded-3xl p-6 sm:p-10 space-y-5">
-                                {/* Datos del cliente — solo lectura */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 sm:p-5">
-                                        <p className="text-gray-500 text-xs uppercase tracking-widest mb-1">Nombre</p>
-                                        <p className="text-white font-medium">{cliente?.nombre} {cliente?.apellido1 || ""}</p>
+                    {/* ── PRESUPUESTO ── */}
+                    {view === "presupuesto" && (
+                        <div>
+                            <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-4">Nuevo presupuesto</p>
+                            {okPres ? (
+                                <div className="text-center py-14 rounded-2xl" style={{ background: "rgba(139,92,246,0.06)", border: "0.5px solid rgba(139,92,246,0.18)" }}>
+                                    <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4" style={{background:"rgba(139,92,246,0.15)"}}>
+                                        <Check size={22} className="text-violet-400" />
                                     </div>
-                                    <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 sm:p-5">
-                                        <p className="text-gray-500 text-xs uppercase tracking-widest mb-1">Email</p>
-                                        <p className="text-white font-medium truncate">{cliente?.email}</p>
-                                    </div>
-                                    <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 sm:p-5">
-                                        <p className="text-gray-500 text-xs uppercase tracking-widest mb-1">Teléfono</p>
-                                        <p className="text-white font-medium">{cliente?.telefono || "—"}</p>
-                                    </div>
-                                </div>
-
-                                <div className="h-px bg-white/5" />
-
-                                {/* Vehículo + Año */}
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                    <div className="sm:col-span-2">
-                                        <label className="block text-gray-500 text-xs uppercase tracking-widest mb-2">Vehículo *</label>
-                                        <input type="text" value={formPres.vehiculo} onChange={(e) => setFormPres(p => ({ ...p, vehiculo: e.target.value }))}
-                                            placeholder="Marca, modelo y motorización"
-                                            className={`w-full bg-white/5 border rounded-2xl px-4 py-3 text-white text-sm focus:outline-none focus:border-emerald-500 transition-all ${erroresPres.vehiculo ? "border-red-500" : "border-white/10"}`} />
-                                        {erroresPres.vehiculo && <p className="text-red-400 text-xs mt-1">{erroresPres.vehiculo}</p>}
-                                    </div>
-                                    <div>
-                                        <label className="block text-gray-500 text-xs uppercase tracking-widest mb-2">Año *</label>
-                                        <input type="number" value={formPres.anio} onChange={(e) => setFormPres(p => ({ ...p, anio: e.target.value }))}
-                                            placeholder="2024"
-                                            className={`w-full bg-white/5 border rounded-2xl px-4 py-3 text-white text-sm focus:outline-none focus:border-emerald-500 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${erroresPres.anio ? "border-red-500" : "border-white/10"}`} />
-                                        {erroresPres.anio && <p className="text-red-400 text-xs mt-1">{erroresPres.anio}</p>}
-                                    </div>
-                                </div>
-
-                                {/* Matrícula */}
-                                <div>
-                                    <label className="block text-gray-500 text-xs uppercase tracking-widest mb-2">Matrícula</label>
-                                    <input type="text" value={formPres.matricula} onChange={(e) => setFormPres(p => ({ ...p, matricula: e.target.value.toUpperCase() }))}
-                                        placeholder="Ej: 1234 ABC"
-                                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white text-sm focus:outline-none focus:border-emerald-500 transition-all uppercase" />
-                                </div>
-
-                                {/* Mensaje */}
-                                <div>
-                                    <label className="block text-gray-500 text-xs uppercase tracking-widest mb-2">Descripción del problema *</label>
-                                    <textarea value={formPres.mensaje} onChange={(e) => setFormPres(p => ({ ...p, mensaje: e.target.value }))}
-                                        rows={4} placeholder="Describe el daño o el servicio que necesitas..."
-                                        className={`w-full bg-white/5 border rounded-2xl px-4 py-3 text-white text-sm focus:outline-none focus:border-emerald-500 transition-all resize-none ${erroresPres.mensaje ? "border-red-500" : "border-white/10"}`} />
-                                    {erroresPres.mensaje && <p className="text-red-400 text-xs mt-1">{erroresPres.mensaje}</p>}
-                                </div>
-
-                                <button
-                                    disabled={enviandoPres}
-                                    onClick={async () => {
-                                        const errs: Record<string, string> = {};
-                                        if (!formPres.vehiculo.trim()) errs.vehiculo = "El vehículo es obligatorio";
-                                        if (!formPres.anio || parseInt(formPres.anio) < 1900 || parseInt(formPres.anio) > 2030) errs.anio = "Año no válido";
-                                        if (!formPres.mensaje.trim()) errs.mensaje = "Describe el problema";
-                                        setErroresPres(errs);
-                                        if (Object.keys(errs).length > 0) return;
-                                        setEnviandoPres(true);
-                                        try {
-                                            const res = await fetch("/api/presupuestos", {
-                                                method: "POST",
-                                                headers: { "Content-Type": "application/json" },
-                                                body: JSON.stringify({
-                                                    nombre: cliente?.nombre || "",
-                                                    apellidos: `${cliente?.apellido1 || ""} ${cliente?.apellido2 || ""}`.trim(),
-                                                    email: cliente?.email || "",
-                                                    telefono: cliente?.telefono || "",
-                                                    vehiculo: formPres.vehiculo,
-                                                    anio: parseInt(formPres.anio),
-                                                    mensaje: formPres.mensaje,
-                                                    matricula: formPres.matricula || null,
-                                                    estado: "Pendiente",
-                                                    articulos: []
-                                                })
-                                            });
-                                            if (res.ok) { setOkPres(true); }
-                                            else { mostrarAlerta("No se pudo enviar el presupuesto. Inténtalo de nuevo."); }
-                                        } catch { mostrarAlerta("Error de conexión."); }
-                                        finally { setEnviandoPres(false); }
-                                    }}
-                                    className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white py-3.5 rounded-2xl font-semibold transition-all flex items-center justify-center gap-2 text-sm">
-                                    {enviandoPres ? (
-                                        <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Enviando...</>
-                                    ) : (
-                                        <><Car size={16} /> Solicitar Presupuesto</>
-                                    )}
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* FACTURAS */}
-                {view === "facturas" && (
-                    <div className="space-y-4 sm:space-y-6">
-                        <h2 className="text-2xl sm:text-4xl font-black text-white mb-6 sm:mb-10">Mis Facturas</h2>
-                        {facturas.length > 0 ? facturas.map((f) => (
-                            <div key={f.id} className="bg-[#0c1220] p-5 sm:p-8 rounded-2xl sm:rounded-3xl border border-emerald-500/20 hover:border-emerald-500/40 transition-all flex flex-col sm:flex-row justify-between gap-6 items-start">
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-3 sm:gap-4">
-                                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center flex-shrink-0">
-                                            <FileText size={22} className="text-emerald-400" />
-                                        </div>
-                                        <div className="min-w-0">
-                                            <p className="text-green-400 font-mono text-xs sm:text-sm">Factura #{f.numero_factura || f.id.slice(0, 8)}</p>
-                                            <h3 className="text-lg sm:text-xl font-bold text-white mt-1 truncate">{f.vehiculo}</h3>
-                                        </div>
-                                    </div>
-                                    <p className="text-gray-500 mt-3 sm:mt-4 text-sm">Fecha: {new Date(f.creado_en || f.fecha_emision || Date.now()).toLocaleDateString('es-ES')}</p>
-                                </div>
-                                <div className="w-full sm:w-auto sm:text-right">
-                                    <p className="text-3xl sm:text-4xl font-bold text-emerald-400 tracking-tight">{Number(f.total).toFixed(2)} €</p>
-                                    <button onClick={() => descargarFactura(f)} className="mt-4 sm:mt-6 w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-white px-6 sm:px-8 py-3 rounded-2xl font-semibold transition-all flex items-center justify-center gap-2 text-sm">
-                                        <Download size={16} /> Descargar PDF
+                                    <p className="text-white font-medium mb-1">¡Presupuesto enviado!</p>
+                                    <p className="text-gray-500 text-sm mb-6">Nos pondremos en contacto contigo pronto.</p>
+                                    <button onClick={() => { setOkPres(false); setFormPres({ vehiculo: "", matricula: "", anio: new Date().getFullYear().toString(), mensaje: "" }); setView("estado"); }}
+                                        className="text-white px-6 py-2.5 rounded-xl text-sm font-medium transition-all" style={{background:"rgba(139,92,246,0.85)"}}>
+                                        Ver mis vehículos
                                     </button>
                                 </div>
-                            </div>
-                        )) : (
-                            <div className="bg-[#0f0f12] rounded-[24px] sm:rounded-[40px] p-12 sm:p-20 text-center border border-white/5">
-                                <FileText size={60} className="mx-auto mb-6 text-gray-600" />
-                                <p className="text-xl sm:text-2xl font-bold text-white mb-3">Aún no tienes facturas</p>
-                                <p className="text-gray-500 max-w-md mx-auto text-sm">Cuando el taller complete y facture un mantenimiento, aparecerá aquí automáticamente.</p>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* CANCELADOS */}
-                {view === "cancelados" && (
-                    <div className="space-y-6 sm:space-y-8">
-                        <h2 className="text-2xl sm:text-4xl font-black text-white mb-6 sm:mb-10">Mantenimientos Cancelados</h2>
-                        {presupuestos.filter(p => p.estado?.toLowerCase() === "cancelado").length > 0 ? (
-                            presupuestos.filter(p => p.estado?.toLowerCase() === "cancelado").map((p) => {
-                                const totalFormateado = (p.total != null && !isNaN(Number(p.total))) ? `${Number(p.total).toFixed(2)} €` : "—";
-                                return (
-                                    <div key={p.id} className="bg-[#0c1220] border border-red-500/20 bg-red-500/5 rounded-2xl sm:rounded-3xl p-6 sm:p-10 transition-all">
-                                        <div className="flex justify-between items-start gap-4 mb-6 sm:mb-10">
-                                            <div className="min-w-0">
-                                                <p className="uppercase text-xs tracking-widest text-gray-500 mb-1 sm:mb-2">Vehículo</p>
-                                                <h3 className="text-xl sm:text-3xl font-black text-white truncate">{p.vehiculo}</h3>
-                                            </div>
-                                            <div className="px-3 sm:px-8 py-2 sm:py-3 rounded-full font-bold uppercase tracking-widest text-xs sm:text-sm bg-red-600 text-white flex-shrink-0">Cancelado</div>
+                            ) : (
+                                <div className="rounded-2xl p-5 sm:p-6 space-y-4" style={{ background: "rgba(255,255,255,0.02)", border: "0.5px solid rgba(255,255,255,0.06)" }}>
+                                    {/* Datos precargados */}
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.02)", border: "0.5px solid rgba(255,255,255,0.04)" }}>
+                                            <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-1">Nombre</p>
+                                            <p className="text-gray-500 text-sm">{cliente?.nombre} {cliente?.apellido1 || ""}</p>
                                         </div>
-                                        {p.motivo_cancelacion && (
-                                            <div className="mb-6 sm:mb-10 bg-red-500/10 border border-red-500/30 rounded-2xl sm:rounded-3xl p-6 sm:p-10">
-                                                <p className="text-red-400 font-bold mb-2 text-sm">Motivo de cancelación:</p>
-                                                <p className="text-gray-300 italic text-sm">"{p.motivo_cancelacion}"</p>
-                                            </div>
-                                        )}
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8">
-                                            <div>
-                                                <p className="text-xs uppercase tracking-widest text-gray-500 mb-1 sm:mb-2">Fecha de solicitud</p>
-                                                <p className="text-white font-medium text-base sm:text-lg">{new Date(p.creado_en).toLocaleDateString('es-ES')}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs uppercase tracking-widest text-gray-500 mb-1 sm:mb-2">Importe estimado</p>
-                                                <p className="text-2xl sm:text-3xl font-black text-white tracking-tighter">{totalFormateado}</p>
-                                            </div>
+                                        <div className="p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.02)", border: "0.5px solid rgba(255,255,255,0.04)" }}>
+                                            <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-1">Email</p>
+                                            <p className="text-gray-500 text-xs truncate">{cliente?.email}</p>
                                         </div>
                                     </div>
-                                );
-                            })
-                        ) : (
-                            <div className="bg-[#0f0f12] rounded-[24px] sm:rounded-[40px] p-12 sm:p-20 text-center border border-white/5">
-                                <Car size={60} className="mx-auto mb-6 sm:mb-8 text-gray-600" />
-                                <p className="text-xl sm:text-3xl font-black text-white mb-3 sm:mb-4">No tienes mantenimientos cancelados</p>
-                                <p className="text-gray-500 max-w-md mx-auto text-sm">Si algún servicio es cancelado, aparecerá aquí con el motivo.</p>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* MI PERFIL */}
-                {view === "perfil" && (
-                    <div className="space-y-4 sm:space-y-6">
-                        <div className="bg-[#0c1220] rounded-2xl sm:rounded-3xl p-6 sm:p-10 border border-white/[0.08]">
-                            <h2 className="text-xl sm:text-2xl font-bold text-white mb-6 sm:mb-8">Mi Perfil</h2>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                                <CampoEditable label="Nombre" campo="nombre" valor={cliente?.nombre || ""}
-                                    editando={editando} valorEdit={valorEdit} guardando={guardando}
-                                    onEditar={iniciarEdicion} onCancelar={cancelarEdicion}
-                                    onGuardar={guardarCampo} onCambio={setValorEdit} />
-                                <CampoSoloLectura label="Email" valor={cliente?.email || ""} nota="El email no se puede modificar" />
-                                <CampoEditable label="Primer Apellido" campo="apellido1" valor={cliente?.apellido1 || ""}
-                                    editando={editando} valorEdit={valorEdit} guardando={guardando}
-                                    onEditar={iniciarEdicion} onCancelar={cancelarEdicion}
-                                    onGuardar={guardarCampo} onCambio={setValorEdit} />
-                                <CampoEditable label="Segundo Apellido" campo="apellido2" valor={cliente?.apellido2 || ""}
-                                    editando={editando} valorEdit={valorEdit} guardando={guardando}
-                                    onEditar={iniciarEdicion} onCancelar={cancelarEdicion}
-                                    onGuardar={guardarCampo} onCambio={setValorEdit} />
-                                <CampoEditable label="Teléfono" campo="telefono" valor={cliente?.telefono || ""}
-                                    editando={editando} valorEdit={valorEdit} guardando={guardando}
-                                    onEditar={iniciarEdicion} onCancelar={cancelarEdicion}
-                                    onGuardar={guardarCampo} onCambio={setValorEdit} />
-                            </div>
-                        </div>
-
-                        {/* CAMBIO DE CONTRASEÑA */}
-                        <div className="bg-[#0c1220] rounded-2xl sm:rounded-3xl p-6 sm:p-10 border border-white/[0.08]">
-                            <div className="flex items-center justify-between mb-5 sm:mb-6 gap-4">
-                                <div className="flex items-center gap-3 sm:gap-4">
-                                    <div className="w-9 h-9 sm:w-10 sm:h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                                        <KeyRound size={18} className="text-emerald-400" />
+                                    <div className="h-px" style={{ background: "rgba(255,255,255,0.05)" }} />
+                                    <div className="grid grid-cols-3 gap-3">
+                                        <div className="col-span-2">
+                                            <label className="block text-[10px] text-gray-600 uppercase tracking-widest mb-2">Vehículo *</label>
+                                            <input type="text" value={formPres.vehiculo} onChange={(e) => setFormPres(p => ({ ...p, vehiculo: e.target.value }))}
+                                                placeholder="Marca, modelo..."
+                                                className={`w-full text-white text-sm px-3 py-2.5 rounded-xl outline-none transition-all ${erroresPres.vehiculo ? "border border-red-500/50" : "border border-white/8 focus:border-violet-500/40"}`}
+                                                style={{ background: "rgba(255,255,255,0.04)" }} />
+                                            {erroresPres.vehiculo && <p className="text-red-400 text-[11px] mt-1">{erroresPres.vehiculo}</p>}
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] text-gray-600 uppercase tracking-widest mb-2">Año *</label>
+                                            <input type="number" value={formPres.anio} onChange={(e) => setFormPres(p => ({ ...p, anio: e.target.value }))}
+                                                placeholder="2024"
+                                                className={`w-full text-white text-sm px-3 py-2.5 rounded-xl outline-none transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${erroresPres.anio ? "border border-red-500/50" : "border border-white/8 focus:border-violet-500/40"}`}
+                                                style={{ background: "rgba(255,255,255,0.04)" }} />
+                                            {erroresPres.anio && <p className="text-red-400 text-[11px] mt-1">{erroresPres.anio}</p>}
+                                        </div>
                                     </div>
-                                    <h3 className="text-base sm:text-xl font-black text-white">Cambiar Contraseña</h3>
-                                </div>
-                                <button onClick={() => { setMostrarPassword(!mostrarPassword); setErrorPassword(""); setOkPassword(false); setVerActual(false); setVerNueva(false); setVerConfirm(false); setPasswordActual(""); setPasswordNueva(""); setPasswordConfirm(""); }}
-                                    className="px-4 sm:px-5 py-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-xl text-xs sm:text-sm font-medium transition-all flex-shrink-0">
-                                    {mostrarPassword ? "Cancelar" : "Modificar"}
-                                </button>
-                            </div>
-                            {mostrarPassword && (
-                                <div className="space-y-4 mt-4">
-                                    <CampoPassword label="Contraseña actual" value={passwordActual} onChange={setPasswordActual} ver={verActual} setVer={setVerActual} />
                                     <div>
-                                        <CampoPassword label="Nueva contraseña" value={passwordNueva} onChange={setPasswordNueva} ver={verNueva} setVer={setVerNueva} />
-                                        <IndicadorPassword password={passwordNueva} />
+                                        <label className="block text-[10px] text-gray-600 uppercase tracking-widest mb-2">Matrícula</label>
+                                        <input type="text" value={formPres.matricula} onChange={(e) => setFormPres(p => ({ ...p, matricula: e.target.value.toUpperCase() }))}
+                                            placeholder="1234 ABC"
+                                            className="w-full text-white text-sm px-3 py-2.5 rounded-xl outline-none border border-white/8 focus:border-violet-500/40 transition-all uppercase"
+                                            style={{ background: "rgba(255,255,255,0.04)" }} />
                                     </div>
-                                    <CampoPassword label="Confirmar nueva contraseña" value={passwordConfirm} onChange={setPasswordConfirm} ver={verConfirm} setVer={setVerConfirm} />
-                                    {errorPassword && <p className="text-red-400 text-sm">{errorPassword}</p>}
-                                    {okPassword && <p className="text-green-400 text-sm">✓ Contraseña actualizada correctamente</p>}
-                                    <button onClick={guardarPassword} disabled={guardandoPassword}
-                                        className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white py-3 rounded-xl font-semibold transition-all mt-2 text-sm">
-                                        {guardandoPassword ? "Guardando..." : "Guardar nueva contraseña"}
+                                    <div>
+                                        <label className="block text-[10px] text-gray-600 uppercase tracking-widest mb-2">Descripción *</label>
+                                        <textarea value={formPres.mensaje} onChange={(e) => setFormPres(p => ({ ...p, mensaje: e.target.value }))}
+                                            rows={3} placeholder="Describe el daño o servicio que necesitas..."
+                                            className={`w-full text-white text-sm px-3 py-2.5 rounded-xl outline-none transition-all resize-none ${erroresPres.mensaje ? "border border-red-500/50" : "border border-white/8 focus:border-violet-500/40"}`}
+                                            style={{ background: "rgba(255,255,255,0.04)" }} />
+                                        {erroresPres.mensaje && <p className="text-red-400 text-[11px] mt-1">{erroresPres.mensaje}</p>}
+                                    </div>
+                                    <button disabled={enviandoPres}
+                                        onClick={async () => {
+                                            const errs: Record<string, string> = {};
+                                            if (!formPres.vehiculo.trim()) errs.vehiculo = "El vehículo es obligatorio";
+                                            if (!formPres.anio || parseInt(formPres.anio) < 1900 || parseInt(formPres.anio) > 2030) errs.anio = "Año no válido";
+                                            if (!formPres.mensaje.trim()) errs.mensaje = "Describe el problema";
+                                            setErroresPres(errs);
+                                            if (Object.keys(errs).length > 0) return;
+                                            setEnviandoPres(true);
+                                            try {
+                                                const res = await fetch("/api/presupuestos", {
+                                                    method: "POST",
+                                                    headers: { "Content-Type": "application/json" },
+                                                    body: JSON.stringify({
+                                                        nombre: cliente?.nombre || "",
+                                                        apellidos: `${cliente?.apellido1 || ""} ${cliente?.apellido2 || ""}`.trim(),
+                                                        email: cliente?.email || "",
+                                                        telefono: cliente?.telefono || "",
+                                                        vehiculo: formPres.vehiculo,
+                                                        anio: parseInt(formPres.anio),
+                                                        mensaje: formPres.mensaje,
+                                                        matricula: formPres.matricula || null,
+                                                        estado: "Pendiente",
+                                                        articulos: []
+                                                    })
+                                                });
+                                                if (res.ok) { setOkPres(true); }
+                                                else { mostrarAlerta("No se pudo enviar el presupuesto. Inténtalo de nuevo."); }
+                                            } catch { mostrarAlerta("Error de conexión."); }
+                                            finally { setEnviandoPres(false); }
+                                        }}
+                                        className="w-full py-3 rounded-xl text-white text-sm font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                                        style={{ background: "rgba(139,92,246,0.85)" }}>
+                                        {enviandoPres ? <><div className="w-3.5 h-3.5 border border-white/30 border-t-white rounded-full animate-spin" /> Enviando...</> : <><Car size={14} /> Solicitar presupuesto</>}
                                     </button>
                                 </div>
                             )}
                         </div>
-                    </div>
-                )}
+                    )}
+
+                    {/* ── FACTURAS ── */}
+                    {view === "facturas" && (
+                        <div>
+                            <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-4">Historial de facturas</p>
+                            {facturas.length > 0 ? (
+                                <div className="rounded-2xl overflow-hidden" style={{ border: "0.5px solid rgba(255,255,255,0.06)" }}>
+                                    {facturas.map((f, i) => (
+                                        <div key={f.id} className="flex justify-between items-center p-4 sm:p-5 transition-all hover:bg-white/[0.02]"
+                                            style={{ borderBottom: i < facturas.length - 1 ? "0.5px solid rgba(255,255,255,0.04)" : "none", background: "rgba(255,255,255,0.02)" }}>
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                                                    style={{ background: "rgba(139,92,246,0.08)", border: "0.5px solid rgba(139,92,246,0.15)" }}>
+                                                    <FileText size={15} className="text-violet-400" />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="text-violet-400 text-[11px] font-mono">#{f.numero_factura || f.id.slice(0, 8)}</p>
+                                                    <p className="text-gray-200 text-sm font-medium truncate">{f.vehiculo}</p>
+                                                    <p className="text-gray-600 text-[11px]">{new Date(f.creado_en || f.fecha_emision || Date.now()).toLocaleDateString('es-ES')}</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right flex-shrink-0">
+                                                <p className="text-violet-400 text-base font-semibold mb-1.5">{Number(f.total).toFixed(2)} €</p>
+                                                <button onClick={() => descargarFactura(f)}
+                                                    className="flex items-center gap-1.5 text-gray-500 hover:text-violet-400 text-[11px] transition-all">
+                                                    <Download size={12} /> PDF
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-16 rounded-2xl" style={{ background: "rgba(255,255,255,0.02)", border: "0.5px solid rgba(255,255,255,0.05)" }}>
+                                    <FileText size={36} className="mx-auto mb-4 text-gray-700" />
+                                    <p className="text-gray-400 text-sm font-medium mb-1">Aún no tienes facturas</p>
+                                    <p className="text-gray-700 text-xs">Cuando el taller facture un trabajo aparecerá aquí.</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* ── CANCELADOS ── */}
+                    {view === "cancelados" && (
+                        <div className="space-y-3">
+                            <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-4">Cancelados</p>
+                            {presupuestos.filter(p => p.estado?.toLowerCase() === "cancelado").length > 0 ? (
+                                presupuestos.filter(p => p.estado?.toLowerCase() === "cancelado").map((p) => (
+                                    <div key={p.id} className="rounded-2xl p-5 sm:p-6"
+                                        style={{ background: "rgba(239,68,68,0.03)", border: "0.5px solid rgba(239,68,68,0.12)" }}>
+                                        <div className="flex justify-between items-start gap-4 mb-4">
+                                            <div className="min-w-0">
+                                                <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-1">Vehículo</p>
+                                                <h3 className="text-base font-semibold text-white truncate">{p.vehiculo}</h3>
+                                                <p className="text-gray-600 text-xs mt-1">{new Date(p.creado_en).toLocaleDateString('es-ES')}</p>
+                                            </div>
+                                            <span className="px-3 py-1 rounded-full text-[11px] font-medium text-red-400 flex-shrink-0"
+                                                style={{ background: "rgba(239,68,68,0.08)", border: "0.5px solid rgba(239,68,68,0.15)" }}>
+                                                Cancelado
+                                            </span>
+                                        </div>
+                                        {p.motivo_cancelacion && (
+                                            <div className="p-3 rounded-xl" style={{ background: "rgba(239,68,68,0.04)", border: "0.5px solid rgba(239,68,68,0.08)" }}>
+                                                <p className="text-gray-500 text-xs italic leading-relaxed">"{p.motivo_cancelacion}"</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="text-center py-16 rounded-2xl" style={{ background: "rgba(255,255,255,0.02)", border: "0.5px solid rgba(255,255,255,0.05)" }}>
+                                    <Car size={36} className="mx-auto mb-4 text-gray-700" />
+                                    <p className="text-gray-400 text-sm font-medium mb-1">No tienes cancelados</p>
+                                    <p className="text-gray-700 text-xs">Si se cancela algún servicio aparecerá aquí.</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* ── PERFIL ── */}
+                    {view === "perfil" && (
+                        <div className="space-y-3">
+                            <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-4">Datos personales</p>
+                            <div className="rounded-2xl overflow-hidden" style={{ border: "0.5px solid rgba(255,255,255,0.06)" }}>
+                                {[
+                                    { label: "Nombre", campo: "nombre", valor: cliente?.nombre || "" },
+                                    { label: "Primer apellido", campo: "apellido1", valor: cliente?.apellido1 || "" },
+                                    { label: "Segundo apellido", campo: "apellido2", valor: cliente?.apellido2 || "" },
+                                    { label: "Teléfono", campo: "telefono", valor: cliente?.telefono || "" },
+                                ].map((f, i, arr) => (
+                                    <div key={f.campo} className="px-4 py-3.5 transition-all hover:bg-white/[0.02]"
+                                        style={{ background: "rgba(255,255,255,0.02)", borderBottom: i < arr.length - 1 ? "0.5px solid rgba(255,255,255,0.04)" : "none" }}>
+                                        <CampoEditable label={f.label} campo={f.campo} valor={f.valor}
+                                            editando={editando} valorEdit={valorEdit} guardando={guardando}
+                                            onEditar={iniciarEdicion} onCancelar={cancelarEdicion}
+                                            onGuardar={guardarCampo} onCambio={setValorEdit} />
+                                    </div>
+                                ))}
+                                <div className="px-4 py-3.5" style={{ background: "rgba(255,255,255,0.02)" }}>
+                                    <CampoSoloLectura label="Email" valor={cliente?.email || ""} nota="No se puede modificar" />
+                                </div>
+                            </div>
+
+                            {/* Contraseña */}
+                            <div className="rounded-2xl p-4 sm:p-5" style={{ background: "rgba(255,255,255,0.02)", border: "0.5px solid rgba(255,255,255,0.06)" }}>
+                                <div className="flex items-center justify-between mb-0">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "rgba(139,92,246,0.08)" }}>
+                                            <KeyRound size={14} className="text-violet-400" />
+                                        </div>
+                                        <span className="text-gray-300 text-sm">Contraseña</span>
+                                    </div>
+                                    <button onClick={() => { setMostrarPassword(!mostrarPassword); setErrorPassword(""); setOkPassword(false); setPasswordActual(""); setPasswordNueva(""); setPasswordConfirm(""); }}
+                                        className="text-xs text-gray-600 hover:text-gray-300 transition-all px-3 py-1.5 rounded-lg border border-white/8 hover:border-white/15">
+                                        {mostrarPassword ? "Cancelar" : "Cambiar"}
+                                    </button>
+                                </div>
+                                {mostrarPassword && (
+                                    <div className="space-y-3 mt-4 pt-4" style={{ borderTop: "0.5px solid rgba(255,255,255,0.05)" }}>
+                                        <CampoPassword label="Contraseña actual" value={passwordActual} onChange={setPasswordActual} ver={verActual} setVer={setVerActual} />
+                                        <div>
+                                            <CampoPassword label="Nueva contraseña" value={passwordNueva} onChange={setPasswordNueva} ver={verNueva} setVer={setVerNueva} />
+                                            <IndicadorPassword password={passwordNueva} />
+                                        </div>
+                                        <CampoPassword label="Confirmar contraseña" value={passwordConfirm} onChange={setPasswordConfirm} ver={verConfirm} setVer={setVerConfirm} />
+                                        {errorPassword && <p className="text-red-400 text-xs">{errorPassword}</p>}
+                                        {okPassword && <p className="text-violet-400 text-xs">✓ Contraseña actualizada</p>}
+                                        <button onClick={guardarPassword} disabled={guardandoPassword}
+                                            className="w-full py-2.5 rounded-xl text-white text-sm font-medium transition-all disabled:opacity-50"
+                                            style={{ background: "rgba(16,185,129,0.85)" }}>
+                                            {guardandoPassword ? "Guardando..." : "Guardar contraseña"}
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
 
+            {/* MODALES */}
             {confirmCampo && (
-                <ModalConfirmar titulo="Guardar cambio"
-                    mensaje="¿Estás seguro de que quieres guardar este cambio en tu perfil?"
-                    detalle="El dato se actualizará inmediatamente."
-                    onConfirmar={ejecutarGuardarCampo}
-                    onCerrar={() => { setConfirmCampo(null); }}
-                    guardando={guardando}
-                    colorBoton="bg-emerald-500 hover:bg-emerald-600" />
+                <ModalConfirmar titulo="Guardar cambio" mensaje="¿Confirmas que quieres guardar este cambio?" detalle="El dato se actualizará inmediatamente."
+                    onConfirmar={ejecutarGuardarCampo} onCerrar={() => setConfirmCampo(null)} guardando={guardando}
+                    colorBoton="bg-violet-600 hover:bg-violet-700" />
             )}
             {confirmLogout && (
-                <ModalConfirmar titulo="Cerrar Sesión" mensaje="¿Estás seguro de que quieres cerrar sesión?" detalle="Tendrás que volver a introducir tus credenciales para acceder."
-                    onConfirmar={() => { setConfirmLogout(false); handleLogout(); }} onCerrar={() => setConfirmLogout(false)} colorBoton="bg-red-600 hover:bg-red-700" />
+                <ModalConfirmar titulo="Cerrar sesión" mensaje="¿Seguro que quieres salir?" detalle="Tendrás que volver a iniciar sesión."
+                    onConfirmar={() => { setConfirmLogout(false); handleLogout(); }} onCerrar={() => setConfirmLogout(false)}
+                    colorBoton="bg-red-500/90 hover:bg-red-500" />
             )}
             {confirmPassword && (
-                <ModalConfirmar titulo="Cambiar Contraseña" mensaje="¿Estás seguro de que quieres cambiar tu contraseña?" detalle="Esta acción actualizará tus credenciales de acceso."
-                    onConfirmar={ejecutarGuardarPassword} onCerrar={() => setConfirmPassword(false)} guardando={guardandoPassword} />
+                <ModalConfirmar titulo="Cambiar contraseña" mensaje="¿Confirmas el cambio de contraseña?" detalle="Se actualizarán tus credenciales de acceso."
+                    onConfirmar={ejecutarGuardarPassword} onCerrar={() => setConfirmPassword(false)} guardando={guardandoPassword}
+                    colorBoton="bg-violet-600 hover:bg-violet-700" />
             )}
             {alerta && <ModalAlerta mensaje={alerta} onCerrar={() => setAlerta(null)} />}
         </div>
