@@ -160,7 +160,7 @@ export async function POST(req: Request) {
     });
 
   } catch (error: any) {
-    console.error("❌ Error crítico en POST /api/facturas:", error);
+    console.error("Error crítico en POST /api/facturas:", error);
     return NextResponse.json({ 
       error: error.message || "Error interno del servidor" 
     }, { status: 500 });
