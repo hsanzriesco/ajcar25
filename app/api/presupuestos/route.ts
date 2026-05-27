@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 
+// Devuelve todos los presupuestos con sus líneas de artículos asociadas
+// La fecha de cita se formatea a DD/MM/YYYY en la propia query SQL
 export async function GET() {
   try {
     const sql = neon(process.env.DATABASE_URL!);
@@ -13,6 +15,7 @@ export async function GET() {
       ORDER BY p.creado_en DESC
     `;
 
+    // Para cada presupuesto obtiene sus líneas; si falla devuelve artículos vacíos sin romper el listado
     const presupuestosConArticulos = await Promise.all(data.map(async (presu) => {
       try {
         const lineas = await sql`
@@ -37,12 +40,15 @@ export async function GET() {
   }
 }
 
+// Crea un nuevo presupuesto con estado "Pendiente" e inserta sus artículos como líneas independientes
+// La fecha de cita se fija al día actual y la hora por defecto a las 10:00
 export async function POST(request: Request) {
   try {
     const sql = neon(process.env.DATABASE_URL!);
     const body = await request.json();
     const { nombre, apellidos, email, telefono, vehiculo, anio, matricula, mensaje, articulos } = body;
 
+    // Fecha y hora de cita por defecto al momento de la creación
     const fecha = new Date().toISOString().split('T')[0];
     const hora = "10:00";
 
@@ -54,6 +60,7 @@ export async function POST(request: Request) {
 
     const nuevoId = resultadoPresupuesto[0].id;
 
+    // Inserta cada artículo como línea vinculada al presupuesto recién creado
     if (articulos && Array.isArray(articulos) && articulos.length > 0) {
       for (const item of articulos) {
         await sql`

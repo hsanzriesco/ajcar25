@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 
+// Devuelve todos los artículos del almacén ordenados alfabéticamente por descripción
 export async function GET() {
   try {
     const sql = neon(process.env.DATABASE_URL!);
 
-    // Traemos stock y stock_reservado
     const articulos = await sql`
       SELECT id, codigo, descripcion, precio_unitario, stock, stock_reservado 
       FROM articulos

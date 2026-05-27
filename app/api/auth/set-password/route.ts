@@ -2,12 +2,14 @@ import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import bcrypt from "bcryptjs";
 
+// Establece la contraseña de un usuario usando el token de activación recibido por email
+// Flujo: valida el token → hashea la nueva clave → actualiza el usuario y activa la cuenta
 export async function POST(request: Request) {
   try {
     const { token, password } = await request.json();
     const sql = neon(process.env.DATABASE_URL!);
 
-    // 1. Buscar si el token es válido y no ha expirado
+    // Verifica que el token exista y no haya expirado
     const usuario = await sql`
       SELECT id FROM usuarios 
       WHERE reset_token = ${token} 
@@ -19,10 +21,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "El enlace es inválido o ha caducado." }, { status: 400 });
     }
 
-    // 2. Encriptar la nueva contraseña
+    // Hashea la nueva contraseña antes de guardarla
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 3. Actualizar usuario, activar cuenta y limpiar el token
+    // Guarda el hash, activa la cuenta y elimina el token para que no pueda reutilizarse
     await sql`
       UPDATE usuarios 
       SET password_hash = ${hashedPassword},

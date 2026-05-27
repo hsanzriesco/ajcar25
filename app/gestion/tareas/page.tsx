@@ -12,6 +12,7 @@ import {
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
+// Artículo del almacén con stock real y stock reservado
 interface Articulo {
   id: number;
   codigo: string;
@@ -21,10 +22,12 @@ interface Articulo {
   stock_reservado: number;
 }
 
+// Línea de presupuesto: extiende Articulo añadiendo la cantidad seleccionada
 interface LineaPresupuesto extends Articulo {
   cantidad: number;
 }
 
+// Factura emitida, con artículos opcionales para regenerar el PDF
 interface Factura {
   id: string;
   numero_factura?: string;
@@ -36,6 +39,7 @@ interface Factura {
   articulos?: any[];
 }
 
+// Presupuesto/expediente completo con datos del cliente, vehículo y artículos asignados
 interface PresupuestoPedido {
   id: string;
   nombre: string;
@@ -54,7 +58,7 @@ interface PresupuestoPedido {
   documento_identidad?: string;
 }
 
-// ✅ Modal de confirmación estilizado
+// Modal de confirmación genérico con icono de advertencia y botones cancelar/confirmar
 const ModalConfirmar = ({ titulo, mensaje, detalle, onConfirmar, onCerrar, guardando, colorBoton = "bg-blue-600 hover:bg-blue-700" }: {
   titulo: string; mensaje: string; detalle?: string;
   onConfirmar: () => void; onCerrar: () => void;
@@ -81,7 +85,8 @@ const ModalConfirmar = ({ titulo, mensaje, detalle, onConfirmar, onCerrar, guard
   </div>
 );
 
-// ✅ Modal de alerta estilizado (reemplaza AlertModal externo)
+// Modal de alerta con cuatro variantes visuales (success, error, warning, info)
+// El color del icono, fondo y botón cambia según el tipo recibido
 const ModalAlerta = ({ titulo, mensaje, tipo, onCerrar }: {
   titulo: string; mensaje: string;
   tipo: "success" | "error" | "warning" | "info";
@@ -97,6 +102,7 @@ const ModalAlerta = ({ titulo, mensaje, tipo, onCerrar }: {
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center z-[140] p-0 sm:p-4">
       <div className="bg-[#0f0f12] border border-white/10 rounded-t-[30px] sm:rounded-[40px] p-6 sm:p-10 w-full max-w-md">
+        {/* Indicador de arrastre visible solo en móvil */}
         <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4 sm:hidden" />
         <div className="flex items-center gap-3 sm:gap-4 mb-5">
           <div className={`w-10 h-10 sm:w-12 sm:h-12 ${c.bg} rounded-2xl flex items-center justify-center flex-shrink-0`}>
@@ -113,6 +119,7 @@ const ModalAlerta = ({ titulo, mensaje, tipo, onCerrar }: {
   );
 };
 
+// Componente raíz: envuelve el contenido en Suspense para manejar la carga asíncrona
 export default function EmpleadoPage() {
   return (
     <Suspense fallback={
@@ -126,45 +133,69 @@ export default function EmpleadoPage() {
 }
 
 function EmpleadoContent() {
+  // Datos de sesión y control de carga/autorización
   const [nombreUsuario, setNombreUsuario] = useState("");
   const [loading, setLoading] = useState(true);
   const [autorizado, setAutorizado] = useState(false);
+
+  // Vista activa del panel de navegación
   const [view, setView] = useState<"mantenimientos" | "presupuestos" | "aceptados" | "stock" | "facturas">("presupuestos");
+
+  // Controla si el panel lateral de detalle está abierto (en móvil se desliza desde abajo)
   const [panelAbierto, setPanelAbierto] = useState(false);
 
+  // Datos cargados desde la API
   const [presupuestos, setPresupuestos] = useState<PresupuestoPedido[]>([]);
   const [articulos, setArticulos] = useState<Articulo[]>([]);
   const [seleccionado, setSeleccionado] = useState<PresupuestoPedido | null>(null);
   const [facturas, setFacturas] = useState<any[]>([]);
 
+  // Filtros de búsqueda para stock y facturas
   const [codigoBusqueda, setCodigoBusqueda] = useState("");
   const [filtroStock, setFiltroStock] = useState("");
   const [filtroFacturas, setFiltroFacturas] = useState("");
+
+  // Líneas de artículos del presupuesto activo en el panel lateral
   const [lineas, setLineas] = useState<LineaPresupuesto[]>([]);
+
+  // Estados de carga para operaciones asíncronas individuales
   const [enviandoEmail, setEnviandoEmail] = useState(false);
   const [facturando, setFacturando] = useState(false);
   const [cambiandoEstado, setCambiandoEstado] = useState(false);
+
+  // Modal de cancelación de mantenimiento: visibilidad, motivo y estado de envío
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [cancelando, setCancelando] = useState(false);
 
+  // Modal de nueva ficha: visibilidad y paso activo del wizard (1: datos, 2: artículos)
   const [showNuevoPresupuesto, setShowNuevoPresupuesto] = useState(false);
   const [modalStep, setModalStep] = useState(1);
+
+  // Modal de registro de nuevo cliente
   const [showModalNuevoUsuario, setShowModalNuevoUsuario] = useState(false);
+
+  // Control de verificación de DNI y existencia del usuario en el sistema
   const [verificando, setVerificando] = useState(false);
   const [usuarioExiste, setUsuarioExiste] = useState(false);
+
+  // Sugerencias del autocompletado de artículos
   const [sugerencias, setSugerencias] = useState<Articulo[]>([]);
 
+  // Errores de validación de DNI y email en el formulario de nuevo cliente
   const [dniError, setDniError] = useState<string>("");
   const [emailError, setEmailError] = useState<string>("");
+
+  // Control del modal de confirmación de cierre de sesión
   const [confirmLogout, setConfirmLogout] = useState(false);
 
+  // Datos del formulario de nuevo cliente/presupuesto
   const [nuevoCliente, setNuevoCliente] = useState({
     nombre: "", apellidos: "", email: "", telefono: "",
     documento_identidad: "", vehiculo: "", anio: new Date().getFullYear(), mensaje: "", tipo_cliente: "particular"
   });
 
-  // ✅ Estado para ModalAlerta inline (reemplaza AlertModal externo)
+  // Estado centralizado del modal de alerta: tipo, título, mensaje y visibilidad
   const [alerta, setAlerta] = useState<{
     visible: boolean; titulo: string; mensaje: string;
     tipo: "success" | "error" | "warning" | "info";
@@ -172,10 +203,12 @@ function EmpleadoContent() {
 
   const router = useRouter();
 
+  // Helpers para mostrar y cerrar el modal de alerta desde cualquier función
   const showAlert = (title: string, message: string, type: "success" | "error" | "warning" | "info" = "info") =>
     setAlerta({ visible: true, titulo: title, mensaje: message, tipo: type });
   const closeAlert = () => setAlerta(prev => ({ ...prev, visible: false }));
 
+  // Carga en paralelo presupuestos, artículos y facturas desde sus respectivos endpoints
   const cargarTodo = useCallback(async () => {
     setLoading(true);
     try {
@@ -188,6 +221,7 @@ function EmpleadoContent() {
     } finally { setLoading(false); }
   }, []);
 
+  // Al montar: verifica que el rol sea "empleado", carga datos y activa polling silencioso cada 15s
   useEffect(() => {
     const role = sessionStorage.getItem("user_role");
     if (!role || role.toLowerCase() !== "empleado") { sessionStorage.clear(); router.push("/login"); return; }
@@ -195,7 +229,7 @@ function EmpleadoContent() {
     setNombreUsuario(sessionStorage.getItem("user_name") || "Trabajador");
     cargarTodo();
 
-    // ✅ Refresco automático cada 15 segundos sin mostrar spinner
+    // Refresco automático en segundo plano sin mostrar spinner ni interrumpir la UI
     const intervalo = setInterval(async () => {
       try {
         const [resPres, resArt, resFac] = await Promise.all([
@@ -206,12 +240,13 @@ function EmpleadoContent() {
         if (resPres.ok) setPresupuestos(await resPres.json());
         if (resArt.ok) setArticulos(await resArt.json());
         if (resFac.ok) setFacturas(await resFac.json());
-      } catch { /* silencioso */ }
+      } catch { }
     }, 15000);
 
     return () => clearInterval(intervalo);
   }, [router, cargarTodo]);
 
+  // Valida formato de email y devuelve el mensaje de error o cadena vacía si es correcto
   const validarEmail = (email: string): string => {
     if (!email || email.trim() === "") return "El correo electrónico es obligatorio";
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -219,6 +254,7 @@ function EmpleadoContent() {
     return "";
   };
 
+  // Valida DNI, NIE o CIF con expresiones regulares y actualiza el estado de error
   const validarDNI = (dni: string) => {
     if (!dni) { setDniError(""); return; }
     const valor = dni.toUpperCase().trim();
@@ -229,6 +265,7 @@ function EmpleadoContent() {
     else setDniError("El formato del DNI / NIE / CIF no es válido");
   };
 
+  // Consulta la API si el DNI ya existe: rellena el formulario automáticamente o abre el modal de alta
   const verificarUsuario = async () => {
     const dni = nuevoCliente.documento_identidad.trim().toUpperCase();
     if (!dni) return;
@@ -247,6 +284,7 @@ function EmpleadoContent() {
     finally { setVerificando(false); }
   };
 
+  // Valida el formulario de nuevo cliente, hace POST a /api/usuarios y actualiza la lista
   const crearUsuarioYContinuar = async () => {
     if (!nuevoCliente.documento_identidad || !nuevoCliente.nombre || !nuevoCliente.email) { showAlert("Datos incompletos", "El DNI, Nombre y Email son obligatorios", "warning"); return; }
     const errorEmail = validarEmail(nuevoCliente.email);
@@ -266,6 +304,7 @@ function EmpleadoContent() {
     finally { setVerificando(false); }
   };
 
+  // Busca un artículo por código en la API y lo añade a las líneas (o incrementa cantidad si ya existe)
   const buscarYAñadirArticuloModal = async () => {
     const cod = codigoBusqueda.toUpperCase().trim();
     if (!cod) return;
@@ -279,6 +318,7 @@ function EmpleadoContent() {
     } catch { showAlert("Error", "No se pudo buscar el artículo", "error"); }
   };
 
+  // Hace POST del presupuesto con los datos del cliente y las líneas de artículos, luego reinicia el wizard
   const manejarCreacionPresupuesto = async () => {
     const partes = nuevoCliente.apellidos.trim().split(/\s+/);
     const ape1 = partes[0]?.toUpperCase() || "";
@@ -295,24 +335,34 @@ function EmpleadoContent() {
     finally { setVerificando(false); }
   };
 
+  // Genera el PDF con jsPDF: cabecera oscura, datos del cliente, tabla de artículos con autoTable y pie de total
+  // Si abrirEnVentana es true lo abre en una nueva pestaña; en ambos casos devuelve el dataURI para adjuntar al email
   const generarFacturaPDF = (data: any, abrirEnVentana: boolean = true) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 15;
+
+    // Cabecera con fondo oscuro y título (presupuesto o factura según flag)
     doc.setFillColor(17, 24, 39); doc.rect(0, 0, pageWidth, 55, "F");
     doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(26);
     doc.text(data.esPresupuesto ? "AJCAR 25 - PRESUPUESTO" : "AJCAR 25 - FACTURA", margin, 35);
     doc.setFontSize(11); doc.setFont("helvetica", "normal");
     doc.text(`Nº: ${data.numero_factura || data.id || "TEMP"}`, margin, 70);
     doc.text(`FECHA: ${new Date(data.fecha_emision || Date.now()).toLocaleDateString('es-ES')}`, pageWidth - margin, 70, { align: "right" });
+
+    // Bloque de datos del cliente
     let y = 85;
     doc.setTextColor(0, 0, 0); doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.text("DATOS DEL CLIENTE:", margin, y); y += 8;
     doc.setFont("helvetica", "normal"); doc.setFontSize(10);
     const clienteNombre = data.cliente_nombre || `${data.nombre || "N/A"} ${data.apellidos1 || ""}`.trim();
     doc.text(`Cliente: ${clienteNombre}`, margin, y); y += 7;
     if (data.vehiculo) { doc.text(`Vehículo: ${data.vehiculo}`, margin, y); y += 7; } y += 5;
+
+    // Tabla de líneas de artículos (descripción, cantidad, precio unitario, total por línea)
     const tableBody = (data.articulos || []).filter((art: any) => art && (art.descripcion || art.nombre)).map((art: any) => [art.descripcion || art.nombre || "Artículo", String(Number(art.cantidad) || 1), `${Number(art.precio_unitario || art.precio || 0).toFixed(2)}€`, `${(Number(art.cantidad || 1) * Number(art.precio_unitario || art.precio || 0)).toFixed(2)}€`]);
     autoTable(doc, { startY: y, head: [["DESCRIPCIÓN", "CANT.", "PRECIO UN.", "TOTAL"]], body: tableBody, theme: 'grid', headStyles: { fillColor: [17, 24, 39], textColor: 255, fontStyle: "bold", fontSize: 10, halign: "center" }, styles: { fontSize: 9, cellPadding: 6, lineColor: [200, 200, 200] }, columnStyles: { 0: { halign: "left", cellWidth: "auto" }, 1: { halign: "center", cellWidth: 25 }, 2: { halign: "right", cellWidth: 35 }, 3: { halign: "right", cellWidth: 35 } }, margin: { left: margin, right: margin } });
+
+    // Pie de total con fondo azul: calcula el total desde data.total o sumando las líneas del PDF
     const finalY = (doc as any).lastAutoTable.finalY + 8;
     let total = 0;
     if (data.total !== undefined && data.total !== null) total = Number(data.total);
@@ -328,8 +378,10 @@ function EmpleadoContent() {
     return doc.output('datauristring');
   };
 
+  // Abre el PDF de una factura ya guardada en una nueva pestaña
   const imprimirFacturaExistente = (factura: any) => generarFacturaPDF(factura, true);
 
+  // Genera el PDF, hace POST a /api/facturas con el base64, actualiza stock y envía el email al cliente
   const procesarFactura = async () => {
     const articulosAFacturar = (view === "mantenimientos" || view === "aceptados") ? seleccionado?.articulos : lineas;
     if (!seleccionado || !articulosAFacturar || articulosAFacturar.length === 0) { showAlert("Sin artículos", "No hay artículos seleccionados para facturar.", "warning"); return; }
@@ -349,8 +401,10 @@ function EmpleadoContent() {
     finally { setFacturando(false); }
   };
 
+  // Total acumulado de las líneas del presupuesto activo en el panel lateral
   const totalPresupuesto = lineas.reduce((acc, item) => acc + (Number(item.precio_unitario) * item.cantidad), 0);
 
+  // Genera el PDF como presupuesto (sin registrar factura), lo adjunta y lo envía por email al cliente
   const enviarPresupuestoPDF = async () => {
     if (!seleccionado || !seleccionado.id || !seleccionado.email) { showAlert("Datos incompletos", "El presupuesto no tiene ID o el cliente no tiene email asignado.", "warning"); return; }
     if (lineas.length === 0) { showAlert("Sin artículos", "No hay artículos en el presupuesto.", "warning"); return; }
@@ -367,6 +421,7 @@ function EmpleadoContent() {
     finally { setEnviandoEmail(false); }
   };
 
+  // PATCH del expediente a estado "Cancelado" con el motivo introducido por el empleado
   const cancelarMantenimiento = async () => {
     if (!seleccionado || !cancelReason.trim()) { showAlert("Motivo requerido", "Debes explicar la razón por la que se cancela el mantenimiento.", "warning"); return; }
     setCancelando(true);
@@ -378,6 +433,7 @@ function EmpleadoContent() {
     finally { setCancelando(false); }
   };
 
+  // PATCH genérico de estado de un presupuesto (ej: "Aceptado por el cliente" → "En Taller")
   const cambiarEstado = async (id: string, nuevoEstado: string) => {
     setCambiandoEstado(true);
     try {
@@ -388,8 +444,10 @@ function EmpleadoContent() {
     finally { setCambiandoEstado(false); }
   };
 
+  // Limpia la sesión y redirige a la página principal
   const handleLogout = () => { sessionStorage.clear(); router.push("/"); };
 
+  // Filtra la lista de presupuestos según la vista activa (estados mapeados a cada pestaña)
   const presupuestosFiltrados = presupuestos.filter(p => {
     if (view === "presupuestos") return p.estado === "Pendiente" || p.estado === "Enviado";
     if (view === "aceptados") return p.estado === "Aceptado por el cliente";
@@ -397,6 +455,7 @@ function EmpleadoContent() {
     return false;
   });
 
+  // Pantalla de espera mientras se verifica la autorización del empleado
   if (!autorizado) return (
     <div className="min-h-screen bg-[#0a0a0c] flex items-center justify-center">
       <Loader2 className="animate-spin text-blue-600" size={48} />
@@ -408,7 +467,7 @@ function EmpleadoContent() {
       <main className="w-full flex flex-col min-h-screen">
         <div className="p-4 sm:p-8 lg:p-16 max-w-7xl w-full mx-auto">
 
-          {/* HEADER */}
+          {/* HEADER: logo, nombre del empleado, navegación por pestañas, botón "Crear" y logout */}
           <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 sm:gap-8 mb-8 sm:mb-16">
             <div className="space-y-2 sm:space-y-4">
               <div className="flex items-center gap-3">
@@ -418,11 +477,13 @@ function EmpleadoContent() {
                   <p className="text-[9px] text-blue-500 font-bold uppercase tracking-tighter">Panel de Gestión</p>
                 </div>
               </div>
+              {/* Título grande que refleja la vista activa */}
               <h1 className="text-white text-4xl sm:text-5xl lg:text-7xl font-black italic uppercase tracking-tighter leading-none">
                 {view === 'mantenimientos' ? 'TALLER' : view.toUpperCase()}
               </h1>
             </div>
 
+            {/* Barra de navegación: resalta la pestaña activa con fondo azul */}
             <nav className="flex flex-wrap items-center gap-1 bg-white/[0.03] p-1 sm:p-1.5 rounded-2xl sm:rounded-3xl border border-white/5 shadow-2xl backdrop-blur-md w-full sm:w-auto">
               {[
                 { id: 'presupuestos', label: 'Presup.' },
@@ -436,6 +497,7 @@ function EmpleadoContent() {
                   {v.label}
                 </button>
               ))}
+              {/* Botón "Crear": abre el wizard de nueva ficha reiniciando todos los campos */}
               <button onClick={() => { setShowNuevoPresupuesto(true); setModalStep(1); setLineas([]); setSugerencias([]); setUsuarioExiste(false); setDniError(""); setNuevoCliente({ nombre: "", apellidos: "", email: "", telefono: "", documento_identidad: "", vehiculo: "", anio: new Date().getFullYear(), mensaje: "", tipo_cliente: "Particular" }); }}
                 className="flex-1 sm:flex-none px-2 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-blue-400 hover:bg-blue-600/10 transition-all border border-blue-500/20 sm:ml-1 flex items-center justify-center gap-1 sm:gap-2">
                 <FilePlus2 size={12} /> Crear
@@ -446,15 +508,17 @@ function EmpleadoContent() {
             </nav>
           </header>
 
-          {/* CONTENIDO PRINCIPAL */}
+          {/* LAYOUT PRINCIPAL: columna izquierda con la lista, columna derecha con el panel de detalle */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12 items-start">
             <div className="lg:col-span-7 space-y-4 sm:space-y-6">
               {loading ? (
+                // Estado de carga inicial
                 <div className="flex flex-col items-center justify-center py-20 bg-[#0f0f12] rounded-[32px] sm:rounded-[40px] border border-white/5">
                   <Loader2 className="animate-spin text-blue-600 mb-4" size={32} />
                   <p className="text-[10px] uppercase font-black tracking-widest">Cargando Sistema...</p>
                 </div>
               ) : view === "stock" ? (
+                // VISTA ALMACÉN: tabla filtrable de artículos con código, descripción y stock (rojo si < 5)
                 <div className="bg-[#0f0f12] rounded-[32px] sm:rounded-[40px] border border-white/5 overflow-hidden shadow-2xl">
                   <div className="p-4 sm:p-8 border-b border-white/5 bg-white/[0.01] flex flex-col sm:flex-row gap-3 sm:gap-0 justify-between items-start sm:items-center">
                     <h3 className="text-white font-black italic uppercase tracking-tighter text-sm sm:text-base">Artículos en Almacén</h3>
@@ -486,8 +550,8 @@ function EmpleadoContent() {
                   </div>
                 </div>
               ) : view === "facturas" ? (
+                // VISTA FACTURAS: listado filtrable por matrícula, vehículo o nombre con botón de reimprimir PDF
                 <div className="space-y-3 sm:space-y-4">
-                  {/* Buscador matrícula */}
                   <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-4 py-2">
                     <Search size={14} className="text-gray-500 flex-shrink-0" />
                     <input type="text" value={filtroFacturas} onChange={(e) => setFiltroFacturas(e.target.value)}
@@ -546,8 +610,10 @@ function EmpleadoContent() {
                   })()}
                 </div>
               ) : (
+                // VISTAS DE PRESUPUESTOS, ACEPTADOS Y TALLER: grid de tarjetas; la seleccionada se resalta en azul
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                   {presupuestosFiltrados.length === 0 ? (
+                    // Estado vacío con mensaje contextual según la vista activa
                     <div className="col-span-2 bg-[#0f0f12] rounded-[32px] sm:rounded-[40px] p-12 sm:p-20 text-center border border-white/5">
                       <Car size={60} className="mx-auto mb-6 sm:mb-8 text-gray-600" strokeWidth={1} />
                       <p className="text-xl sm:text-2xl font-black italic uppercase text-white mb-3">
@@ -562,6 +628,7 @@ function EmpleadoContent() {
                       </p>
                     </div>
                   ) : presupuestosFiltrados.map(p => (
+                    // Tarjeta de expediente: al pulsar carga el detalle en el panel lateral
                     <div key={p.id} onClick={() => { setSeleccionado(p); setLineas(p.articulos || []); setSugerencias([]); setPanelAbierto(true); }}
                       className={`p-6 sm:p-10 rounded-[32px] sm:rounded-[48px] border transition-all duration-500 cursor-pointer relative overflow-hidden group ${seleccionado?.id === p.id ? 'bg-blue-600 border-blue-500 text-white shadow-2xl shadow-blue-900/40' : 'bg-[#0f0f12] border-white/5 hover:border-white/10'}`}>
                       {seleccionado?.id === p.id && <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-bl-full animate-pulse" />}
@@ -582,9 +649,12 @@ function EmpleadoContent() {
               )}
             </div>
 
+            {/* Overlay oscuro en móvil cuando el panel lateral está abierto */}
             {panelAbierto && seleccionado && (
               <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden" onClick={() => setPanelAbierto(false)} />
             )}
+
+            {/* PANEL LATERAL DE DETALLE: en móvil sube desde abajo, en desktop es sticky a la derecha */}
             <aside className={`
               fixed bottom-0 left-0 right-0 z-50 lg:static lg:z-auto
               lg:col-span-5 lg:sticky lg:top-8
@@ -593,12 +663,15 @@ function EmpleadoContent() {
             `}>
               <div className="bg-[#0f0f12] rounded-t-[40px] sm:rounded-t-[56px] lg:rounded-[56px] border border-white/5 overflow-hidden shadow-2xl max-h-[85vh] lg:max-h-none lg:min-h-[600px] flex flex-col">
                 {seleccionado ? (
+                  // DETALLE DEL EXPEDIENTE SELECCIONADO
                   <div className="p-6 sm:p-12 space-y-6 sm:space-y-10 animate-in slide-in-from-bottom duration-300 lg:animate-in lg:slide-in-from-right-8 flex-1 flex flex-col overflow-y-auto">
                     <div className="w-12 h-1 bg-white/20 rounded-full mx-auto lg:hidden" />
                     <div className="flex justify-between items-center">
                       <span className="text-[10px] font-black uppercase tracking-[0.5em] text-blue-500">Expediente</span>
                       <button onClick={() => { setSeleccionado(null); setPanelAbierto(false); setSugerencias([]); }} className="bg-white/5 p-2 sm:p-3 rounded-2xl text-gray-600 hover:text-white transition-all"><X size={18} /></button>
                     </div>
+
+                    {/* Nombre, email, teléfono y motivo del ingreso */}
                     <div className="space-y-3 sm:space-y-6">
                       <h3 className="text-2xl sm:text-4xl font-black italic uppercase text-white leading-tight tracking-tighter">{seleccionado.nombre} {seleccionado.apellidos1}</h3>
                       <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-6 pt-1">
@@ -614,10 +687,12 @@ function EmpleadoContent() {
                       <p className="text-xs sm:text-sm text-gray-300 italic font-medium leading-relaxed uppercase tracking-tight">"{seleccionado.mensaje || "Sin observaciones específicas."}"</p>
                     </div>
 
+                    {/* ACCIONES VISTA PRESUPUESTOS: buscador de artículos, lista de líneas y botón de envío */}
                     {view === "presupuestos" && (
                       <div className="space-y-4 sm:space-y-8 flex-1 flex flex-col justify-end">
                         <div className="space-y-3 sm:space-y-4">
                           <div className="flex gap-2 sm:gap-3 relative">
+                            {/* Input con autocompletado: filtra artículos en tiempo real */}
                             <div className="flex-1 bg-white/5 border border-white/10 rounded-2xl flex items-center px-3 sm:px-5 focus-within:border-blue-500 transition-all shadow-inner relative">
                               <Package size={14} className="text-gray-600 mr-2 sm:mr-4 flex-shrink-0" />
                               <input value={codigoBusqueda} onChange={(e) => { const valor = e.target.value.toUpperCase(); setCodigoBusqueda(valor); if (valor.length > 0) { setSugerencias(articulos.filter(a => a.codigo.toUpperCase().includes(valor) || a.descripcion.toUpperCase().includes(valor)).slice(0, 5)); } else { setSugerencias([]); } }} onKeyDown={(e) => e.key === 'Enter' && buscarYAñadirArticuloModal()} placeholder="AÑADIR PIEZA..."
@@ -638,6 +713,7 @@ function EmpleadoContent() {
                             </div>
                             <button onClick={buscarYAñadirArticuloModal} className="bg-blue-600 w-12 sm:w-16 rounded-2xl text-white flex items-center justify-center hover:bg-blue-500 shadow-lg transition-all active:scale-95"><Plus size={20} /></button>
                           </div>
+                          {/* Lista de líneas añadidas con botón de eliminar */}
                           <div className="space-y-2 max-h-40 sm:max-h-56 overflow-y-auto pr-2 sm:pr-4 custom-scrollbar">
                             {lineas.map((l, i) => (
                               <div key={i} className="flex justify-between items-center bg-white/[0.02] p-3 sm:p-5 rounded-2xl sm:rounded-3xl border border-white/5 group hover:border-blue-500/20 transition-all">
@@ -653,6 +729,7 @@ function EmpleadoContent() {
                             ))}
                           </div>
                         </div>
+                        {/* Total y botón de envío por email; deshabilitado si no hay líneas */}
                         <div className="p-6 sm:p-10 bg-blue-600 rounded-[32px] sm:rounded-[48px] flex justify-between items-center shadow-3xl shadow-blue-900/50 relative overflow-hidden group">
                           <div className="flex flex-col relative z-10">
                             <span className="text-[10px] font-black text-blue-200 uppercase tracking-widest">Total</span>
@@ -665,6 +742,7 @@ function EmpleadoContent() {
                       </div>
                     )}
 
+                    {/* ACCIONES VISTA ACEPTADOS: resumen de artículos y botón para ingresar a taller */}
                     {view === "aceptados" && (
                       <div className="mt-auto space-y-4 sm:space-y-6">
                         <div className="bg-white/5 rounded-[28px] sm:rounded-[40px] p-5 sm:p-8 border border-white/5">
@@ -684,6 +762,7 @@ function EmpleadoContent() {
                       </div>
                     )}
 
+                    {/* ACCIONES VISTA TALLER: botón de facturar y botón de cancelar mantenimiento */}
                     {view === "mantenimientos" && (
                       <div className="mt-auto space-y-3 sm:space-y-4">
                         <button onClick={procesarFactura} disabled={facturando} className="w-full bg-white text-black py-5 sm:py-8 rounded-[32px] sm:rounded-[40px] font-black text-[10px] sm:text-[11px] uppercase tracking-[0.3em] sm:tracking-[0.5em] flex items-center justify-center gap-3 sm:gap-4 shadow-2xl hover:bg-gray-200 transition-all active:scale-95">
@@ -696,6 +775,7 @@ function EmpleadoContent() {
                     )}
                   </div>
                 ) : (
+                  // Estado vacío del panel: animación de pulso con logo cuando no hay expediente seleccionado
                   <div className="flex-1 flex flex-col items-center justify-center opacity-10 py-20 sm:py-40">
                     <Car size={80} className="mb-6 sm:mb-10 animate-pulse text-blue-600" strokeWidth={1} />
                     <p className="text-base sm:text-lg font-black uppercase tracking-[0.5em] sm:tracking-[1em] italic">AJCAR 25</p>
@@ -708,13 +788,14 @@ function EmpleadoContent() {
         </div>
       </main>
 
-      {/* MODAL NUEVA FICHA */}
+      {/* MODAL NUEVA FICHA: wizard de 2 pasos (1: identificación del cliente, 2: selección de artículos) */}
       {showNuevoPresupuesto && (
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/95 backdrop-blur-3xl p-0 sm:p-6">
           <div className="bg-[#0f0f12] border border-white/10 w-full max-w-3xl rounded-t-[40px] sm:rounded-[64px] overflow-hidden shadow-3xl animate-in slide-in-from-bottom sm:zoom-in duration-500 flex flex-col max-h-[95vh] sm:max-h-[90vh]">
             <div className="p-5 sm:p-12 border-b border-white/5 flex justify-between items-center bg-gradient-to-r from-blue-600/10 via-transparent to-transparent flex-shrink-0">
               <div>
                 <h2 className="text-white text-2xl sm:text-4xl font-black italic uppercase tracking-tighter leading-none">Apertura de Ficha</h2>
+                {/* Indicadores de paso del wizard */}
                 <div className="flex gap-4 sm:gap-6 mt-3 sm:mt-6">
                   {[{ n: 1, label: "Identificación" }, { n: 2, label: "Configuración" }].map(s => (
                     <div key={s.n} className={`flex items-center gap-2 sm:gap-3 transition-opacity ${modalStep === s.n ? 'opacity-100' : 'opacity-30'}`}>
@@ -728,6 +809,7 @@ function EmpleadoContent() {
             </div>
             <div className="p-5 sm:p-12 overflow-y-auto custom-scrollbar flex-1">
               {modalStep === 1 ? (
+                // PASO 1: verificación de DNI, datos del cliente y vehículo
                 <div className="space-y-5 sm:space-y-8 animate-in slide-in-from-left-8 duration-500">
                   <div className="space-y-2 sm:space-y-3">
                     <p className="text-[10px] font-black text-gray-600 uppercase ml-3 sm:ml-5 tracking-widest">DNI / CIF del Cliente</p>
@@ -744,6 +826,7 @@ function EmpleadoContent() {
                     </div>
                     {dniError && <p className="text-red-500 text-xs ml-3 sm:ml-5 font-medium">{dniError}</p>}
                   </div>
+                  {/* Confirmación visual de cliente verificado */}
                   {usuarioExiste && (
                     <div className="flex items-center gap-3 bg-green-500/10 border border-green-500/20 p-4 sm:p-6 rounded-[20px] sm:rounded-[32px] text-xs text-green-400 font-black uppercase tracking-widest">
                       <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-500/20 rounded-full flex items-center justify-center flex-shrink-0"><CheckCircle size={18} /></div>
@@ -773,12 +856,14 @@ function EmpleadoContent() {
                     <p className="text-[10px] font-black text-gray-600 uppercase ml-3 sm:ml-5 tracking-widest">Descripción de la Avería</p>
                     <textarea placeholder="DETALLA LOS SÍNTOMAS O LAS PIEZAS A REVISAR..." className="w-full bg-white/5 border border-white/10 rounded-[24px] sm:rounded-[40px] p-5 sm:p-8 text-sm text-white uppercase outline-none focus:border-blue-500 h-24 sm:h-32 resize-none font-bold shadow-inner leading-relaxed" value={nuevoCliente.mensaje} onChange={(e) => setNuevoCliente({ ...nuevoCliente, mensaje: e.target.value.toUpperCase() })} />
                   </div>
+                  {/* Botón para avanzar al paso 2: requiere cliente verificado y nombre relleno */}
                   <button onClick={() => setModalStep(2)} disabled={!usuarioExiste || verificando || !nuevoCliente.nombre || !!dniError}
                     className={`w-full font-black py-5 sm:py-8 rounded-[24px] sm:rounded-[40px] uppercase text-[10px] sm:text-[11px] tracking-[0.3em] sm:tracking-[0.5em] transition-all flex items-center justify-center gap-3 sm:gap-4 shadow-2xl ${(!usuarioExiste || verificando || !nuevoCliente.nombre || !!dniError) ? 'bg-gray-800 text-gray-600 cursor-not-allowed opacity-50' : 'bg-blue-600 text-white hover:bg-blue-500 shadow-blue-600/30'}`}>
                     {verificando ? <Loader2 className="animate-spin" size={18} /> : "Siguiente Paso"} <ChevronRight size={18} />
                   </button>
                 </div>
               ) : (
+                // PASO 2: añadir artículos con autocompletado, ajustar cantidades y finalizar el presupuesto
                 <div className="space-y-5 sm:space-y-8 animate-in slide-in-from-right-8 duration-500">
                   <div className="flex gap-2 sm:gap-4 relative">
                     <div className="flex-1 bg-white/5 border border-white/10 rounded-[24px] sm:rounded-[32px] flex items-center px-4 sm:px-8 focus-within:border-blue-500 transition-all shadow-inner relative">
@@ -804,6 +889,7 @@ function EmpleadoContent() {
                     </div>
                     <button onClick={buscarYAñadirArticuloModal} className="bg-blue-600 px-5 sm:px-10 rounded-[24px] sm:rounded-[32px] text-white hover:bg-blue-500 shadow-xl transition-all active:scale-95"><Plus size={24} /></button>
                   </div>
+                  {/* Lista de líneas añadidas con controles de cantidad (+/-) y botón de eliminar */}
                   <div className="bg-black/40 rounded-[32px] sm:rounded-[48px] border border-white/5 p-3 sm:p-4 min-h-[200px] sm:min-h-[300px] max-h-[300px] sm:max-h-[400px] overflow-y-auto custom-scrollbar">
                     {lineas.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-12 sm:py-20 opacity-20">
@@ -835,6 +921,7 @@ function EmpleadoContent() {
                       </div>
                     )}
                   </div>
+                  {/* Pie con total calculado y botones de volver al paso 1 o finalizar el presupuesto */}
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 sm:p-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-[32px] sm:rounded-[48px] shadow-3xl shadow-blue-900/40 relative overflow-hidden gap-4 sm:gap-0">
                     <div className="relative z-10">
                       <p className="text-[10px] font-black text-blue-100 uppercase tracking-[0.3em] mb-1">Presupuesto Final</p>
@@ -852,7 +939,7 @@ function EmpleadoContent() {
         </div>
       )}
 
-      {/* MODAL REGISTRO NUEVO CLIENTE */}
+      {/* MODAL ALTA DE CLIENTE: se abre si el DNI no existe; recoge tipo, nombre, contacto y email */}
       {showModalNuevoUsuario && (
         <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center bg-black/98 backdrop-blur-2xl p-0 sm:p-6">
           <div className="bg-[#16161a] border border-blue-600/30 w-full max-w-lg rounded-t-[40px] sm:rounded-[70px] p-8 sm:p-16 text-center shadow-3xl relative overflow-hidden max-h-[95vh] overflow-y-auto">
@@ -861,6 +948,7 @@ function EmpleadoContent() {
             <h3 className="text-white text-2xl sm:text-3xl font-black italic uppercase tracking-tighter mb-3 sm:mb-4 leading-none">Alta de Cliente</h3>
             <p className="text-gray-500 text-[10px] uppercase mb-8 sm:mb-12 tracking-[0.2em] leading-relaxed">No hay registros para DNI {nuevoCliente.documento_identidad}.<br />Es obligatorio cumplimentar la ficha legal.</p>
             <div className="space-y-4 sm:space-y-5 mb-8 sm:mb-12 text-left">
+              {/* Selector de régimen: particular o empresa/autónomo */}
               <div className="space-y-2">
                 <p className="text-[8px] font-black text-blue-500 uppercase ml-3 sm:ml-5 tracking-widest flex items-center gap-2"><Briefcase size={10} /> Régimen del Cliente</p>
                 <div className="relative">
@@ -892,6 +980,7 @@ function EmpleadoContent() {
                   <p className="text-[8px] font-black text-blue-500 uppercase ml-3 sm:ml-5 tracking-widest">Teléfono</p>
                   <input placeholder="600 000 000" className="w-full bg-white/5 border border-white/10 rounded-[20px] sm:rounded-[24px] p-4 sm:p-6 text-xs text-white outline-none focus:border-blue-500 transition-all font-bold shadow-inner" value={nuevoCliente.telefono} onChange={(e) => setNuevoCliente({ ...nuevoCliente, telefono: e.target.value })} />
                 </div>
+                {/* Email con validación en tiempo real: borde rojo si el formato es incorrecto */}
                 <div className="space-y-2">
                   <p className="text-[8px] font-black text-blue-500 uppercase ml-3 sm:ml-5 tracking-widest">E-mail</p>
                   <input placeholder="INFO@CLIENTE.COM"
@@ -913,7 +1002,7 @@ function EmpleadoContent() {
         </div>
       )}
 
-      {/* MODAL CANCELAR MANTENIMIENTO */}
+      {/* MODAL CANCELAR MANTENIMIENTO: requiere motivo obligatorio antes de confirmar el PATCH */}
       {showCancelModal && seleccionado && (
         <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center bg-black/95 backdrop-blur-3xl p-0 sm:p-6">
           <div className="bg-[#0f0f12] border border-red-500/30 w-full max-w-lg rounded-t-[40px] sm:rounded-[64px] overflow-hidden shadow-3xl">
@@ -933,6 +1022,7 @@ function EmpleadoContent() {
               </div>
               <div className="flex gap-3 sm:gap-4">
                 <button onClick={() => { setShowCancelModal(false); setCancelReason(""); }} className="flex-1 py-4 sm:py-6 bg-white/5 hover:bg-white/10 rounded-[24px] sm:rounded-[32px] font-black uppercase tracking-widest text-sm transition-all">Volver</button>
+                {/* Confirmar deshabilitado si el motivo está vacío */}
                 <button onClick={cancelarMantenimiento} disabled={cancelando || !cancelReason.trim()}
                   className="flex-1 py-4 sm:py-6 bg-red-600 hover:bg-red-700 disabled:bg-red-900 disabled:opacity-50 rounded-[24px] sm:rounded-[32px] font-black uppercase tracking-widest text-sm transition-all flex items-center justify-center gap-2 sm:gap-3">
                   {cancelando ? <Loader2 className="animate-spin" size={18} /> : <><X size={18} /> Confirmar</>}
@@ -943,13 +1033,13 @@ function EmpleadoContent() {
         </div>
       )}
 
-      {/* ✅ ModalConfirmar para cerrar sesión */}
+      {/* Modal de confirmación de cierre de sesión */}
       {confirmLogout && (
         <ModalConfirmar titulo="Cerrar Sesión" mensaje="¿Estás seguro de que quieres cerrar sesión?" detalle="Tendrás que volver a introducir tus credenciales para acceder."
           onConfirmar={() => { setConfirmLogout(false); handleLogout(); }} onCerrar={() => setConfirmLogout(false)} colorBoton="bg-red-600 hover:bg-red-700" />
       )}
 
-      {/* ✅ ModalAlerta inline (reemplaza AlertModal externo) */}
+      {/* Modal de alerta centralizado: se muestra para éxitos, errores, avisos e información */}
       {alerta.visible && (
         <ModalAlerta
           titulo={alerta.titulo}

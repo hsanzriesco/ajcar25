@@ -2,12 +2,13 @@ import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { neon } from "@neondatabase/serverless";
 
+// Guarda las líneas del presupuesto en la BD, actualiza su estado y envía el PDF al cliente por email
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { id, email, nombre, pdfBase64, total, vehiculo, articulos } = body;
 
-    // 1. Validaciones de datos de entrada
+    // Validación de campos mínimos necesarios para continuar
     if (!id || !email || !pdfBase64) {
       return NextResponse.json({ error: "Faltan datos requeridos (ID, Email o PDF)" }, { status: 400 });
     }
@@ -19,12 +20,12 @@ export async function POST(req: Request) {
 
     const sql = neon(process.env.DATABASE_URL);
 
-    // --- BLOQUE DE BASE DE DATOS ---
+    // BLOQUE DE BASE DE DATOS
     try {
-      // Borramos líneas previas para evitar duplicados
+      // Borra las líneas anteriores del presupuesto para evitar duplicados al reenviar
       await sql`DELETE FROM lineas_presupuestos WHERE presupuesto_id = ${id}`;
 
-      // Insertamos las líneas si existen
+      // Inserta cada artículo como una línea del presupuesto
       if (articulos && Array.isArray(articulos) && articulos.length > 0) {
         for (const art of articulos) {
           await sql`
@@ -45,14 +46,14 @@ export async function POST(req: Request) {
         }
       }
 
-      // Actualizamos el estado
+      // Marca el presupuesto como enviado al cliente
       await sql`UPDATE presupuestos_pedidos SET estado = 'Presupuesto enviado' WHERE id = ${id}`;
     } catch (dbError: any) {
       console.error("ERROR NEON DB:", dbError);
       return NextResponse.json({ error: "Fallo en base de datos: " + dbError.message }, { status: 500 });
     }
 
-    // --- BLOQUE DE EMAIL ---
+    // BLOQUE DE EMAIL
     try {
       if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
         throw new Error("Credenciales de Gmail no configuradas");
@@ -66,11 +67,12 @@ export async function POST(req: Request) {
         },
       });
 
-      // Limpiar el Base64 (quitar el encabezado data:application/pdf;base64,)
+      // Elimina el encabezado data:application/pdf;base64, si está presente
       const base64Data = pdfBase64.includes(",") ? pdfBase64.split(",")[1] : pdfBase64;
-      
+
+      // URL de la página donde el cliente puede aceptar o rechazar el presupuesto
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-      const acceptUrl = `${baseUrl}/presupuesto/aceptar/${id}`; 
+      const acceptUrl = `${baseUrl}/presupuesto/aceptar/${id}`;
 
       const mailOptions = {
         from: `"AJCAR 25" <${process.env.EMAIL_USER}>`,
@@ -87,6 +89,7 @@ export async function POST(req: Request) {
             <p style="font-size: 11px; color: #999;">Adjuntamos el desglose en PDF.</p>
           </div>
         `,
+        // El PDF se adjunta en base64 directamente desde el frontend sin leer el disco
         attachments: [
           {
             filename: `Presupuesto_${id.substring(0, 6)}.pdf`,

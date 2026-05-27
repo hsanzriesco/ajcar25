@@ -4,18 +4,27 @@ import { useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { CheckCircle2, Loader2, Eye, EyeOff, ShieldCheck } from "lucide-react";
 
+// Formulario de activación de cuenta: establece la contraseña por primera vez usando el token del email
+// Se aísla en su propio componente para poder envolverlo en Suspense (requisito de useSearchParams)
 function SetPasswordForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
+
+  // Token de activación extraído del parámetro ?token= de la URL
   const token = searchParams.get("token");
 
+  // Valores del formulario y visibilidad compartida de ambos campos
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+
+  // Estado de la petición, pantalla de resultado y mensaje de error de validación
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
 
+  // Valida que las contraseñas coincidan y tengan mínimo 6 caracteres, luego hace POST a /api/auth/set-password
+  // Si la API responde OK, muestra la pantalla de éxito y redirige al login tras 3 segundos
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirmPassword) { setErrorMsg("Las contraseñas no coinciden"); return; }
@@ -34,6 +43,7 @@ function SetPasswordForm() {
     finally { setLoading(false); }
   };
 
+  // Si no hay token en la URL, muestra un bloque de acceso denegado en lugar del formulario
   if (!token) {
     return (
       <div className="bg-[#0f0f12] p-8 sm:p-10 rounded-[30px] sm:rounded-[40px] border border-white/5 max-w-md w-full text-center">
@@ -47,8 +57,10 @@ function SetPasswordForm() {
   return (
     <div className="w-full max-w-md">
       <div className="bg-[#0f0f12] rounded-[36px] sm:rounded-[50px] border border-white/10 p-7 sm:p-10 shadow-2xl relative overflow-hidden">
+        {/* Orbe decorativo de fondo */}
         <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
 
+        {/* PANTALLA DE ÉXITO: reemplaza el formulario cuando la contraseña se guarda correctamente */}
         {status === "success" ? (
           <div className="text-center py-8 sm:py-10 animate-in fade-in zoom-in">
             <div className="bg-green-500/20 w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -59,7 +71,7 @@ function SetPasswordForm() {
           </div>
         ) : (
           <>
-            {/* Header con logo */}
+            {/* Cabecera con logo y etiqueta de activación de cuenta */}
             <div className="flex items-center gap-3 mb-8 sm:mb-10">
               <img
                 src="/imagenes/logo_ajcar25.png"
@@ -76,6 +88,7 @@ function SetPasswordForm() {
             <p className="text-gray-500 text-xs uppercase tracking-widest font-bold mb-8 sm:mb-10">Establece tu nueva contraseña</p>
 
             <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
+              {/* Campo de nueva contraseña con botón de visibilidad */}
               <div className="space-y-2">
                 <p className="text-[9px] font-black text-gray-600 uppercase ml-3 sm:ml-4 tracking-widest">Nueva Contraseña</p>
                 <div className="relative">
@@ -90,6 +103,7 @@ function SetPasswordForm() {
                 </div>
               </div>
 
+              {/* Campo de confirmación: comparte el estado showPassword con el campo anterior */}
               <div className="space-y-2">
                 <p className="text-[9px] font-black text-gray-600 uppercase ml-3 sm:ml-4 tracking-widest">Confirmar Contraseña</p>
                 <input type={showPassword ? "text" : "password"} value={confirmPassword}
@@ -98,12 +112,14 @@ function SetPasswordForm() {
                   placeholder="••••••••" required autoComplete="new-password" />
               </div>
 
+              {/* Error de validación o de API, visible solo si hay mensaje */}
               {errorMsg && (
                 <p className="text-red-500 text-[10px] font-black uppercase tracking-widest text-center">
                   {errorMsg}
                 </p>
               )}
 
+              {/* Botón de envío: muestra spinner mientras la petición está en curso */}
               <button type="submit" disabled={loading}
                 className="w-full bg-blue-600 text-white font-black py-5 sm:py-6 rounded-[28px] sm:rounded-[32px] uppercase text-[10px] tracking-[0.4em] hover:bg-blue-500 transition-all shadow-xl shadow-blue-900/20 flex items-center justify-center gap-3 mt-2 active:scale-[0.98] disabled:opacity-50">
                 {loading ? <Loader2 className="animate-spin" size={18} /> : <ShieldCheck size={18} />}
@@ -117,6 +133,8 @@ function SetPasswordForm() {
   );
 }
 
+// Página raíz: fondo oscuro centrado; envuelve el formulario en Suspense
+// porque useSearchParams requiere un límite de Suspense en el árbol de componentes
 export default function SetPasswordPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0c] flex items-center justify-center p-4 sm:p-6 selection:bg-blue-500/30">

@@ -2,17 +2,18 @@ import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import bcrypt from "bcryptjs";
 
+// Autentica al usuario por email o matrícula, verifica la contraseña y devuelve los datos de sesión
 export async function POST(req: Request) {
   try {
     const { email, password } = await req.json();
-    
+
     if (!process.env.DATABASE_URL) {
       return NextResponse.json({ message: "Error en la configuración del servidor" }, { status: 500 });
     }
 
     const sql = neon(process.env.DATABASE_URL);
 
-    // 1. Buscamos al usuario por email O por matrícula
+    // Permite iniciar sesión tanto con email como con número de matrícula (empleados)
     const users = await sql`
       SELECT * FROM usuarios 
       WHERE email = ${email} OR matricula = ${email}
@@ -25,22 +26,22 @@ export async function POST(req: Request) {
 
     const user = users[0];
 
-    // 2. Verificamos la contraseña
+    // Compatibilidad con distintos nombres de columna según la versión del esquema
     const hash = user.password_hash || user.password || user.contraseña;
     const match = await bcrypt.compare(password, hash);
-    
+
     if (!match) {
       return NextResponse.json({ message: "Contraseña incorrecta" }, { status: 401 });
     }
 
-    // 3. Verificamos que el usuario no esté bloqueado
+    // Bloquea el acceso si el jefe ha desactivado la cuenta del usuario
     if (user.esta_activo === false) {
-      return NextResponse.json({ 
-        message: "Tu cuenta ha sido bloqueada. Contacta con el taller para más información." 
+      return NextResponse.json({
+        message: "Tu cuenta ha sido bloqueada. Contacta con el taller para más información."
       }, { status: 403 });
     }
 
-    // 4. Obtenemos el rol correctamente (normalizado a minúsculas)
+    // Obtiene el rol desde el campo directo o desde la tabla roles si se usa id_rol numérico
     let userRole = (user.role || "cliente").toLowerCase().trim();
 
     if (user.id_rol && !isNaN(Number(user.id_rol))) {

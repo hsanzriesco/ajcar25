@@ -13,6 +13,12 @@ export default function LoginForm() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
+  /* Envía las credenciales a la API de login.
+     Si la respuesta es exitosa, persiste el rol, nombre e id del usuario
+     en sessionStorage y redirige a la ruta correspondiente según el rol:
+     cliente → /cliente, empleado → /gestion/tareas, jefe → /jefe,
+     admin → /admin/dashboard. Se usa window.location.href en vez de router.push
+     para forzar una recarga completa y que la navbar lea el sessionStorage actualizado. */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -56,12 +62,17 @@ export default function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 w-full">
+
+      {/* Mensaje de error visible solo cuando la API devuelve un fallo
+          o hay un problema de conexión. */}
       {error && (
         <div className="bg-red-500/20 border border-red-500 text-red-200 p-3 rounded-xl text-sm text-center">
           {error}
         </div>
       )}
 
+      {/* Campo de email con autoComplete username para que los gestores
+          de contraseñas del navegador lo reconozcan correctamente. */}
       <div>
         <label className="block text-sm font-medium mb-1.5 text-gray-300">
           Email
@@ -77,6 +88,8 @@ export default function LoginForm() {
         />
       </div>
 
+      {/* Campo de contraseña con toggle de visibilidad.
+          autoComplete current-password activa el autocompletado del navegador. */}
       <div>
         <label className="block text-sm font-medium mb-1.5 text-gray-300">
           Contraseña
@@ -102,6 +115,7 @@ export default function LoginForm() {
         </div>
       </div>
 
+      {/* Botón de envío deshabilitado durante la petición para evitar envíos duplicados. */}
       <button
         type="submit"
         disabled={loading}
@@ -110,6 +124,8 @@ export default function LoginForm() {
         {loading ? "Verificando..." : "Entrar"}
       </button>
 
+      {/* Enlaces de registro y recuperación de contraseña separados del formulario
+          por un borde para mantener la jerarquía visual. */}
       <div className="text-center mt-5 sm:mt-6 border-t border-white/10 pt-5 sm:pt-6 space-y-3">
         <p className="text-sm text-gray-400">
           ¿No tienes cuenta?{" "}

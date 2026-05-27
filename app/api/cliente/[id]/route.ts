@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import bcrypt from "bcryptjs";
 
+// Devuelve los datos del cliente junto con sus presupuestos activos y facturas
+// Los presupuestos se separan en dos grupos: activos (cualquier estado no facturado) y facturados (con JOIN a la tabla facturas)
 export async function GET(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -10,7 +12,7 @@ export async function GET(
     const { id } = await context.params;
     const sql = neon(process.env.DATABASE_URL!);
 
-    // 1. Obtener datos del cliente
+    // Datos básicos del cliente
     const clienteData = await sql`
       SELECT 
         id, 
@@ -30,7 +32,7 @@ export async function GET(
 
     const cliente = clienteData[0];
 
-    // 2. Presupuestos ACTIVOS (Pendiente, En Taller, Cancelado, etc.)
+    // Presupuestos no facturados: se buscan por email o por usuario_id para cubrir ambos casos
     const presupuestosActivos = await sql`
       SELECT 
         id,
@@ -47,7 +49,7 @@ export async function GET(
       ORDER BY creado_en DESC
     `;
 
-    // 3. Presupuestos FACTURADOS — con datos reales de la factura
+    // Presupuestos facturados con JOIN a la tabla facturas para obtener el total y número de factura reales
     const presupuestosFacturados = await sql`
       SELECT 
         pp.id,
@@ -70,7 +72,7 @@ export async function GET(
       ORDER BY pp.creado_en DESC
     `;
 
-    // 4. Calcular totales de forma segura
+    // Obtiene los totales desde líneas_presupuestos para los presupuestos que no tienen factura
     const allIds = [
       ...presupuestosActivos.map((p: any) => p.id),
       ...presupuestosFacturados.map((p: any) => p.id)
@@ -88,6 +90,7 @@ export async function GET(
       `;
     }
 
+    // Si hay total de factura lo usa directamente; si no, lo calcula desde las líneas
     const agregarTotal = (p: any) => {
       if (p.total_factura) return { ...p, total: Number(p.total_factura) };
       const totalInfo = totalesData.find((t: any) => t.presupuesto_id === p.id);
@@ -117,6 +120,8 @@ export async function GET(
   }
 }
 
+// Actualiza los datos del perfil del cliente: nombre, apellidos, teléfono o contraseña
+// Cada campo se actualiza de forma independiente solo si viene en el body
 export async function PATCH(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -128,13 +133,12 @@ export async function PATCH(
 
     const { nombre, apellido1, apellido2, telefono, password_actual, password_nueva } = body;
 
-    // Cambio de contraseña
+    // Cambio de contraseña: verifica la clave actual antes de aplicar el hash de la nueva
     if (password_nueva) {
       if (!password_actual) {
         return NextResponse.json({ error: "Debes introducir tu contraseña actual" }, { status: 400 });
       }
 
-      // Obtener hash actual
       const userResult = await sql`
         SELECT password_hash FROM usuarios WHERE id = ${id} LIMIT 1
       `;
@@ -156,6 +160,7 @@ export async function PATCH(
       await sql`UPDATE usuarios SET password_hash = ${nuevoHash} WHERE id = ${id}`;
     }
 
+    // Actualización de campos de perfil: cada uno se aplica solo si está presente en el body
     if (nombre !== undefined) {
       await sql`UPDATE usuarios SET nombre = ${nombre} WHERE id = ${id}`;
     }

@@ -1,8 +1,8 @@
-// app/api/facturas/route.ts
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import nodemailer from "nodemailer";
 
+// Devuelve todas las facturas con la matrícula del presupuesto asociado, ordenadas por fecha descendente
 export async function GET() {
   try {
     const sql = neon(process.env.DATABASE_URL!);
@@ -19,6 +19,7 @@ export async function GET() {
   }
 }
 
+// Crea la factura, descuenta el stock de cada artículo, cierra el presupuesto y envía el PDF al cliente
 export async function POST(req: Request) {
   try {
     const sql = neon(process.env.DATABASE_URL!);
@@ -36,6 +37,7 @@ export async function POST(req: Request) {
       empleado_id
     } = body;
 
+    // Acepta tanto presupuesto_id como taller_id para compatibilidad con distintos flujos
     const final_id = presupuesto_id || taller_id;
 
     if (!final_id) {
@@ -54,9 +56,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Faltan datos del cliente o total" }, { status: 400 });
     }
 
+    // Número de factura único con año actual y sufijo aleatorio de 4 dígitos
     const numero_factura = `FAC-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
-    // Insertar la factura con empleado_id
+    // Inserta el registro de factura incluyendo el empleado que la generó
     await sql`
       INSERT INTO facturas (
         numero_factura, 
@@ -78,7 +81,7 @@ export async function POST(req: Request) {
       )
     `;
 
-    // Actualizar stock
+    // Descuenta el stock real y libera el stock reservado por cada artículo facturado
     for (const item of articulos) {
       const cant = Number(item.cantidad);
       if (!isNaN(cant) && item.codigo) {
@@ -91,14 +94,14 @@ export async function POST(req: Request) {
       }
     }
 
-    // Cambiar estado del presupuesto
+    // Marca el presupuesto como facturado para que desaparezca del panel activo
     await sql`
       UPDATE presupuestos_pedidos 
       SET estado = 'Facturado' 
       WHERE id = ${final_id}
     `;
 
-    // Envío de email
+    // Envío del email con la factura adjunta en PDF; se omite si las credenciales no están configuradas
     if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
       const transporter = nodemailer.createTransport({
         service: "gmail",
@@ -108,6 +111,7 @@ export async function POST(req: Request) {
         },
       });
 
+      // Elimina el encabezado data:application/pdf;base64, si está presente
       const base64Clean = pdfBase64.includes(",") ? pdfBase64.split(",")[1] : pdfBase64;
 
       const mailOptions = {

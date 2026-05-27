@@ -7,9 +7,10 @@ import RegisterForm from "@/components/RegisterForm"
 export default function RegistroPage() {
   return (
     <main className="min-h-screen flex items-center justify-center bg-ajcar text-white px-4 sm:px-6 py-12 sm:py-16">
+      {/* Layout de dos columnas en desktop: logo a la izquierda, formulario a la derecha */}
       <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
 
-        {/* Logo lateral — solo desktop */}
+        {/* Columna izquierda: logo grande y nombre del taller, visible solo en desktop */}
         <div className="hidden lg:flex flex-col items-center justify-center text-center space-y-6">
           <Image
             src="/imagenes/prueba_logo_1.png"
@@ -24,10 +25,10 @@ export default function RegistroPage() {
           </div>
         </div>
 
-        {/* Formulario */}
+        {/* Columna derecha: tarjeta con logo móvil, título, formulario y enlace al login */}
         <div className="w-full bg-black/60 backdrop-blur-md border border-white/10 rounded-2xl p-6 sm:p-8 shadow-xl">
 
-          {/* Logo móvil — solo cuando no se ve el lateral */}
+          {/* Logo compacto visible solo en móvil, cuando la columna lateral está oculta */}
           <div className="flex justify-center mb-5 lg:hidden">
             <img
               src="/imagenes/logo_ajcar25.png"
@@ -42,6 +43,7 @@ export default function RegistroPage() {
 
           <RegisterForm />
 
+          {/* Enlace de redirección para usuarios que ya tienen cuenta */}
           <p className="text-center text-gray-400 text-sm mt-5 sm:mt-6">
             ¿Ya tienes cuenta?{" "}
             <Link href="/login" className="text-red-500 hover:underline">

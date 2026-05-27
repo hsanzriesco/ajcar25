@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import type { Metadata } from "next";
 
+// Metadatos de la página para SEO
 export const metadata: Metadata = {
   title: "AJCAR 25 - Taller de Chapa y Pintura",
   description: "Taller especializado en chapa y pintura. Calidad, precisión y confianza en cada reparación.",
@@ -16,7 +17,7 @@ export default function Home() {
     <main className="bg-ajcar text-white">
       <div className="bg-ajcar-content">
 
-        {/* HERO */}
+        {/* SECCIÓN HERO: imagen a pantalla completa con overlay oscuro, titular y CTA de presupuesto */}
         <section id="inicio" className="relative h-[70vh] sm:min-h-[85vh] lg:min-h-[90vh] w-full">
           <Image
             src="/imagenes/Hombre_pintando_coche.jpg"
@@ -44,7 +45,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* SERVICIOS */}
+        {/* SECCIÓN SERVICIOS: grid de iconos con los seis servicios principales del taller */}
         <section id="servicios" className="max-w-7xl mx-auto px-5 sm:px-6 py-10 sm:py-14 lg:py-16">
           <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-8">
             {[
@@ -55,6 +56,7 @@ export default function Home() {
               { label: "Aseguradoras", icon: ShieldCheck },
               { label: "Reparaciones Rápidas", icon: Gauge },
             ].map(({ label, icon: Icon }) => (
+              // Al hacer hover el fondo del icono cambia a rojo
               <div key={label}
                 className="group flex flex-col items-center gap-2 sm:gap-3 text-[11px] sm:text-sm text-gray-300 hover:text-white transition">
                 <div className="flex items-center justify-center h-11 w-11 sm:h-14 sm:w-14 rounded-full bg-neutral-800 border border-white/10 shadow-md shadow-black/40 transition group-hover:bg-red-600">
@@ -66,15 +68,18 @@ export default function Home() {
           </div>
         </section>
 
-        {/* POR QUÉ ELEGIRNOS */}
+        {/* SECCIÓN POR QUÉ ELEGIRNOS: fondo en capas (degradado rojo, overlay y textura) con lista de ventajas */}
         <section className="relative py-10 sm:py-12 lg:py-14 overflow-hidden">
+          {/* Capas de fondo: degradado rojo oscuro, overlay negro y textura de imagen */}
           <div className="absolute inset-0 bg-gradient-to-b from-[#6b1a1a] via-[#3a0d0d] to-[#1b0505]" />
           <div className="absolute inset-0 bg-black/45" />
           <div className="absolute inset-0 opacity-25 bg-[url('/imagenes/fondo_pagina.png')] bg-cover bg-center" />
+          {/* Líneas decorativas superior e inferior */}
           <div className="absolute top-0 left-0 w-full h-[2px] bg-white/20" />
           <div className="absolute bottom-0 left-0 w-full h-[2px] bg-white/20" />
 
           <div className="relative z-10 max-w-6xl mx-auto px-5 sm:px-6">
+            {/* Título con líneas decorativas a los lados */}
             <div className="flex items-center justify-center gap-4 sm:gap-6 mb-6 sm:mb-8">
               <div className="h-[1px] w-12 sm:w-24 bg-white/30" />
               <h3 className="text-base sm:text-xl font-semibold tracking-wide text-gray-100 text-center">
@@ -83,6 +88,7 @@ export default function Home() {
               <div className="h-[1px] w-12 sm:w-24 bg-white/30" />
             </div>
 
+            {/* Lista de ventajas con tick rojo */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-y-3 sm:gap-y-4 gap-x-6 sm:gap-x-10 text-sm text-gray-200">
               {[
                 "Más de 20 años de experiencia",
@@ -102,7 +108,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* TRABAJOS */}
+        {/* SECCIÓN TRABAJOS: comparativa antes/después con efecto de zoom al pasar el cursor */}
         <section id="trabajos" className="py-10 sm:py-14 lg:py-16">
           <h3 className="mb-6 sm:mb-10 text-center text-lg sm:text-2xl font-semibold px-5">
             Trabajos Realizados
@@ -127,9 +133,10 @@ export default function Home() {
           </div>
         </section>
 
-        {/* SOBRE NOSOTROS */}
+        {/* SECCIÓN SOBRE NOSOTROS: descripción del taller, datos de contacto y logo con efecto grayscale */}
         <section id="nosotros" className="relative py-12 sm:py-16 lg:py-20 overflow-hidden">
           <div className="relative z-10 max-w-7xl mx-auto px-5 sm:px-6">
+            {/* Título con líneas decorativas a los lados */}
             <div className="flex items-center justify-center gap-4 sm:gap-6 mb-8 sm:mb-12">
               <div className="h-[1px] w-12 sm:w-20 bg-white/30" />
               <h3 className="text-lg sm:text-2xl font-semibold text-center">Sobre Nosotros</h3>
@@ -144,6 +151,7 @@ export default function Home() {
                   cercano. Cada vehículo se trata como si fuera nuestro.
                 </p>
 
+                {/* Datos de contacto con iconos rojos */}
                 <div className="space-y-3">
                   <h4 className="font-semibold text-base sm:text-lg border-l-2 border-red-600 pl-3">Contáctanos</h4>
                   <div className="space-y-2 text-gray-300 text-sm">
@@ -155,6 +163,7 @@ export default function Home() {
                 </div>
               </div>
 
+              {/* Logo en escala de grises que recupera el color al hacer hover */}
               <div className="flex justify-center lg:justify-end mt-4 lg:mt-0">
                 <Image
                   src="/imagenes/prueba_logo_1.png"

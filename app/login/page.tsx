@@ -3,8 +3,10 @@ import LoginForm from "@/components/LoginForm";
 export default function LoginPage() {
   return (
     <main className="min-h-screen flex items-center justify-center bg-ajcar text-white px-4 sm:px-6 py-8">
+      {/* Tarjeta centrada con fondo oscuro y efecto de cristal */}
       <div className="w-full max-w-md bg-black/60 backdrop-blur-lg border border-white/10 rounded-2xl sm:rounded-xl p-6 sm:p-8 shadow-xl">
 
+        {/* Cabecera: logo, título y subtítulo */}
         <div className="text-center mb-6 sm:mb-8">
           <img
             src="/imagenes/logo_ajcar25.png"

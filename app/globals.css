@@ -2,15 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ===== VARIABLES BASE ===== */
-
+/* Variables de color globales usadas por el sistema de diseño */
 :root {
   --background: #0a0a0a;
   --foreground: #ededed;
 }
 
-/* ===== RESET BASE ===== */
-
+/* Reset base: color de fondo, texto y fuente por defecto para toda la aplicación */
 body {
   background: var(--background);
   color: var(--foreground);
@@ -19,8 +17,8 @@ body {
   padding: 0;
 }
 
-/* ===== FONDO GLOBAL AJCAR ===== */
-
+/* Clase de fondo global usada en las páginas públicas (login, presupuesto, registro...)
+   Muestra la imagen de fondo a pantalla completa con scroll fijo */
 .bg-ajcar {
   position: relative;
   background-image: url("/imagenes/fondo_pagina.png");
@@ -31,7 +29,7 @@ body {
   min-height: 100vh;
 }
 
-/* Overlay oscuro premium */
+/* Overlay con degradado oscuro sobre la imagen de fondo para mejorar la legibilidad del contenido */
 .bg-ajcar::before {
   content: "";
   position: absolute;
@@ -44,27 +42,28 @@ body {
   z-index: 0;
 }
 
-/* Contenido encima del overlay */
+/* Clase auxiliar para elevar el contenido por encima del overlay del fondo */
 .bg-ajcar-content {
   position: relative;
   z-index: 1;
 }
 
-/* Esto afecta al select de la librería */
+/* Sobrescribe el estilo nativo del selector de país de la librería react-phone-input
+   para adaptarlo al tema oscuro de la aplicación */
 .PhoneInputCountrySelect {
-    appearance: none; /* Quita el diseño nativo del sistema */
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    
-    background-color: #262626 !important; /* Color neutral-800 */
-    color: white !important;
-    padding: 5px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-color: #262626 !important;
+  color: white !important;
+  padding: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
 }
 
-/* Importante para que las letras dentro de la lista se vean en Windows/Linux */
+/* Fuerza el fondo oscuro en las opciones del desplegable de país
+   necesario para que el texto sea legible en Windows y Linux */
 .PhoneInputCountrySelect option {
-    background-color: #262626;
-    color: white;
+  background-color: #262626;
+  color: white;
 }

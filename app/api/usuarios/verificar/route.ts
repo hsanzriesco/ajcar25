@@ -1,22 +1,20 @@
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 
+// Comprueba si existe un usuario por nombre y apellidos, normalizando mayúsculas y espacios en ambos lados
 export async function GET(request: Request) {
   try {
     const sql = neon(process.env.DATABASE_URL!);
     const { searchParams } = new URL(request.url);
-    
-    // Normalizamos para la búsqueda
+
     const nombre = searchParams.get("nombre")?.trim().toUpperCase();
     const apellidos = searchParams.get("apellidos")?.trim().toUpperCase();
-
-    console.log(`🔍 Verificando: [${nombre}] [${apellidos}]`);
 
     if (!nombre || !apellidos) {
       return NextResponse.json({ existe: false, motivo: "Faltan parámetros" });
     }
 
-    // Buscamos ignorando espacios extra en la columna de la BBDD también con TRIM
+    // Aplica TRIM y UPPER también en la columna de la BD para evitar falsos negativos por espacios o capitalización
     const usuarios = await sql`
       SELECT id, nombre, apellidos FROM usuarios 
       WHERE TRIM(UPPER(nombre)) = ${nombre} 
@@ -25,21 +23,15 @@ export async function GET(request: Request) {
     `;
 
     const existe = usuarios.length > 0;
-    
-    if (existe) {
-      console.log(`✅ Usuario ENCONTRADO en BD: ID ${usuarios[0].id}`);
-    } else {
-      console.log(`❌ Usuario NO encontrado en BD.`);
-    }
 
-    return NextResponse.json({ 
-      existe, 
+    return NextResponse.json({
+      existe,
       id: existe ? usuarios[0].id : null,
-      debug: { nombre, apellidos } 
+      debug: { nombre, apellidos }
     }, { status: 200 });
-    
+
   } catch (error: any) {
-    console.error("🔴 Error crítico en verificar:", error.message);
+    console.error("Error crítico en verificar:", error.message);
     return NextResponse.json({ error: error.message, existe: false }, { status: 500 });
   }
 }

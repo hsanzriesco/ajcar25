@@ -8,6 +8,7 @@ import {
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
+// Tipos de datos que devuelve la API para presupuestos y facturas
 interface Presupuesto {
     id: string;
     vehiculo: string;
@@ -32,6 +33,7 @@ interface Factura {
 
 // ====================== SUBCOMPONENTES ======================
 
+// Modal de confirmación genérico con icono de advertencia, mensaje y botones de cancelar/confirmar
 const ModalConfirmar = ({ titulo, mensaje, detalle, onConfirmar, onCerrar, guardando, colorBoton = "bg-violet-600 hover:bg-violet-700" }: {
     titulo: string; mensaje: string; detalle?: string;
     onConfirmar: () => void; onCerrar: () => void;
@@ -60,6 +62,7 @@ const ModalConfirmar = ({ titulo, mensaje, detalle, onConfirmar, onCerrar, guard
     </div>
 );
 
+// Modal de alerta simple (errores o avisos) con un único botón de cierre
 const ModalAlerta = ({ mensaje, onCerrar }: { mensaje: string; onCerrar: () => void }) => (
     <div className="fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center z-[60] p-4">
         <div className="bg-[#110d20] border border-white/10 rounded-2xl p-6 sm:p-8 w-full max-w-sm shadow-2xl">
@@ -77,6 +80,7 @@ const ModalAlerta = ({ mensaje, onCerrar }: { mensaje: string; onCerrar: () => v
     </div>
 );
 
+// Campo de contraseña con botón para alternar visibilidad (ojo)
 const CampoPassword = ({ label, value, onChange, ver, setVer }: {
     label: string; value: string; onChange: (v: string) => void; ver: boolean; setVer: (v: boolean) => void;
 }) => (
@@ -93,6 +97,7 @@ const CampoPassword = ({ label, value, onChange, ver, setVer }: {
     </div>
 );
 
+// Campo de solo lectura para datos que no puede editar el usuario (como el email)
 const CampoSoloLectura = ({ label, valor, nota }: { label: string; valor: string; nota?: string }) => (
     <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4">
         <p className="text-gray-600 text-[10px] uppercase tracking-widest mb-2">{label}</p>
@@ -101,6 +106,7 @@ const CampoSoloLectura = ({ label, valor, nota }: { label: string; valor: string
     </div>
 );
 
+// Campo editable en línea: muestra el valor con botón de lápiz, o un input con confirmar/cancelar al editar
 const CampoEditable = ({ label, campo, valor, editando, valorEdit, guardando, onEditar, onCancelar, onGuardar, onCambio }: {
     label: string; campo: string; valor: string;
     editando: string | null; valorEdit: string; guardando: boolean;
@@ -114,6 +120,7 @@ const CampoEditable = ({ label, campo, valor, editando, valorEdit, guardando, on
         <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 transition-all hover:border-white/[0.1]">
             <p className="text-gray-600 text-[10px] uppercase tracking-widest mb-2">{label}</p>
             {esteEditando ? (
+                // Modo edición: input con Enter para guardar, Escape para cancelar
                 <div className="flex items-center gap-2">
                     <input type="text" value={valorEdit} onChange={(e) => onCambio(e.target.value)}
                         onKeyDown={(e) => { if (e.key === "Enter") onGuardar(campo); if (e.key === "Escape") onCancelar(); }}
@@ -128,6 +135,7 @@ const CampoEditable = ({ label, campo, valor, editando, valorEdit, guardando, on
                     </button>
                 </div>
             ) : (
+                // Modo lectura: valor actual con botón de lápiz para activar edición
                 <div className="flex items-center justify-between gap-3">
                     <p className="text-gray-200 text-sm break-all">{valor || "—"}</p>
                     <button onClick={() => onEditar(campo, valor)}
@@ -140,6 +148,7 @@ const CampoEditable = ({ label, campo, valor, editando, valorEdit, guardando, on
     );
 };
 
+// Requisitos de seguridad que debe cumplir la nueva contraseña
 const requisitosPassword = [
     { regex: /.{6,}/, label: "Mínimo 6 caracteres" },
     { regex: /[a-z]/, label: "Una letra minúscula" },
@@ -148,6 +157,7 @@ const requisitosPassword = [
     { regex: /[^a-zA-Z0-9]/, label: "Un carácter especial (!@#$...)" },
 ];
 
+// Indicador visual de fortaleza: muestra cada requisito como tick verde o círculo gris según se cumpla
 const IndicadorPassword = ({ password }: { password: string }) => {
     if (!password) return null;
     return (
@@ -170,17 +180,22 @@ const IndicadorPassword = ({ password }: { password: string }) => {
 // ====================== COMPONENTE PRINCIPAL ======================
 
 export default function ClientePage() {
+    // Datos del cliente y sus presupuestos/facturas obtenidos de la API
     const [cliente, setCliente] = useState<any>(null);
     const [presupuestos, setPresupuestos] = useState<Presupuesto[]>([]);
     const [facturas, setFacturas] = useState<Factura[]>([]);
     const [loading, setLoading] = useState(true);
     const [autorizado, setAutorizado] = useState(false);
+
+    // Vista activa del menú de pestañas
     const [view, setView] = useState<"estado" | "facturas" | "cancelados" | "perfil" | "presupuesto">("estado");
 
+    // Estado de edición inline de campos del perfil
     const [editando, setEditando] = useState<string | null>(null);
     const [valorEdit, setValorEdit] = useState<string>("");
     const [guardando, setGuardando] = useState(false);
 
+    // Estado del formulario de cambio de contraseña
     const [mostrarPassword, setMostrarPassword] = useState(false);
     const [passwordActual, setPasswordActual] = useState("");
     const [passwordNueva, setPasswordNueva] = useState("");
@@ -189,33 +204,43 @@ export default function ClientePage() {
     const [errorPassword, setErrorPassword] = useState("");
     const [okPassword, setOkPassword] = useState(false);
 
+    // Control de visibilidad de los campos de contraseña
     const [verActual, setVerActual] = useState(false);
     const [verNueva, setVerNueva] = useState(false);
     const [verConfirm, setVerConfirm] = useState(false);
 
+    // Mensaje de alerta genérico (errores de red, validación, etc.)
     const [alerta, setAlerta] = useState<string | null>(null);
+
+    // Estado del formulario de nuevo presupuesto
     const [formPres, setFormPres] = useState({ vehiculo: "", matricula: "", anio: new Date().getFullYear().toString(), mensaje: "" });
     const [enviandoPres, setEnviandoPres] = useState(false);
     const [okPres, setOkPres] = useState(false);
     const [erroresPres, setErroresPres] = useState<Record<string, string>>({});
+
     const mostrarAlerta = (msg: string) => setAlerta(msg);
+
+    // Control de modales de confirmación (logout, cambio de contraseña, edición de campo)
     const [confirmLogout, setConfirmLogout] = useState(false);
     const [confirmPassword, setConfirmPassword] = useState(false);
     const [confirmCampo, setConfirmCampo] = useState<string | null>(null);
 
     const router = useRouter();
 
-    // Iniciales del cliente para el avatar
+    // Genera las iniciales del cliente para el avatar (primera letra de nombre y primer apellido)
     const iniciales = cliente
         ? `${(cliente.nombre || "").charAt(0)}${(cliente.apellido1 || "").charAt(0)}`.toUpperCase()
         : "??";
 
+    // Al montar el componente: verifica sesión en sessionStorage, carga datos y activa polling cada 15s
     useEffect(() => {
         const userId = sessionStorage.getItem("user_id");
         const role = sessionStorage.getItem("user_role");
         if (!userId || role?.toLowerCase() !== "cliente") { sessionStorage.clear(); router.push("/login"); return; }
         setAutorizado(true);
         cargarDatosCliente(userId);
+
+        // Polling de actualización automática: refresca presupuestos y facturas cada 15 segundos
         const intervalo = setInterval(async () => {
             try {
                 const res = await fetch(`/api/cliente/${userId}`);
@@ -229,6 +254,7 @@ export default function ClientePage() {
         return () => clearInterval(intervalo);
     }, [router]);
 
+    // Carga inicial de datos del cliente desde la API
     const cargarDatosCliente = async (userId: string) => {
         try {
             const res = await fetch(`/api/cliente/${userId}`);
@@ -241,12 +267,17 @@ export default function ClientePage() {
         finally { setLoading(false); }
     };
 
+    // Limpia la sesión y redirige al login
     const handleLogout = () => { sessionStorage.clear(); router.push("/login"); };
+
+    // Activa el modo edición de un campo del perfil
     const iniciarEdicion = (campo: string, valorActual: string) => { setEditando(campo); setValorEdit(valorActual || ""); };
     const cancelarEdicion = () => { setEditando(null); setValorEdit(""); };
 
+    // Solicita confirmación antes de guardar un campo editado
     const guardarCampo = (campo: string) => setConfirmCampo(campo);
 
+    // Ejecuta el PATCH al confirmar el cambio de un campo del perfil
     const ejecutarGuardarCampo = async () => {
         const campo = confirmCampo;
         if (!campo) return;
@@ -263,6 +294,7 @@ export default function ClientePage() {
         finally { setGuardando(false); }
     };
 
+    // Valida el formulario de contraseña y abre el modal de confirmación si todo es correcto
     const guardarPassword = async () => {
         setErrorPassword(""); setOkPassword(false);
         if (!passwordActual || !passwordNueva || !passwordConfirm) { setErrorPassword("Rellena todos los campos."); return; }
@@ -272,6 +304,7 @@ export default function ClientePage() {
         setConfirmPassword(true);
     };
 
+    // Ejecuta el PATCH de cambio de contraseña al confirmar en el modal
     const ejecutarGuardarPassword = async () => {
         setConfirmPassword(false);
         const userId = sessionStorage.getItem("user_id");
@@ -284,26 +317,36 @@ export default function ClientePage() {
             setOkPassword(true);
             setPasswordActual(""); setPasswordNueva(""); setPasswordConfirm("");
             setVerActual(false); setVerNueva(false); setVerConfirm(false);
+            // Cierra el panel de contraseña automáticamente tras 2 segundos
             setTimeout(() => { setMostrarPassword(false); setOkPassword(false); }, 2000);
         } catch { mostrarAlerta("No se pudo guardar. Inténtalo de nuevo."); }
         finally { setGuardandoPassword(false); }
     };
 
+    // Genera y descarga un PDF de la factura con jsPDF: cabecera oscura, tabla de artículos y total destacado
     const descargarFactura = (factura: any) => {
         try {
             const doc = new jsPDF();
             const pageWidth = doc.internal.pageSize.getWidth();
+
+            // Cabecera con fondo oscuro y título centrado
             doc.setFillColor(17, 24, 39); doc.rect(0, 0, pageWidth, 55, "F");
             doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(26);
             doc.text("AJCAR 25 - FACTURA", pageWidth / 2, 35, { align: "center" });
+
+            // Número de factura y fecha
             doc.setFontSize(10); doc.setTextColor(0);
             doc.text(`Nº: ${factura.numero_factura || "N/A"}`, 20, 70);
             doc.text(`Fecha: ${new Date().toLocaleDateString("es-ES")}`, pageWidth - 20, 70, { align: "right" });
+
+            // Bloque de datos del cliente
             let y = 85;
             doc.setFont("helvetica", "bold"); doc.setFontSize(12); doc.text("DATOS DEL CLIENTE:", 20, y); y += 10;
             doc.setFont("helvetica", "normal"); doc.setFontSize(10);
             doc.text(`Cliente: ${factura.cliente_nombre || "Sin nombre"}`, 20, y); y += 7;
             doc.text(`Vehículo: ${factura.vehiculo || "—"}`, 20, y); y += 15;
+
+            // Tabla de artículos con autoTable (descripción, cantidad, precio unitario, total)
             let articulos = [];
             if (factura.articulos) { articulos = Array.isArray(factura.articulos) ? factura.articulos : JSON.parse(factura.articulos || "[]"); }
             if (articulos.length > 0) {
@@ -316,6 +359,8 @@ export default function ClientePage() {
                     headStyles: { fillColor: [17, 24, 39], textColor: 255, fontStyle: "bold" }, styles: { fontSize: 9.5, cellPadding: 6 },
                     columnStyles: { 0: { halign: "left", cellWidth: 95 }, 1: { halign: "center", cellWidth: 22 }, 2: { halign: "right", cellWidth: 35 }, 3: { halign: "right", cellWidth: 35 } } });
             } else { doc.text("No hay artículos registrados en esta factura.", 20, y + 10); }
+
+            // Pie de total con fondo verde y texto en blanco
             const finalY = (doc as any).lastAutoTable?.finalY || y + 40;
             doc.setFillColor(5, 150, 105); doc.rect(20, finalY, pageWidth - 40, 20, "F");
             doc.setTextColor(255); doc.setFont("helvetica", "bold"); doc.setFontSize(14);
@@ -327,18 +372,21 @@ export default function ClientePage() {
         } catch (error) { console.error(error); mostrarAlerta("Error al generar el PDF."); }
     };
 
+    // Pantalla de espera mientras se verifica la autorización
     if (!autorizado) return (
         <div className="min-h-screen bg-[#0d0a1a] flex items-center justify-center">
             <div className="w-10 h-10 border-2 border-violet-500/30 border-t-violet-500 rounded-full animate-spin" />
         </div>
     );
 
+    // Pantalla de carga mientras se obtienen los datos de la API
     if (loading) return (
         <div className="min-h-screen bg-[#0d0a1a] flex items-center justify-center">
             <div className="w-10 h-10 border-2 border-violet-500/30 border-t-violet-500 rounded-full animate-spin" />
         </div>
     );
 
+    // Definición de las pestañas de navegación
     const tabs = [
         { key: "estado", label: "Estado" },
         { key: "presupuesto", label: "+ Presupuesto" },
@@ -349,7 +397,7 @@ export default function ClientePage() {
 
     return (
         <div className="min-h-screen font-sans" style={{ background: "#0d0a1a" }}>
-            {/* Orbes de fondo */}
+            {/* Orbes decorativos de fondo con gradientes radiales */}
             <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
                 <div className="absolute w-[500px] h-[500px] rounded-full top-[-100px] right-[-80px]"
                     style={{ background: "radial-gradient(circle, rgba(139,92,246,0.12) 0%, transparent 70%)" }} />
@@ -358,11 +406,10 @@ export default function ClientePage() {
             </div>
 
             <div className="relative z-10 max-w-3xl mx-auto">
-                {/* HEADER */}
+                {/* HEADER: avatar con iniciales, nombre/email del cliente y botón de cierre de sesión */}
                 <header className="px-5 sm:px-8 pt-7 pb-0">
                     <div className="flex justify-between items-center mb-5">
                         <div className="flex items-center gap-4 min-w-0">
-                            {/* Avatar con iniciales */}
                             <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center flex-shrink-0 text-sm font-semibold text-violet-400"
                                 style={{ background: "rgba(16,185,129,0.12)", border: "0.5px solid rgba(16,185,129,0.2)" }}>
                                 {iniciales}
@@ -380,11 +427,10 @@ export default function ClientePage() {
                             <LogOut size={14} /> <span className="hidden sm:inline">Salir</span>
                         </button>
                     </div>
-                    {/* Divider con gradiente */}
                     <div className="h-px mb-0" style={{ background: "linear-gradient(90deg, rgba(139,92,246,0.35), rgba(167,139,250,0.08), transparent)" }} />
                 </header>
 
-                {/* TABS */}
+                {/* BARRA DE PESTAÑAS: resalta la activa con borde inferior violeta */}
                 <div className="px-5 sm:px-8 flex overflow-x-auto" style={{ borderBottom: "0.5px solid rgba(255,255,255,0.05)" }}>
                     {tabs.map((tab) => (
                         <button key={tab.key} onClick={() => setView(tab.key)}
@@ -398,10 +444,10 @@ export default function ClientePage() {
                     ))}
                 </div>
 
-                {/* CONTENIDO */}
+                {/* ÁREA DE CONTENIDO: renderiza la vista activa según la pestaña seleccionada */}
                 <div className="px-5 sm:px-8 py-6 sm:py-8">
 
-                    {/* ── ESTADO ── */}
+                    {/* VISTA ESTADO: lista de presupuestos activos con indicador visual si el vehículo está en taller */}
                     {view === "estado" && (
                         <div className="space-y-3">
                             <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-4">Mis vehículos</p>
@@ -421,6 +467,7 @@ export default function ClientePage() {
                                                     <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-1">Vehículo</p>
                                                     <h3 className="text-base sm:text-lg font-semibold text-white truncate">{p.vehiculo}</h3>
                                                 </div>
+                                                {/* Badge de estado: naranja si está en taller, gris neutro en otro caso */}
                                                 <span className={`px-3 py-1 rounded-full text-[11px] font-medium flex-shrink-0 ${
                                                     estaEnTaller
                                                         ? "text-orange-400 bg-orange-500/10 border border-orange-500/20"
@@ -429,6 +476,7 @@ export default function ClientePage() {
                                                     {estaEnTaller ? "En taller" : (p.estado || "Pendiente")}
                                                 </span>
                                             </div>
+                                            {/* Mensaje del taller visible solo si el vehículo está en reparación */}
                                             {estaEnTaller && (
                                                 <div className="flex items-start gap-3 p-3 rounded-xl mb-4"
                                                     style={{ background: "rgba(16,185,129,0.04)", border: "0.5px solid rgba(139,92,246,0.12)" }}>
@@ -438,6 +486,7 @@ export default function ClientePage() {
                                                     </p>
                                                 </div>
                                             )}
+                                            {/* Resumen de fecha de solicitud e importe estimado */}
                                             <div className="grid grid-cols-2 gap-3">
                                                 <div className="p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.02)", border: "0.5px solid rgba(255,255,255,0.05)" }}>
                                                     <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-1">Solicitud</p>
@@ -452,6 +501,7 @@ export default function ClientePage() {
                                     );
                                 })
                             ) : (
+                                // Estado vacío cuando no hay vehículos activos
                                 <div className="text-center py-16 rounded-2xl" style={{ background: "rgba(255,255,255,0.02)", border: "0.5px solid rgba(255,255,255,0.05)" }}>
                                     <Car size={36} className="mx-auto mb-4 text-gray-700" />
                                     <p className="text-gray-400 text-sm font-medium mb-1">No tienes vehículos activos</p>
@@ -461,11 +511,12 @@ export default function ClientePage() {
                         </div>
                     )}
 
-                    {/* ── PRESUPUESTO ── */}
+                    {/* VISTA PRESUPUESTO: formulario para solicitar un nuevo presupuesto */}
                     {view === "presupuesto" && (
                         <div>
                             <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-4">Nuevo presupuesto</p>
                             {okPres ? (
+                                // Pantalla de éxito tras enviar el presupuesto
                                 <div className="text-center py-14 rounded-2xl" style={{ background: "rgba(139,92,246,0.06)", border: "0.5px solid rgba(139,92,246,0.18)" }}>
                                     <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4" style={{background:"rgba(139,92,246,0.15)"}}>
                                         <Check size={22} className="text-violet-400" />
@@ -479,7 +530,7 @@ export default function ClientePage() {
                                 </div>
                             ) : (
                                 <div className="rounded-2xl p-5 sm:p-6 space-y-4" style={{ background: "rgba(255,255,255,0.02)", border: "0.5px solid rgba(255,255,255,0.06)" }}>
-                                    {/* Datos precargados */}
+                                    {/* Datos del cliente precargados automáticamente (solo lectura) */}
                                     <div className="grid grid-cols-2 gap-3">
                                         <div className="p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.02)", border: "0.5px solid rgba(255,255,255,0.04)" }}>
                                             <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-1">Nombre</p>
@@ -491,6 +542,8 @@ export default function ClientePage() {
                                         </div>
                                     </div>
                                     <div className="h-px" style={{ background: "rgba(255,255,255,0.05)" }} />
+
+                                    {/* Campos editables: vehículo, año y matrícula */}
                                     <div className="grid grid-cols-3 gap-3">
                                         <div className="col-span-2">
                                             <label className="block text-[10px] text-gray-600 uppercase tracking-widest mb-2">Vehículo *</label>
@@ -516,6 +569,8 @@ export default function ClientePage() {
                                             className="w-full text-white text-sm px-3 py-2.5 rounded-xl outline-none border border-white/8 focus:border-violet-500/40 transition-all uppercase"
                                             style={{ background: "rgba(255,255,255,0.04)" }} />
                                     </div>
+
+                                    {/* Descripción del problema o servicio solicitado */}
                                     <div>
                                         <label className="block text-[10px] text-gray-600 uppercase tracking-widest mb-2">Descripción *</label>
                                         <textarea value={formPres.mensaje} onChange={(e) => setFormPres(p => ({ ...p, mensaje: e.target.value }))}
@@ -524,6 +579,8 @@ export default function ClientePage() {
                                             style={{ background: "rgba(255,255,255,0.04)" }} />
                                         {erroresPres.mensaje && <p className="text-red-400 text-[11px] mt-1">{erroresPres.mensaje}</p>}
                                     </div>
+
+                                    {/* Botón de envío: valida campos, hace POST a la API y muestra éxito o error */}
                                     <button disabled={enviandoPres}
                                         onClick={async () => {
                                             const errs: Record<string, string> = {};
@@ -564,7 +621,7 @@ export default function ClientePage() {
                         </div>
                     )}
 
-                    {/* ── FACTURAS ── */}
+                    {/* VISTA FACTURAS: historial de facturas con botón de descarga en PDF para cada una */}
                     {view === "facturas" && (
                         <div>
                             <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-4">Historial de facturas</p>
@@ -595,6 +652,7 @@ export default function ClientePage() {
                                     ))}
                                 </div>
                             ) : (
+                                // Estado vacío cuando aún no hay facturas
                                 <div className="text-center py-16 rounded-2xl" style={{ background: "rgba(255,255,255,0.02)", border: "0.5px solid rgba(255,255,255,0.05)" }}>
                                     <FileText size={36} className="mx-auto mb-4 text-gray-700" />
                                     <p className="text-gray-400 text-sm font-medium mb-1">Aún no tienes facturas</p>
@@ -604,7 +662,7 @@ export default function ClientePage() {
                         </div>
                     )}
 
-                    {/* ── CANCELADOS ── */}
+                    {/* VISTA CANCELADOS: presupuestos con estado cancelado y su motivo de cancelación */}
                     {view === "cancelados" && (
                         <div className="space-y-3">
                             <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-4">Cancelados</p>
@@ -623,6 +681,7 @@ export default function ClientePage() {
                                                 Cancelado
                                             </span>
                                         </div>
+                                        {/* Motivo de cancelación proporcionado por el taller */}
                                         {p.motivo_cancelacion && (
                                             <div className="p-3 rounded-xl" style={{ background: "rgba(239,68,68,0.04)", border: "0.5px solid rgba(239,68,68,0.08)" }}>
                                                 <p className="text-gray-500 text-xs italic leading-relaxed">"{p.motivo_cancelacion}"</p>
@@ -631,6 +690,7 @@ export default function ClientePage() {
                                     </div>
                                 ))
                             ) : (
+                                // Estado vacío cuando no hay cancelaciones
                                 <div className="text-center py-16 rounded-2xl" style={{ background: "rgba(255,255,255,0.02)", border: "0.5px solid rgba(255,255,255,0.05)" }}>
                                     <Car size={36} className="mx-auto mb-4 text-gray-700" />
                                     <p className="text-gray-400 text-sm font-medium mb-1">No tienes cancelados</p>
@@ -640,11 +700,12 @@ export default function ClientePage() {
                         </div>
                     )}
 
-                    {/* ── PERFIL ── */}
+                    {/* VISTA PERFIL: datos personales editables inline y sección de cambio de contraseña */}
                     {view === "perfil" && (
                         <div className="space-y-3">
                             <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-4">Datos personales</p>
                             <div className="rounded-2xl overflow-hidden" style={{ border: "0.5px solid rgba(255,255,255,0.06)" }}>
+                                {/* Campos editables: nombre y apellidos */}
                                 {[
                                     { label: "Nombre", campo: "nombre", valor: cliente?.nombre || "" },
                                     { label: "Primer apellido", campo: "apellido1", valor: cliente?.apellido1 || "" },
@@ -659,12 +720,13 @@ export default function ClientePage() {
                                             onGuardar={guardarCampo} onCambio={setValorEdit} />
                                     </div>
                                 ))}
+                                {/* Email de solo lectura: no puede modificarse */}
                                 <div className="px-4 py-3.5" style={{ background: "rgba(255,255,255,0.02)" }}>
                                     <CampoSoloLectura label="Email" valor={cliente?.email || ""} nota="No se puede modificar" />
                                 </div>
                             </div>
 
-                            {/* Contraseña */}
+                            {/* Sección de cambio de contraseña: se expande al pulsar "Cambiar" */}
                             <div className="rounded-2xl p-4 sm:p-5" style={{ background: "rgba(255,255,255,0.02)", border: "0.5px solid rgba(255,255,255,0.06)" }}>
                                 <div className="flex items-center justify-between mb-0">
                                     <div className="flex items-center gap-3">
@@ -678,6 +740,7 @@ export default function ClientePage() {
                                         {mostrarPassword ? "Cancelar" : "Cambiar"}
                                     </button>
                                 </div>
+                                {/* Formulario de cambio de contraseña con indicador de fortaleza */}
                                 {mostrarPassword && (
                                     <div className="space-y-3 mt-4 pt-4" style={{ borderTop: "0.5px solid rgba(255,255,255,0.05)" }}>
                                         <CampoPassword label="Contraseña actual" value={passwordActual} onChange={setPasswordActual} ver={verActual} setVer={setVerActual} />
@@ -701,7 +764,7 @@ export default function ClientePage() {
                 </div>
             </div>
 
-            {/* MODALES */}
+            {/* MODALES GLOBALES: confirmación de edición de campo, logout y cambio de contraseña */}
             {confirmCampo && (
                 <ModalConfirmar titulo="Guardar cambio" mensaje="¿Confirmas que quieres guardar este cambio?" detalle="El dato se actualizará inmediatamente."
                     onConfirmar={ejecutarGuardarCampo} onCerrar={() => setConfirmCampo(null)} guardando={guardando}
@@ -717,6 +780,7 @@ export default function ClientePage() {
                     onConfirmar={ejecutarGuardarPassword} onCerrar={() => setConfirmPassword(false)} guardando={guardandoPassword}
                     colorBoton="bg-violet-600 hover:bg-violet-700" />
             )}
+            {/* Modal de alerta genérico para errores de red o validación */}
             {alerta && <ModalAlerta mensaje={alerta} onCerrar={() => setAlerta(null)} />}
         </div>
     );

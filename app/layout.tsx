@@ -11,24 +11,23 @@ export default function RootLayout({
 }) {
   const pathname = usePathname();
 
-  // Lista de rutas sin Navbar
+  // Rutas donde el Navbar no debe mostrarse (paneles internos y flujos de autenticación)
   const rutasSinNavbar = [
-    "/gestion/tareas", 
-    "/forgot-password", 
+    "/gestion/tareas",
+    "/forgot-password",
     "/reset-password",
     "/cliente",
     "/jefe",
-    "/forgot-password"
   ];
-  
+
   const ocultarNavbar = rutasSinNavbar.includes(pathname);
 
   return (
     <html lang="es">
       <body className="bg-black text-white">
         {!ocultarNavbar && <Navbar />}
-        
-        {/* El padding top (pt-20) solo se aplica si el Navbar es visible */}
+
+        {/* El padding superior compensa la altura fija del Navbar cuando este es visible */}
         <main className={ocultarNavbar ? "" : "pt-20"}>
           {children}
         </main>

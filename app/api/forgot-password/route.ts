@@ -3,6 +3,7 @@ import { neon } from "@neondatabase/serverless";
 import nodemailer from "nodemailer";
 import crypto from "crypto";
 
+// Genera un token de recuperación, lo guarda en BD y envía el enlace de restablecimiento por email
 export async function POST(req: Request) {
   try {
     const { email } = await req.json();
@@ -13,7 +14,7 @@ export async function POST(req: Request) {
 
     const sql = neon(process.env.DATABASE_URL!);
 
-    // 1. Buscamos al usuario por su email
+    // Verifica que el email exista antes de generar el token
     const result = await sql`SELECT email FROM usuarios WHERE email = ${email} LIMIT 1`;
 
     if (result.length === 0) {
@@ -23,12 +24,11 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2. Generar token de seguridad y expiración (1 hora)
+    // Token aleatorio de 64 caracteres hex con expiración de 1 hora
     const token = crypto.randomBytes(32).toString("hex");
-    const expires = new Date(Date.now() + 3600000); // 1 hora desde ahora
+    const expires = new Date(Date.now() + 3600000);
 
-    // 3. Guardar el token en la tabla password_reset_tokens
-    // Usamos ON CONFLICT para actualizar el token si el usuario ya pidió uno antes
+    // Guarda el token; si ya existía uno para ese email lo sobreescribe
     await sql`
       INSERT INTO password_reset_tokens (email, token, expires_at)
       VALUES (${email}, ${token}, ${expires})
@@ -36,20 +36,19 @@ export async function POST(req: Request) {
       DO UPDATE SET token = ${token}, expires_at = ${expires}
     `;
 
-    // 4. Configurar el transportador de Nodemailer (Gmail)
+    // Transportador de Gmail con credenciales de aplicación
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
         user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS, // Tu contraseña de aplicación de 16 letras
+        pass: process.env.EMAIL_PASS,
       },
     });
 
-    // Definimos la URL base (en desarrollo es localhost, en producción será tu dominio)
+    // URL del formulario de restablecimiento con el token como parámetro
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
     const resetLink = `${baseUrl}/reset-password?token=${token}`;
 
-    // 5. Enviar el correo real
     await transporter.sendMail({
       from: `"AJCAR 25" <${process.env.EMAIL_USER}>`,
       to: email,

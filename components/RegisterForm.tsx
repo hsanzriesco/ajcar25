@@ -5,7 +5,9 @@ import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import PhoneInput from "@/components/PhoneInput";
 
-// ✅ Definido FUERA del componente para evitar pérdida de foco en cada render
+/* Componente reutilizable para inputs de contraseña con toggle de visibilidad.
+   Se define fuera del componente padre para evitar que React lo desmonte y 
+   remonte en cada render, lo que causaría pérdida de foco al escribir. */
 const PasswordInput = ({
   name, label, show, onToggle, value, onChange, error,
 }: {
@@ -30,6 +32,7 @@ const PasswordInput = ({
         }`}
         autoComplete="new-password"
       />
+      {/* Botón que alterna entre mostrar y ocultar la contraseña */}
       <button type="button" onClick={onToggle}
         className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-red-500 transition-colors p-1">
         {show ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -40,22 +43,37 @@ const PasswordInput = ({
 
 export default function RegisterForm() {
   const router = useRouter();
+
+  /* Estados principales del formulario:
+     - tipoRegistro: determina si el usuario es particular o empresa, 
+       condicionando los campos visibles y las validaciones aplicadas.
+     - loading/serverError: controlan el estado de la petición al servidor. */
   const [tipoRegistro, setTipoRegistro] = useState<"particular" | "empresa">("particular");
   const [loading, setLoading] = useState(false);
   const [serverError, setServerError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showRepeatPassword, setShowRepeatPassword] = useState(false);
 
+  /* Estado centralizado de los campos del formulario.
+     Los campos nombreEmpresa y direccion solo aplican a empresas;
+     nombre, apellido1 y apellido2 solo a particulares. */
   const [form, setForm] = useState({
     nombre: "", apellido1: "", apellido2: "", nombreEmpresa: "",
     direccion: "", dni: "", email: "", password: "", repeatPassword: "",
   });
 
+  /* Estado del teléfono gestionado por separado porque el componente PhoneInput
+     devuelve tres valores: el número local, si es válido, y el número completo
+     con prefijo internacional. */
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [phone, setPhone] = useState("");
   const [phoneValid, setPhoneValid] = useState(false);
   const [phoneFull, setPhoneFull] = useState("");
 
+  /* Valida DNI, NIE o CIF según el tipo de registro:
+     - Empresa: comprueba el formato de CIF español.
+     - Particular: valida DNI (8 dígitos + letra) y NIE (X/Y/Z + 7 dígitos + letra)
+       verificando también que la letra de control sea correcta mediante módulo 23. */
   const validateDocument = (value: string) => {
     const str = value.toUpperCase().trim();
     if (!str) return true;
@@ -72,6 +90,9 @@ export default function RegisterForm() {
     return letter === validChars.charAt(number % 23);
   };
 
+  /* Validación reactiva: se ejecuta en cada cambio de form, phone o tipoRegistro.
+     Construye un objeto de errores solo con los campos que fallan, de forma que
+     los mensajes de error aparecen y desaparecen en tiempo real mientras el usuario escribe. */
   useEffect(() => {
     const newErrors: Record<string, string> = {};
     if (form.dni && !validateDocument(form.dni))
@@ -88,6 +109,10 @@ export default function RegisterForm() {
     setErrors(newErrors);
   }, [form, phone, tipoRegistro]);
 
+  /* Determina si el botón de envío debe estar deshabilitado.
+     Comprueba tres condiciones: campos obligatorios vacíos (distintos según tipo
+     de registro), existencia de errores de validación, y que el teléfono sea válido.
+     useMemo evita recalcular en renders que no afectan a estas dependencias. */
   const isFormInvalid = useMemo(() => {
     const mandatoryFields = tipoRegistro === "particular"
       ? ["nombre", "apellido1", "dni", "email", "password", "repeatPassword"]
@@ -98,10 +123,15 @@ export default function RegisterForm() {
     return hasEmptyFields || hasErrors || !isPhoneValid;
   }, [form, errors, phone, phoneValid, tipoRegistro]);
 
+  /* Actualiza el campo correspondiente del estado form usando el atributo name
+     del input como clave, evitando un handler específico por cada campo. */
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  /* Envía el formulario a la API de registro.
+     En caso de éxito redirige al login; en caso de error muestra el mensaje
+     devuelto por el servidor o un mensaje genérico de conexión. */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true); setServerError("");
@@ -115,7 +145,6 @@ export default function RegisterForm() {
       if (!response.ok) {
         setServerError(data.message || "Error al registrar usuario");
       } else {
-        // ✅ Redirigir al login tras registro exitoso
         router.push("/login");
       }
     } catch (error) {
@@ -123,6 +152,8 @@ export default function RegisterForm() {
     } finally { setLoading(false); }
   };
 
+  /* Helper que devuelve las clases del input aplicando borde rojo si existe
+     un error asociado a esa clave, o el estilo neutro con foco rojo si no. */
   const inputClass = (errorKey?: string) =>
     `w-full p-3 rounded-xl bg-neutral-800 border outline-none text-white text-sm transition-colors ${
       errorKey && errors[errorKey] ? "border-red-500" : "border-white/10 focus:border-red-500"
@@ -131,7 +162,8 @@ export default function RegisterForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4 w-full">
 
-      {/* TIPO DE CLIENTE */}
+      {/* Selector de tipo de cliente: cambia los campos visibles y las reglas
+          de validación del documento de identidad (DNI/NIE vs CIF). */}
       <div>
         <label className="block text-sm mb-1 text-red-500 font-bold uppercase tracking-wider">Tipo de Cliente</label>
         <select value={tipoRegistro} onChange={(e) => setTipoRegistro(e.target.value as "particular" | "empresa")}
@@ -141,7 +173,9 @@ export default function RegisterForm() {
         </select>
       </div>
 
-      {/* CAMPOS DINÁMICOS */}
+      {/* Renderizado condicional según el tipo de registro:
+          - Particular: nombre y dos apellidos.
+          - Empresa: razón social y dirección fiscal. */}
       {tipoRegistro === "particular" ? (
         <>
           <div>
@@ -177,7 +211,7 @@ export default function RegisterForm() {
         </>
       )}
 
-      {/* DOCUMENTO */}
+      {/* Campo de documento con label dinámico y mensaje de error inline. */}
       <div>
         <label className="block text-sm mb-1 text-gray-300">
           {tipoRegistro === "particular" ? "DNI / NIE" : "CIF"}
@@ -188,7 +222,7 @@ export default function RegisterForm() {
         {errors.dni && <p className="text-red-500 text-[11px] mt-1">{errors.dni}</p>}
       </div>
 
-      {/* EMAIL */}
+      {/* Campo de email con validación de formato en tiempo real. */}
       <div>
         <label className="block text-sm mb-1 text-gray-300">Correo Electrónico</label>
         <input name="email" type="email" value={form.email} onChange={handleChange}
@@ -196,7 +230,8 @@ export default function RegisterForm() {
         {errors.email && <p className="text-red-500 text-[11px] mt-1">{errors.email}</p>}
       </div>
 
-      {/* TELÉFONO */}
+      {/* Componente PhoneInput externo que gestiona el prefijo internacional.
+          Devuelve el valor local, si es válido, y el número completo con prefijo. */}
       <div>
         <label className="block text-sm mb-1 text-gray-300">Número de Teléfono</label>
         <PhoneInput
@@ -206,7 +241,8 @@ export default function RegisterForm() {
         />
       </div>
 
-      {/* CONTRASEÑAS */}
+      {/* Dos campos de contraseña en fila con toggle de visibilidad independiente.
+          Los errores se muestran debajo del bloque para no romper el layout. */}
       <div className="flex flex-col sm:flex-row gap-3 sm:gap-2">
         <PasswordInput
           name="password" label="Contraseña"
@@ -224,13 +260,15 @@ export default function RegisterForm() {
       {errors.password && <p className="text-red-500 text-[11px] -mt-2">{errors.password}</p>}
       {errors.repeatPassword && <p className="text-red-500 text-[11px] -mt-2">{errors.repeatPassword}</p>}
 
-      {/* ERROR SERVIDOR */}
+      {/* Mensaje de error devuelto por el servidor, visible solo si existe. */}
       {serverError && (
         <div className="bg-red-500/10 border border-red-500 text-red-500 p-3 rounded-xl text-sm text-center">
           {serverError}
         </div>
       )}
 
+      {/* Botón de envío deshabilitado mientras el formulario sea inválido o esté cargando.
+          El estilo cambia visualmente para reflejar el estado de disponibilidad. */}
       <button type="submit" disabled={isFormInvalid || loading}
         className={`w-full p-3 sm:p-3.5 rounded-xl font-semibold text-sm sm:text-base transition-all ${
           isFormInvalid || loading

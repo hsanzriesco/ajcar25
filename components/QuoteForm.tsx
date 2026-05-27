@@ -3,10 +3,12 @@
 import { useState, useMemo, useEffect } from "react";
 import { Send, Car, User, MessageSquare, Calendar, Clock, Mail } from "lucide-react";
 import PhoneInput from "@/components/PhoneInput";
-
 import { AlertTriangle, Check } from "lucide-react";
 
-// ✅ Modal de alerta inline (reemplaza AlertModal externo)
+/* Modal de alerta reutilizable definido inline para evitar dependencias externas.
+   Soporta cuatro tipos visuales (success, error, warning, info) que determinan
+   el color del icono, el fondo y el botón de confirmación.
+   En móvil se muestra anclado al borde inferior (sheet); en desktop, centrado. */
 const ModalAlerta = ({ titulo, mensaje, tipo, onConfirmar, onCancelar, mostrarCancelar, textoConfirmar, textoCancelar }: {
   titulo: string; mensaje: string; tipo: "success" | "error" | "warning" | "info";
   onConfirmar?: () => void; onCancelar?: () => void;
@@ -54,6 +56,9 @@ export default function QuoteForm() {
   const [loading, setLoading] = useState(false);
   const [serverError, setServerError] = useState("");
 
+  /* Estado del modal de alerta personalizado. Almacena todos los datos necesarios
+     para renderizar el ModalAlerta: visibilidad, textos, tipo y callbacks opcionales
+     de confirmación y cancelación. */
   const [customAlert, setCustomAlert] = useState<{
     isOpen: boolean;
     title: string;
@@ -65,6 +70,8 @@ export default function QuoteForm() {
     isOpen: false, title: "", message: "", type: "warning",
   });
 
+  /* Helpers para abrir y cerrar el modal. showCustomAlert acepta callbacks
+     opcionales que se ejecutan cuando el usuario confirma o cancela. */
   const showCustomAlert = (
     title: string, message: string,
     type: "success" | "error" | "warning" | "info" = "warning",
@@ -73,18 +80,28 @@ export default function QuoteForm() {
 
   const closeCustomAlert = () => setCustomAlert(prev => ({ ...prev, isOpen: false }));
 
+  /* Fecha de hoy en formato ISO (YYYY-MM-DD) para bloquear fechas pasadas
+     en el input de tipo date. Se memoiza para no recalcularla en cada render. */
   const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
 
+  /* Estado centralizado del formulario. Todos los campos de texto se gestionan
+     aquí para facilitar el reseteo completo tras un envío exitoso. */
   const [form, setForm] = useState({
     nombre: "", email: "", vehiculo: "", anio: "", matricula: "",
     fechaCita: "", horaCita: "", mensaje: "",
   });
 
+  /* Estado del teléfono separado del resto porque PhoneInput devuelve
+     tres valores: número local, booleano de validez y número con prefijo. */
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [phone, setPhone] = useState("");
   const [phoneValid, setPhoneValid] = useState(false);
   const [phoneFull, setPhoneFull] = useState("");
 
+  /* Consulta a la API si el email introducido ya existe en la base de datos.
+     Si pertenece a un empleado, muestra un error bloqueante y limpia el campo.
+     Si es un cliente registrado, ofrece asignar el vehículo a su cuenta
+     o cambiar el correo, mediante el modal de tipo "warning" con dos opciones. */
   const verificarEmailExistente = async (email: string) => {
     if (!email || email.length < 6) return;
     try {
@@ -107,6 +124,9 @@ export default function QuoteForm() {
     } catch (error) { console.error("Error verificando email:", error); }
   };
 
+  /* Validación reactiva que se recalcula ante cualquier cambio en form o phone.
+     Valida formato de email, longitud del teléfono, rango del año (1900-2026)
+     y que la fecha de cita no sea anterior a hoy. */
   useEffect(() => {
     const newErrors: Record<string, string> = {};
     if (form.email && !/^\S+@\S+\.\S+$/.test(form.email)) newErrors.email = "Email no válido";
@@ -116,6 +136,8 @@ export default function QuoteForm() {
     setErrors(newErrors);
   }, [form, phone, todayStr]);
 
+  /* Bloquea el botón de envío si hay campos obligatorios vacíos, errores de
+     validación activos o el teléfono no ha sido completado correctamente. */
   const isFormInvalid = useMemo(() => {
     const mandatoryFields = ["nombre", "email", "vehiculo", "anio", "fechaCita", "horaCita", "mensaje"];
     const hasEmptyFields = mandatoryFields.some(key => !form[key as keyof typeof form]?.trim());
@@ -124,12 +146,17 @@ export default function QuoteForm() {
     return hasEmptyFields || hasErrors || !isPhoneValid;
   }, [form, errors, phone, phoneValid]);
 
+  /* Handler genérico para inputs y textarea. Al cambiar el email, lanza además
+     la verificación asíncrona contra la API para detectar correos ya registrados. */
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setForm({ ...form, [name]: value });
     if (name === "email") verificarEmailExistente(value);
   };
 
+  /* Envía el presupuesto a la API. Si la respuesta es exitosa muestra el modal
+     de éxito y resetea completamente el formulario y el estado del teléfono.
+     En caso de error muestra el mensaje del servidor o uno genérico de conexión. */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isFormInvalid) return;
@@ -159,6 +186,8 @@ export default function QuoteForm() {
     } finally { setLoading(false); }
   };
 
+  /* Clases base reutilizables para los inputs y sus contenedores con icono.
+     Se definen fuera del JSX para mantener el template más limpio. */
   const inputBase = "w-full bg-transparent p-3 text-sm outline-none text-white placeholder:text-gray-600";
   const wrapBase = "flex items-center bg-neutral-800 border rounded px-3 transition-colors focus-within:border-red-500";
 
@@ -166,7 +195,7 @@ export default function QuoteForm() {
     <>
       <form onSubmit={handleSubmit} className="space-y-4 w-full">
 
-        {/* Nombre + Email */}
+        {/* Nombre y email en fila de dos columnas en pantallas medianas y grandes. */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm mb-1 text-gray-300 font-medium">Nombre Completo</label>
@@ -187,7 +216,7 @@ export default function QuoteForm() {
           </div>
         </div>
 
-        {/* Teléfono */}
+        {/* Componente de teléfono con selector de prefijo internacional. */}
         <div className="relative">
           <label className="block text-sm mb-1 text-gray-300 font-medium">Número de Teléfono</label>
           <PhoneInput
@@ -197,7 +226,8 @@ export default function QuoteForm() {
           />
         </div>
 
-        {/* Vehículo + Año */}
+        {/* Vehículo ocupa el espacio restante; año tiene ancho fijo para
+            compactar la fila. El spinner nativo del input number se oculta con CSS. */}
         <div className="flex gap-3 sm:gap-4">
           <div className="flex-1 min-w-0">
             <label className="block text-sm mb-1 text-gray-300 font-medium">Vehículo</label>
@@ -219,7 +249,8 @@ export default function QuoteForm() {
           </div>
         </div>
 
-        {/* Fecha + Hora */}
+        {/* Fecha con mínimo bloqueado en hoy para impedir citas en el pasado.
+            Hora en columna de ancho fijo a la derecha. */}
         <div className="flex gap-3 sm:gap-4">
           <div className="flex-1 min-w-0">
             <label className="block text-sm mb-1 text-gray-300 font-medium">Fecha preferida</label>
@@ -241,7 +272,7 @@ export default function QuoteForm() {
           </div>
         </div>
 
-        {/* Matrícula */}
+        {/* Matrícula en mayúsculas automáticas mediante clase uppercase de Tailwind. */}
         <div>
           <label className="block text-sm mb-1 text-gray-300 font-medium">Matrícula del Vehículo</label>
           <div className={`${wrapBase} border-white/10`}>
@@ -252,7 +283,8 @@ export default function QuoteForm() {
           </div>
         </div>
 
-        {/* Mensaje */}
+        {/* Textarea para descripción del servicio. El icono se alinea al top
+            para no quedar centrado verticalmente con el texto multilínea. */}
         <div>
           <label className="block text-sm mb-1 text-gray-300 font-medium">¿Qué necesitas?</label>
           <div className="flex items-start bg-neutral-800 border border-white/10 rounded px-3 pt-3 focus-within:border-red-500 transition-colors">
@@ -263,12 +295,15 @@ export default function QuoteForm() {
           </div>
         </div>
 
+        {/* Error de servidor con animación pulse para llamar la atención. */}
         {serverError && (
           <div className="bg-red-500/10 border border-red-500 text-red-500 p-3 rounded text-sm text-center animate-pulse">
             {serverError}
           </div>
         )}
 
+        {/* Botón de envío: muestra spinner mientras carga, y se deshabilita
+            si el formulario es inválido. El estilo cambia visualmente según el estado. */}
         <button
           type="submit"
           disabled={isFormInvalid || loading}
@@ -286,6 +321,9 @@ export default function QuoteForm() {
         </button>
       </form>
 
+      {/* ModalAlerta se renderiza fuera del form para evitar problemas de z-index
+          y apilamiento. Los callbacks de confirmación y cancelación ejecutan
+          la acción correspondiente y siempre cierran el modal al terminar. */}
       {customAlert.isOpen && (
         <ModalAlerta
           titulo={customAlert.title}

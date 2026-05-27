@@ -4,17 +4,26 @@ import { useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Lock, Eye, EyeOff, Loader2 } from "lucide-react";
 
+// Formulario de restablecimiento de contraseña: lee el token de la URL y lo envía junto a la nueva clave
+// Se separa en su propio componente para poder envolverlo en Suspense (useSearchParams lo requiere)
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
+
+  // Token de recuperación extraído del parámetro ?token= de la URL
   const token = searchParams.get("token");
 
+  // Valores del formulario y visibilidad compartida de ambos campos de contraseña
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+
+  // Estado de la petición y mensaje de feedback (éxito o error)
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
 
+  // Valida que las contraseñas coincidan y tengan mínimo 6 caracteres antes de hacer el POST
+  // Si la API responde OK, muestra éxito y redirige al login tras 3 segundos
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirmPassword) {
@@ -47,6 +56,7 @@ function ResetPasswordForm() {
     }
   };
 
+  // Si no hay token en la URL, muestra un error en lugar del formulario
   if (!token) {
     return (
       <div className="max-w-md mx-auto text-center p-6 sm:p-8 bg-red-500/10 border border-red-500 rounded-xl text-red-500 backdrop-blur-md text-sm sm:text-base">
@@ -70,6 +80,7 @@ function ResetPasswordForm() {
       </h2>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Campo de nueva contraseña con icono de candado y botón de visibilidad */}
         <div className="relative">
           <Lock className="absolute left-3 top-3.5 text-gray-500" size={16} />
           <input
@@ -87,6 +98,7 @@ function ResetPasswordForm() {
           </button>
         </div>
 
+        {/* Campo de confirmación: comparte el estado showPassword con el campo anterior */}
         <div className="relative">
           <Lock className="absolute left-3 top-3.5 text-gray-500" size={16} />
           <input
@@ -100,12 +112,14 @@ function ResetPasswordForm() {
           />
         </div>
 
+        {/* Mensaje de feedback: fondo verde si es éxito, rojo si es error */}
         {message.text && (
           <div className={`p-3 rounded-xl text-sm text-center ${message.type === "error" ? "bg-red-500/10 text-red-500 border border-red-500" : "bg-green-500/10 text-green-500 border border-green-500"}`}>
             {message.text}
           </div>
         )}
 
+        {/* Botón de envío: muestra spinner mientras la petición está en curso */}
         <button type="submit" disabled={loading}
           className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-sm sm:text-base active:scale-[0.98]">
           {loading ? <Loader2 className="animate-spin" size={18} /> : "Actualizar Contraseña"}
@@ -115,6 +129,8 @@ function ResetPasswordForm() {
   );
 }
 
+// Página raíz: fondo con imagen y overlay oscuro; envuelve el formulario en Suspense
+// porque useSearchParams requiere un límite de Suspense en el árbol de componentes
 export default function ResetPasswordPage() {
   return (
     <main

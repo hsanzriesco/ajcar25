@@ -3,14 +3,18 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { ChevronDown, Search } from "lucide-react";
 
+/* Tipado del objeto país. Cada entrada incluye el código ISO2, nombre legible,
+   emoji de bandera, prefijo internacional y longitud máxima del número local. */
 export interface Country {
-  code: string;   // ISO2
+  code: string;
   name: string;
-  flag: string;   // emoji
-  prefix: string; // e.g. "+34"
+  flag: string;
+  prefix: string;
   maxLength: number;
 }
 
+/* Lista completa de países con sus datos de telefonía. Se exporta para poder
+   reutilizarse en otros componentes que necesiten el catálogo de prefijos. */
 export const COUNTRIES: Country[] = [
   { code: "AF", name: "Afganistán", flag: "🇦🇫", prefix: "+93", maxLength: 9 },
   { code: "AL", name: "Albania", flag: "🇦🇱", prefix: "+355", maxLength: 9 },
@@ -207,19 +211,20 @@ export const COUNTRIES: Country[] = [
   { code: "ZW", name: "Zimbabue", flag: "🇿🇼", prefix: "+263", maxLength: 9 },
 ];
 
-// Ordenar alfabéticamente con España primero
+/* Lista ordenada alfabéticamente en español con España fija en primera posición,
+   ya que es el país por defecto en el contexto de la aplicación. */
 export const COUNTRIES_SORTED: Country[] = [
   COUNTRIES.find(c => c.code === "ES")!,
   ...COUNTRIES.filter(c => c.code !== "ES").sort((a, b) => a.name.localeCompare(b.name, "es")),
 ];
 
 interface PhoneInputProps {
-  value: string;           // número sin prefijo
+  value: string;
   onChange: (value: string, isValid: boolean, full: string) => void;
   error?: string;
   className?: string;
   placeholder?: string;
-  defaultCountry?: string; // ISO2 code
+  defaultCountry?: string;
 }
 
 export default function PhoneInput({
@@ -232,7 +237,8 @@ export default function PhoneInput({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  // Cerrar dropdown al hacer click fuera
+  /* Cierra el dropdown si el usuario hace clic en cualquier elemento
+     fuera del componente, limpiando también el texto de búsqueda. */
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -243,11 +249,14 @@ export default function PhoneInput({
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  // Foco en búsqueda al abrir
+  /* Enfoca automáticamente el input de búsqueda cuando se abre el dropdown,
+     con un pequeño delay para esperar a que el elemento esté en el DOM. */
   useEffect(() => {
     if (open) setTimeout(() => searchRef.current?.focus(), 50);
   }, [open]);
 
+  /* Filtra la lista de países según el texto de búsqueda, comparando contra
+     nombre, prefijo y código ISO. Si el campo está vacío devuelve la lista completa. */
   const filtered = useMemo(() =>
     search.trim() === ""
       ? COUNTRIES_SORTED
@@ -259,28 +268,33 @@ export default function PhoneInput({
     [search]
   );
 
+  /* Limpia el input dejando solo dígitos y recorta al máximo permitido por el país.
+     Calcula la validez (mínimo 6 dígitos) y propaga los tres valores al padre. */
   const handleNumberChange = (raw: string) => {
     const digits = raw.replace(/\D/g, "").slice(0, country.maxLength);
     const isValid = digits.length >= 6 && digits.length <= country.maxLength;
     onChange(digits, isValid, `${country.prefix}${digits}`);
   };
 
+  /* Al seleccionar un país actualiza el estado, cierra el dropdown y
+     recalcula la validez del número ya introducido con las reglas del nuevo país. */
   const handleCountrySelect = (c: Country) => {
     setCountry(c);
     setOpen(false);
     setSearch("");
-    // Re-validar con nuevo país
     const isValid = value.length >= 6 && value.length <= c.maxLength;
     onChange(value, isValid, `${c.prefix}${value}`);
   };
 
+  /* El borde se pone rojo si hay un error externo o si el número tiene
+     menos de 6 dígitos pero el usuario ya ha empezado a escribir. */
   const hasError = !!error || (value.length > 0 && value.length < 6);
 
   return (
     <div className={`w-full ${className}`} ref={dropdownRef}>
       <div className={`flex bg-neutral-800 border rounded transition-colors focus-within:border-red-500 ${hasError ? "border-red-500" : "border-white/10"}`}>
 
-        {/* Selector de país */}
+        {/* Botón selector de país: muestra bandera, prefijo y flecha giratoria. */}
         <button type="button" onClick={() => setOpen(!open)}
           className="flex items-center gap-1.5 px-3 py-3 border-r border-white/10 hover:bg-white/5 transition-colors rounded-l flex-shrink-0 min-w-[80px]">
           <span className="text-xl leading-none">{country.flag}</span>
@@ -288,7 +302,7 @@ export default function PhoneInput({
           <ChevronDown size={12} className={`text-gray-500 transition-transform ${open ? "rotate-180" : ""}`} />
         </button>
 
-        {/* Input número */}
+        {/* Input numérico que acepta solo el número local sin prefijo. */}
         <input
           type="tel"
           value={value}
@@ -298,17 +312,16 @@ export default function PhoneInput({
         />
       </div>
 
-      {/* Dropdown de países */}
+      {/* Dropdown con buscador y lista scrollable de países.
+          Se posiciona en absolute para no desplazar el layout del formulario. */}
       {open && (
         <div className="absolute z-[200] mt-1 w-72 bg-[#1a1a1f] border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
-          {/* Búsqueda */}
           <div className="flex items-center gap-2 px-3 py-2 border-b border-white/5">
             <Search size={14} className="text-gray-500 flex-shrink-0" />
             <input ref={searchRef} type="text" value={search} onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar país o prefijo..."
               className="bg-transparent text-white text-sm outline-none w-full placeholder:text-gray-600" />
           </div>
-          {/* Lista */}
           <div className="max-h-56 overflow-y-auto">
             {filtered.length === 0 ? (
               <p className="text-gray-500 text-xs text-center py-4">Sin resultados</p>
@@ -324,7 +337,8 @@ export default function PhoneInput({
         </div>
       )}
 
-      {/* Error */}
+      {/* Mensajes de error: el externo tiene prioridad; si no existe se muestra
+          el de número demasiado corto cuando el usuario ya ha empezado a escribir. */}
       {error && <p className="text-red-500 text-[11px] mt-1">{error}</p>}
       {!error && value.length > 0 && value.length < 6 && (
         <p className="text-red-500 text-[11px] mt-1">Número demasiado corto</p>

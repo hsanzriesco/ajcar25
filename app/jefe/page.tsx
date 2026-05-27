@@ -10,6 +10,7 @@ import {
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
+// Tipos de datos devueltos por la API del panel de jefe
 interface Empleado {
     id: string; nombre: string; apellido1: string; apellido2: string;
     email: string; telefono: string; matricula: string | null;
@@ -49,12 +50,15 @@ interface EntradaStock {
     articulo_id: number; cantidad: number;
 }
 
+// Valores iniciales del formulario de empleado
 const FORM_VACIO: FormEmpleado = {
     nombre: "", apellido1: "", apellido2: "", email: "", telefono: "", password: "Ajcar25&"
 };
 
+// Mes actual formateado para el encabezado de rendimiento
 const mesActual = new Date().toLocaleString("es-ES", { month: "long", year: "numeric" });
 
+// Badge de color para el estado de un presupuesto
 const BadgeEstado = ({ estado }: { estado: string }) => {
     const e = (estado || "").toLowerCase().trim();
     let color = "bg-gray-600 text-white";
@@ -65,6 +69,7 @@ const BadgeEstado = ({ estado }: { estado: string }) => {
     return <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest ${color}`}>{estado}</span>;
 };
 
+// Tarjeta de estadística con icono, etiqueta y valor numérico
 const StatCard = ({ label, value, icon, color }: {
     label: string; value: string | number; icon: React.ReactNode; color: string;
 }) => (
@@ -77,6 +82,7 @@ const StatCard = ({ label, value, icon, color }: {
     </div>
 );
 
+// Modal de confirmación genérico con icono de advertencia y botones cancelar/confirmar
 const ModalConfirmar = ({ titulo, mensaje, detalle, onConfirmar, onCerrar, guardando, colorBoton = "bg-blue-600 hover:bg-blue-700" }: {
     titulo: string; mensaje: string; detalle?: string;
     onConfirmar: () => void; onCerrar: () => void;
@@ -103,6 +109,7 @@ const ModalConfirmar = ({ titulo, mensaje, detalle, onConfirmar, onCerrar, guard
     </div>
 );
 
+// Modal de alerta simple para errores o avisos con un único botón de cierre
 const ModalAlerta = ({ mensaje, onCerrar }: { mensaje: string; onCerrar: () => void }) => (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
         <div className="bg-[#0f0f12] border border-white/10 rounded-[30px] sm:rounded-[40px] p-6 sm:p-10 w-full max-w-md">
@@ -118,11 +125,15 @@ const ModalAlerta = ({ mensaje, onCerrar }: { mensaje: string; onCerrar: () => v
     </div>
 );
 
+// Modal de creación y edición de empleado: campos de texto con campo de contraseña con visibilidad alternante
+// En modo creación muestra un aviso de que la matrícula se genera automáticamente
 const ModalEmpleado = ({ titulo, form, setForm, onGuardar, onCerrar, guardando, error, modoEdicion }: {
     titulo: string; form: FormEmpleado; setForm: (f: FormEmpleado) => void;
     onGuardar: () => void; onCerrar: () => void; guardando: boolean; error: string; modoEdicion: boolean;
 }) => {
     const [verPassword, setVerPassword] = useState(false);
+
+    // Renderiza un campo del formulario; si la clave es "password" añade el botón de visibilidad
     const campo = (label: string, key: keyof FormEmpleado, type = "text", obligatorio = false) => (
         <div>
             <p className="text-gray-500 text-xs uppercase tracking-widest mb-2">{label} {obligatorio && <span className="text-red-400">*</span>}</p>
@@ -153,6 +164,7 @@ const ModalEmpleado = ({ titulo, form, setForm, onGuardar, onCerrar, guardando, 
                     {campo("Email", "email", "email", true)}
                     {campo("Teléfono", "telefono", "tel", true)}
                     {campo("Contraseña", "password")}
+                    {/* Aviso informativo solo visible en modo creación */}
                     {!modoEdicion && (
                         <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl px-4 py-3">
                             <p className="text-blue-400 text-xs">🎲 Se generará automáticamente un número de matrícula de 6 dígitos para este empleado.</p>
@@ -172,6 +184,8 @@ const ModalEmpleado = ({ titulo, form, setForm, onGuardar, onCerrar, guardando, 
     );
 };
 
+// Modal de denegación de acceso: selección de motivo predefinido o personalizado
+// Incluye un segundo modal de confirmación antes de ejecutar el PATCH
 const ModalDenegarAcceso = ({ cliente, onConfirmar, onCerrar, guardando }: {
     cliente: Cliente; onConfirmar: (motivo: string) => void; onCerrar: () => void; guardando: boolean;
 }) => {
@@ -179,6 +193,8 @@ const ModalDenegarAcceso = ({ cliente, onConfirmar, onCerrar, guardando }: {
     const [motivoCustom, setMotivoCustom] = useState("");
     const [confirmando, setConfirmando] = useState(false);
     const motivosFrecuentes = ["Moroso", "Fraude", "Comportamiento inapropiado", "Solicitud propia", "Otro"];
+
+    // Si se elige "Otro", el motivo final es el texto del input personalizado
     const motivoFinal = motivo === "Otro" ? motivoCustom : motivo;
     return (
         <>
@@ -193,6 +209,7 @@ const ModalDenegarAcceso = ({ cliente, onConfirmar, onCerrar, guardando }: {
                         <button onClick={onCerrar} className="w-9 h-9 bg-white/5 hover:bg-white/10 text-gray-400 rounded-xl flex items-center justify-center transition-all"><X size={18} /></button>
                     </div>
                     <p className="text-gray-400 mb-4 sm:mb-6 text-sm">Vas a denegar el acceso a <span className="text-white font-bold">{cliente.nombre} {cliente.apellido1}</span>. Selecciona el motivo:</p>
+                    {/* Lista de motivos predefinidos; el seleccionado se resalta en rojo */}
                     <div className="space-y-2 mb-4">
                         {motivosFrecuentes.map((m) => (
                             <button key={m} onClick={() => setMotivo(m)}
@@ -201,6 +218,7 @@ const ModalDenegarAcceso = ({ cliente, onConfirmar, onCerrar, guardando }: {
                             </button>
                         ))}
                     </div>
+                    {/* Input de texto personalizado visible solo si se selecciona "Otro" */}
                     {motivo === "Otro" && (
                         <div className="mb-4">
                             <p className="text-gray-500 text-xs uppercase tracking-widest mb-2">Especifica el motivo</p>
@@ -210,6 +228,7 @@ const ModalDenegarAcceso = ({ cliente, onConfirmar, onCerrar, guardando }: {
                     )}
                     <div className="flex gap-3 mt-5 sm:mt-6">
                         <button onClick={onCerrar} className="flex-1 bg-white/5 hover:bg-white/10 text-gray-400 py-3 rounded-xl font-bold transition-all">Cancelar</button>
+                        {/* El botón de denegación abre el modal de confirmación; requiere motivo no vacío */}
                         <button onClick={() => setConfirmando(true)} disabled={guardando || !motivoFinal.trim()}
                             className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2">
                             <ShieldOff size={16} /> {guardando ? "Procesando..." : "Denegar Acceso"}
@@ -229,6 +248,8 @@ const ModalDenegarAcceso = ({ cliente, onConfirmar, onCerrar, guardando }: {
     );
 };
 
+// Modal de entrada masiva de stock: buscador, lista de artículos con input de cantidad por cada uno
+// El botón de confirmar se habilita solo cuando al menos un artículo tiene cantidad > 0
 const ModalEntradaStock = ({ articulos, onCerrar, onConfirmar, guardando }: {
     articulos: Articulo[]; onCerrar: () => void;
     onConfirmar: (entradas: EntradaStock[]) => void; guardando: boolean;
@@ -239,6 +260,8 @@ const ModalEntradaStock = ({ articulos, onCerrar, onConfirmar, guardando }: {
         const t = filtro.toLowerCase();
         return a.codigo.toLowerCase().includes(t) || a.descripcion.toLowerCase().includes(t);
     });
+
+    // Convierte el mapa de cantidades en el array de entradas válidas (cantidad > 0)
     const entradas = Object.entries(cantidades).map(([id, cant]) => ({ articulo_id: Number(id), cantidad: parseInt(cant) || 0 })).filter(e => e.cantidad > 0);
     const totalArticulos = entradas.length;
     return (
@@ -260,6 +283,7 @@ const ModalEntradaStock = ({ articulos, onCerrar, onConfirmar, guardando }: {
                     <input type="text" value={filtro} onChange={(e) => setFiltro(e.target.value)} placeholder="Buscar artículo..."
                         className="bg-transparent text-white text-sm focus:outline-none w-full placeholder:text-gray-600" />
                 </div>
+                {/* Lista filtrada de artículos con resaltado verde cuando tienen cantidad asignada */}
                 <div className="overflow-y-auto flex-1 space-y-2 pr-1">
                     {articulosFiltrados.map((art) => (
                         <div key={art.id} className={`flex items-center justify-between gap-3 sm:gap-4 px-3 sm:px-5 py-3 sm:py-4 rounded-2xl border transition-all ${cantidades[art.id] && parseInt(cantidades[art.id]) > 0 ? "bg-green-500/5 border-green-500/20" : "bg-white/[0.02] border-white/5"}`}>
@@ -279,6 +303,7 @@ const ModalEntradaStock = ({ articulos, onCerrar, onConfirmar, guardando }: {
                     ))}
                 </div>
                 <div className="flex-shrink-0 mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-white/5">
+                    {/* Resumen de artículos con entrada pendiente antes de confirmar */}
                     {totalArticulos > 0 && (
                         <div className="mb-3 sm:mb-4 bg-green-500/10 border border-green-500/20 rounded-2xl px-4 py-3">
                             <p className="text-green-400 text-sm font-bold">{totalArticulos} artículo{totalArticulos > 1 ? "s" : ""} con entrada de stock</p>
@@ -298,6 +323,7 @@ const ModalEntradaStock = ({ articulos, onCerrar, onConfirmar, guardando }: {
 };
 
 export default function JefePage() {
+    // Datos cargados desde /api/jefe
     const [empleados, setEmpleados] = useState<Empleado[]>([]);
     const [clientes, setClientes] = useState<Cliente[]>([]);
     const [presupuestos, setPresupuestos] = useState<Presupuesto[]>([]);
@@ -305,32 +331,41 @@ export default function JefePage() {
     const [articulos, setArticulos] = useState<Articulo[]>([]);
     const [statsEmpleados, setStatsEmpleados] = useState<StatsEmpleado[]>([]);
     const [stats, setStats] = useState<Stats | null>(null);
+
+    // Control de carga, autorización y vista activa
     const [loading, setLoading] = useState(true);
     const [autorizado, setAutorizado] = useState(false);
     const [view, setView] = useState<"dashboard" | "empleados" | "presupuestos" | "clientes" | "facturas" | "stock" | "rendimiento">("dashboard");
 
+    // Estados del modal de empleado: apertura, modo edición, ID en edición, formulario y errores
     const [modalEmpleadoAbierto, setModalEmpleadoAbierto] = useState(false);
     const [modoEdicion, setModoEdicion] = useState(false);
     const [empleadoEditandoId, setEmpleadoEditandoId] = useState<string | null>(null);
     const [form, setForm] = useState<FormEmpleado>(FORM_VACIO);
     const [guardando, setGuardando] = useState(false);
     const [errorForm, setErrorForm] = useState("");
+
+    // Estado del modal de denegación de acceso a cliente
     const [clienteDenegar, setClienteDenegar] = useState<Cliente | null>(null);
     const [guardandoAcceso, setGuardandoAcceso] = useState(false);
 
+    // Filtros y edición inline de stock
     const [filtroStock, setFiltroStock] = useState("");
     const [filtroFacturas, setFiltroFacturas] = useState("");
     const [editandoStock, setEditandoStock] = useState<number | null>(null);
     const [valorStockEdit, setValorStockEdit] = useState<number>(0);
     const [guardandoStock, setGuardandoStock] = useState(false);
 
+    // Modal de entrada masiva de stock
     const [modalEntradaStockAbierto, setModalEntradaStockAbierto] = useState(false);
     const [guardandoEntrada, setGuardandoEntrada] = useState(false);
 
+    // Edición inline de objetivo mensual de empleado
     const [editandoObjetivo, setEditandoObjetivo] = useState<string | null>(null);
     const [valorObjetivoEdit, setValorObjetivoEdit] = useState<string>("");
     const [guardandoObjetivo, setGuardandoObjetivo] = useState(false);
 
+    // Modales de confirmación para cambio de estado, eliminación y restauración
     const [confirmEstado, setConfirmEstado] = useState<{ presupuesto_id: string; estadoNuevo: string; estadoActual: string; vehiculo: string } | null>(null);
     const [guardandoEstado, setGuardandoEstado] = useState(false);
     const [confirmEliminar, setConfirmEliminar] = useState<{ empleado_id: string; nombre: string } | null>(null);
@@ -338,19 +373,22 @@ export default function JefePage() {
     const [confirmGuardarEmpleado, setConfirmGuardarEmpleado] = useState(false);
     const [confirmRestaurar, setConfirmRestaurar] = useState<Cliente | null>(null);
     const [guardandoRestaurar, setGuardandoRestaurar] = useState(false);
+
+    // Alerta genérica y confirmación de cierre de sesión
     const [alerta, setAlerta] = useState<string | null>(null);
     const mostrarAlerta = (msg: string) => setAlerta(msg);
     const [confirmLogout, setConfirmLogout] = useState(false);
 
     const router = useRouter();
 
+    // Al montar: verifica que el rol sea "jefe" o "admin", carga datos y activa polling silencioso cada 15s
     useEffect(() => {
         const role = sessionStorage.getItem("user_role");
         if (!role || !["jefe", "admin"].includes(role.toLowerCase())) { sessionStorage.clear(); router.push("/login"); return; }
         setAutorizado(true);
         cargarDatos();
 
-        // ✅ Refresco automático cada 15 segundos sin mostrar spinner
+        // Refresco automático en segundo plano sin mostrar spinner ni interrumpir la UI
         const intervalo = setInterval(async () => {
             try {
                 const res = await fetch("/api/jefe");
@@ -363,12 +401,13 @@ export default function JefePage() {
                 setArticulos(data.articulos || []);
                 setStatsEmpleados(data.statsEmpleados || []);
                 setStats(data.stats || null);
-            } catch { /* silencioso */ }
+            } catch { }
         }, 15000);
 
         return () => clearInterval(intervalo);
     }, [router]);
 
+    // Carga inicial de todos los datos del panel desde /api/jefe
     const cargarDatos = async () => {
         try {
             const res = await fetch("/api/jefe");
@@ -382,8 +421,10 @@ export default function JefePage() {
         finally { setLoading(false); }
     };
 
+    // Limpia la sesión y redirige al login
     const handleLogout = () => { sessionStorage.clear(); router.push("/login"); };
 
+    // Suma las cantidades de cada entrada al stock actual y actualiza la API en paralelo
     const confirmarEntradaStock = async (entradas: EntradaStock[]) => {
         if (entradas.length === 0) return;
         setGuardandoEntrada(true);
@@ -399,6 +440,7 @@ export default function JefePage() {
         finally { setGuardandoEntrada(false); }
     };
 
+    // Valida y guarda el objetivo mensual de facturación de un empleado
     const guardarObjetivo = async (empleado_id: string) => {
         const valor = parseFloat(valorObjetivoEdit);
         if (isNaN(valor) || valor < 0) { mostrarAlerta("Introduce un valor válido."); return; }
@@ -412,6 +454,7 @@ export default function JefePage() {
         finally { setGuardandoObjetivo(false); }
     };
 
+    // Valida que el stock no sea negativo y actualiza el valor en la API
     const actualizarStock = async (articulo_id: number, stock_nuevo: number) => {
         if (stock_nuevo < 0) { mostrarAlerta("El stock no puede ser negativo."); return; }
         setGuardandoStock(true);
@@ -424,16 +467,22 @@ export default function JefePage() {
         finally { setGuardandoStock(false); }
     };
 
+    // Genera el PDF de una factura con jsPDF: cabecera oscura, datos del cliente, tabla de artículos y pie de total
+    // Si abrirEnVentana es true lo muestra en nueva pestaña; si no, lo descarga directamente
     const generarFacturaPDF = (data: any, abrirEnVentana: boolean = true) => {
         const doc = new jsPDF();
         const pageWidth = doc.internal.pageSize.getWidth();
         const margin = 15;
+
+        // Cabecera con fondo oscuro y título
         doc.setFillColor(17, 24, 39); doc.rect(0, 0, pageWidth, 55, "F");
         doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(26);
         doc.text("AJCAR 25 - FACTURA", margin, 35);
         doc.setFontSize(11); doc.setFont("helvetica", "normal");
         doc.text(`Nº: ${data.numero_factura || data.id || "TEMP"}`, margin, 70);
         doc.text(`FECHA: ${new Date(data.fecha_emision || Date.now()).toLocaleDateString('es-ES')}`, pageWidth - margin, 70, { align: "right" });
+
+        // Datos del cliente
         let y = 85;
         doc.setTextColor(0, 0, 0); doc.setFontSize(11); doc.setFont("helvetica", "bold");
         doc.text("DATOS DEL CLIENTE:", margin, y); y += 8;
@@ -441,6 +490,8 @@ export default function JefePage() {
         const clienteNombre = data.cliente_nombre || `${data.nombre || "N/A"} ${data.apellidos1 || ""}`.trim();
         doc.text(`Cliente: ${clienteNombre}`, margin, y); y += 7;
         if (data.vehiculo) { doc.text(`Vehículo: ${data.vehiculo}`, margin, y); y += 7; } y += 5;
+
+        // Tabla de artículos con autoTable
         const tableBody = (data.articulos || []).filter((art: any) => art && (art.descripcion || art.nombre)).map((art: any) => [
             art.descripcion || art.nombre || "Artículo", String(Number(art.cantidad) || 1),
             `${Number(art.precio_unitario || art.precio || 0).toFixed(2)}€`,
@@ -451,6 +502,8 @@ export default function JefePage() {
             styles: { fontSize: 9, cellPadding: 6, lineColor: [200, 200, 200] },
             columnStyles: { 0: { halign: "left", cellWidth: "auto" }, 1: { halign: "center", cellWidth: 25 }, 2: { halign: "right", cellWidth: 35 }, 3: { halign: "right", cellWidth: 35 } },
             margin: { left: margin, right: margin } });
+
+        // Pie con total en banda azul
         const finalY = (doc as any).lastAutoTable.finalY + 8;
         let total = data.total !== undefined ? Number(data.total) : 0; if (isNaN(total)) total = 0;
         doc.setFillColor(41, 128, 185); doc.rect(margin, finalY, pageWidth - margin * 2, 12, "F");
@@ -464,13 +517,17 @@ export default function JefePage() {
         return doc.output('datauristring');
     };
 
+    // Prepara el formulario para crear un nuevo empleado
     const abrirModalNuevo = () => { setForm(FORM_VACIO); setModoEdicion(false); setEmpleadoEditandoId(null); setErrorForm(""); setModalEmpleadoAbierto(true); };
+
+    // Prepara el formulario con los datos del empleado existente para edición
     const abrirModalEditar = (emp: Empleado) => {
         setForm({ nombre: emp.nombre || "", apellido1: emp.apellido1 || "", apellido2: emp.apellido2 || "", email: emp.email || "", telefono: emp.telefono || "", password: "" });
         setModoEdicion(true); setEmpleadoEditandoId(emp.id); setErrorForm(""); setModalEmpleadoAbierto(true);
     };
     const cerrarModalEmpleado = () => { setModalEmpleadoAbierto(false); setErrorForm(""); };
 
+    // En modo edición abre el modal de confirmación; en modo creación ejecuta directamente
     const guardarEmpleado = async () => {
         setErrorForm("");
         if (!form.nombre || !form.email || !form.telefono) { setErrorForm("Nombre, email y teléfono son obligatorios."); return; }
@@ -478,6 +535,7 @@ export default function JefePage() {
         await ejecutarGuardarEmpleado();
     };
 
+    // PATCH para edición o POST para creación; actualiza el estado local sin recargar la página
     const ejecutarGuardarEmpleado = async () => {
         setConfirmGuardarEmpleado(false); setGuardando(true);
         try {
@@ -496,8 +554,10 @@ export default function JefePage() {
         finally { setGuardando(false); }
     };
 
+    // Abre el modal de confirmación antes de eliminar un empleado
     const pedirConfirmacionEliminar = (empleado_id: string, nombre: string) => { setConfirmEliminar({ empleado_id, nombre }); };
 
+    // DELETE del empleado y eliminación del estado local sin recargar
     const ejecutarEliminarEmpleado = async () => {
         if (!confirmEliminar) return;
         setGuardandoEliminar(true);
@@ -510,6 +570,7 @@ export default function JefePage() {
         finally { setGuardandoEliminar(false); }
     };
 
+    // PATCH para marcar al cliente como inactivo con el motivo de baja proporcionado
     const denegarAcceso = async (motivo: string) => {
         if (!clienteDenegar) return;
         setGuardandoAcceso(true);
@@ -522,8 +583,10 @@ export default function JefePage() {
         finally { setGuardandoAcceso(false); }
     };
 
+    // Abre el modal de confirmación antes de restaurar el acceso a un cliente bloqueado
     const restaurarAcceso = async (cliente: Cliente) => { setConfirmRestaurar(cliente); };
 
+    // PATCH para reactivar al cliente y borrar el motivo de baja
     const ejecutarRestaurarAcceso = async () => {
         if (!confirmRestaurar) return;
         setGuardandoRestaurar(true);
@@ -536,11 +599,13 @@ export default function JefePage() {
         finally { setGuardandoRestaurar(false); }
     };
 
+    // Guarda los datos del cambio de estado en un presupuesto para mostrar el modal de confirmación
     const pedirConfirmacionEstado = (presupuesto_id: string, estadoNuevo: string, estadoActual: string, vehiculo: string) => {
         if (estadoNuevo === estadoActual) return;
         setConfirmEstado({ presupuesto_id, estadoNuevo, estadoActual, vehiculo });
     };
 
+    // PATCH del estado del presupuesto y actualización local
     const ejecutarCambioEstado = async () => {
         if (!confirmEstado) return;
         setGuardandoEstado(true);
@@ -552,14 +617,17 @@ export default function JefePage() {
         finally { setGuardandoEstado(false); }
     };
 
+    // Valor máximo de facturación para escalar las barras del ranking de rendimiento
     const maxFacturado = Math.max(...statsEmpleados.map(e => Number(e.total_facturado)), 1);
 
+    // Pantalla de espera mientras se verifica la autorización
     if (!autorizado) return (
         <div className="min-h-screen bg-[#0a0a0c] flex items-center justify-center">
             <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
         </div>
     );
 
+    // Pantalla de carga mientras se obtienen los datos de la API
     if (loading) return (
         <div className="min-h-screen bg-[#0a0a0c] flex items-center justify-center">
             <div className="text-center">
@@ -573,7 +641,7 @@ export default function JefePage() {
         <div className="min-h-screen bg-[#0a0a0c] text-gray-400 font-sans">
             <div className="p-4 sm:p-8 lg:p-16 max-w-7xl mx-auto">
 
-                {/* HEADER */}
+                {/* HEADER: logo, título del panel y botón de cierre de sesión */}
                 <header className="flex justify-between items-center mb-8 sm:mb-16 gap-4">
                     <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                         <img src="/imagenes/logo_ajcar25.png" alt="AJCAR 25" className="w-10 h-10 sm:w-14 sm:h-14 rounded-2xl object-contain flex-shrink-0" />
@@ -587,7 +655,7 @@ export default function JefePage() {
                     </button>
                 </header>
 
-                {/* TABS */}
+                {/* BARRA DE PESTAÑAS: resalta la activa con fondo azul */}
                 <div className="flex flex-wrap gap-1 sm:gap-2 mb-8 sm:mb-12 bg-white/[0.03] p-1 sm:p-1.5 rounded-2xl sm:rounded-3xl border border-white/5 w-full sm:w-fit">
                     {([
                         { key: "dashboard", label: "Dashboard" },
@@ -605,7 +673,7 @@ export default function JefePage() {
                     ))}
                 </div>
 
-                {/* DASHBOARD */}
+                {/* VISTA DASHBOARD: tarjetas de KPIs, distribución de presupuestos por estado y últimas facturas */}
                 {view === "dashboard" && stats && (
                     <div className="space-y-6 sm:space-y-10">
                         <h2 className="text-2xl sm:text-4xl font-black text-white mb-4 sm:mb-6">Resumen General</h2>
@@ -648,7 +716,7 @@ export default function JefePage() {
                     </div>
                 )}
 
-                {/* RENDIMIENTO */}
+                {/* VISTA RENDIMIENTO: objetivos mensuales con barra de progreso y ranking de facturación total */}
                 {view === "rendimiento" && (
                     <div className="space-y-6 sm:space-y-8">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 sm:mb-6">
@@ -682,6 +750,7 @@ export default function JefePage() {
                                                         <div className="text-left sm:text-right">
                                                             <p className="text-blue-400 font-bold text-sm">{facturado.toFixed(2)} € <span className="text-gray-600 font-normal text-xs">facturado</span></p>
                                                             {editandoObjetivo === emp.id ? (
+                                                                // Modo edición inline del objetivo: Enter para guardar, Escape para cancelar
                                                                 <div className="flex items-center gap-2 mt-1">
                                                                     <div className="relative">
                                                                         <input type="number" min="0" value={valorObjetivoEdit} onChange={(e) => setValorObjetivoEdit(e.target.value)}
@@ -701,6 +770,7 @@ export default function JefePage() {
                                                             )}
                                                         </div>
                                                     </div>
+                                                    {/* Barra de progreso: verde si supera el objetivo, azul si está en curso */}
                                                     <div className="w-full bg-white/5 rounded-full h-2 sm:h-2.5 mt-2">
                                                         <div className={`h-2 sm:h-2.5 rounded-full transition-all duration-700 ${superado ? "bg-green-500" : objetivo > 0 ? "bg-blue-500" : "bg-white/10"}`} style={{ width: `${porcentaje}%` }} />
                                                     </div>
@@ -710,6 +780,8 @@ export default function JefePage() {
                                         })}
                                     </div>
                                 </div>
+
+                                {/* Ranking de empleados por facturación total con medallas para los tres primeros */}
                                 <div className="bg-[#0f0f12] rounded-[24px] sm:rounded-[40px] p-6 sm:p-10 border border-white/5">
                                     <div className="flex items-center gap-3 mb-6 sm:mb-8">
                                         <Trophy size={22} className="text-yellow-400" />
@@ -735,6 +807,7 @@ export default function JefePage() {
                                                             <p className="text-gray-500 text-xs">{emp.total_facturas} facturas</p>
                                                         </div>
                                                     </div>
+                                                    {/* Barra proporcional al empleado con mayor facturación */}
                                                     <div className="w-full bg-white/5 rounded-full h-2">
                                                         <div className={`${barColor} h-2 rounded-full transition-all duration-700`} style={{ width: `${porcentaje}%` }} />
                                                     </div>
@@ -754,7 +827,7 @@ export default function JefePage() {
                     </div>
                 )}
 
-                {/* EMPLEADOS */}
+                {/* VISTA EMPLEADOS: listado con matrícula, estado activo/inactivo y botones de editar y eliminar */}
                 {view === "empleados" && (
                     <div className="space-y-4 sm:space-y-6">
                         <div className="flex justify-between items-center mb-6 sm:mb-10 gap-4">
@@ -801,7 +874,7 @@ export default function JefePage() {
                     </div>
                 )}
 
-                {/* PRESUPUESTOS */}
+                {/* VISTA PRESUPUESTOS: listado con badge de estado y selector para cambiar el estado directamente */}
                 {view === "presupuestos" && (
                     <div className="space-y-4 sm:space-y-6">
                         <h2 className="text-2xl sm:text-4xl font-black text-white mb-6 sm:mb-10">Presupuestos <span className="text-gray-500 text-lg sm:text-2xl font-normal">({presupuestos.length})</span></h2>
@@ -833,7 +906,7 @@ export default function JefePage() {
                     </div>
                 )}
 
-                {/* CLIENTES */}
+                {/* VISTA CLIENTES: listado con tipo, estado activo/bloqueado, motivo de baja y acciones de denegar o restaurar */}
                 {view === "clientes" && (
                     <div className="space-y-4 sm:space-y-6">
                         <h2 className="text-2xl sm:text-4xl font-black text-white mb-6 sm:mb-10">Clientes <span className="text-gray-500 text-lg sm:text-2xl font-normal">({clientes.length})</span></h2>
@@ -849,6 +922,7 @@ export default function JefePage() {
                                     </div>
                                     <p className="text-gray-500 text-sm">📞 {c.telefono}</p>
                                     <p className="text-gray-600 text-xs mt-1">Registrado: {new Date(c.fecha_registro).toLocaleDateString("es-ES")}</p>
+                                    {/* Motivo de baja visible solo si el cliente está bloqueado */}
                                     {!c.esta_activo && c.motivo_baja && (
                                         <div className="mt-3 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-2 inline-block">
                                             <p className="text-red-400 text-xs font-bold">Motivo: {c.motivo_baja}</p>
@@ -882,7 +956,7 @@ export default function JefePage() {
                     </div>
                 )}
 
-                {/* FACTURAS */}
+                {/* VISTA FACTURAS: buscador por matrícula/vehículo/cliente y lista con empleado asignado y botón de descarga PDF */}
                 {view === "facturas" && (
                     <div className="space-y-4 sm:space-y-6">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-10">
@@ -946,7 +1020,7 @@ export default function JefePage() {
                     </div>
                 )}
 
-                {/* STOCK */}
+                {/* VISTA STOCK: tabla filtrable con edición inline de stock y botón de entrada masiva */}
                 {view === "stock" && (
                     <div className="space-y-4 sm:space-y-6">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-10">
@@ -978,6 +1052,7 @@ export default function JefePage() {
                                             <div className="col-span-2 text-right hidden sm:block"><span className="text-gray-400 text-sm">{Number(art.precio_unitario).toFixed(2)}€</span></div>
                                             <div className="col-span-4 sm:col-span-3 flex items-center justify-center gap-1 sm:gap-3">
                                                 {editandoStock === art.id ? (
+                                                    // Modo edición inline de stock: controles +/- y botones de confirmar/cancelar
                                                     <>
                                                         <button onClick={() => { const v = Math.max(0, valorStockEdit - 1); setValorStockEdit(v); }} className="w-7 h-7 sm:w-8 sm:h-8 bg-white/5 hover:bg-red-500/20 text-red-400 rounded-xl flex items-center justify-center font-black text-lg transition-all">−</button>
                                                         <input type="number" min="0" value={valorStockEdit} onChange={(e) => setValorStockEdit(Math.max(0, parseInt(e.target.value) || 0))} className="w-12 sm:w-16 bg-white/5 border border-blue-500/50 text-white text-center rounded-xl px-1 sm:px-2 py-1 text-sm font-bold focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
@@ -986,6 +1061,7 @@ export default function JefePage() {
                                                         <button onClick={() => setEditandoStock(null)} className="w-7 h-7 sm:w-8 sm:h-8 bg-white/5 hover:bg-white/10 text-gray-400 rounded-xl flex items-center justify-center transition-all flex-shrink-0"><X size={12} /></button>
                                                     </>
                                                 ) : (
+                                                    // Modo lectura: stock en rojo si es 0, amarillo si < 5, blanco si hay suficiente
                                                     <>
                                                         <span className={`text-xl sm:text-2xl font-black ${art.stock === 0 ? "text-red-400" : art.stock < 5 ? "text-yellow-400" : "text-white"}`}>{art.stock}</span>
                                                         <button onClick={() => { setEditandoStock(art.id); setValorStockEdit(art.stock); }} className="w-7 h-7 sm:w-8 sm:h-8 bg-white/5 hover:bg-blue-500/20 text-gray-500 hover:text-blue-400 rounded-xl flex items-center justify-center transition-all"><Pencil size={12} /></button>
@@ -1006,24 +1082,31 @@ export default function JefePage() {
                 )}
             </div>
 
+            {/* MODALES GLOBALES */}
+
+            {/* Modal de creación o edición de empleado */}
             {modalEmpleadoAbierto && (
                 <ModalEmpleado titulo={modoEdicion ? "Editar Empleado" : "Nuevo Empleado"} form={form} setForm={setForm}
                     onGuardar={guardarEmpleado} onCerrar={cerrarModalEmpleado} guardando={guardando} error={errorForm} modoEdicion={modoEdicion} />
             )}
+            {/* Modal de selección de motivo y confirmación de denegación de acceso */}
             {clienteDenegar && (
                 <ModalDenegarAcceso cliente={clienteDenegar} onConfirmar={denegarAcceso}
                     onCerrar={() => setClienteDenegar(null)} guardando={guardandoAcceso} />
             )}
+            {/* Modal de entrada masiva de stock */}
             {modalEntradaStockAbierto && (
                 <ModalEntradaStock articulos={articulos} onCerrar={() => setModalEntradaStockAbierto(false)}
                     onConfirmar={confirmarEntradaStock} guardando={guardandoEntrada} />
             )}
+            {/* Confirmación de cambio de estado de un presupuesto */}
             {confirmEstado && (
                 <ModalConfirmar titulo="Cambiar Estado"
                     mensaje={`¿Cambiar el estado de "${confirmEstado.vehiculo}" de "${confirmEstado.estadoActual}" a "${confirmEstado.estadoNuevo}"?`}
                     detalle="Esta acción actualizará el estado del presupuesto inmediatamente."
                     onConfirmar={ejecutarCambioEstado} onCerrar={() => setConfirmEstado(null)} guardando={guardandoEstado} />
             )}
+            {/* Confirmación de eliminación de empleado */}
             {confirmEliminar && (
                 <ModalConfirmar titulo="Eliminar Empleado"
                     mensaje={`¿Estás seguro de que quieres eliminar a ${confirmEliminar.nombre}?`}
@@ -1031,6 +1114,7 @@ export default function JefePage() {
                     onConfirmar={ejecutarEliminarEmpleado} onCerrar={() => setConfirmEliminar(null)}
                     guardando={guardandoEliminar} colorBoton="bg-red-600 hover:bg-red-700" />
             )}
+            {/* Confirmación de restauración de acceso a cliente bloqueado */}
             {confirmRestaurar && (
                 <ModalConfirmar titulo="Restaurar Acceso"
                     mensaje={`¿Restaurar el acceso a ${confirmRestaurar.nombre} ${confirmRestaurar.apellido1 || ""}?`}
@@ -1038,12 +1122,14 @@ export default function JefePage() {
                     onConfirmar={ejecutarRestaurarAcceso} onCerrar={() => setConfirmRestaurar(null)}
                     guardando={guardandoRestaurar} colorBoton="bg-green-600 hover:bg-green-700" />
             )}
+            {/* Confirmación de guardado de cambios en un empleado existente */}
             {confirmGuardarEmpleado && (
                 <ModalConfirmar titulo="Guardar cambios"
                     mensaje="¿Confirmas que quieres guardar los cambios en este empleado?"
                     detalle="Los datos actuales serán reemplazados por los nuevos."
                     onConfirmar={ejecutarGuardarEmpleado} onCerrar={() => setConfirmGuardarEmpleado(false)} />
             )}
+            {/* Confirmación de cierre de sesión */}
             {confirmLogout && (
                 <ModalConfirmar titulo="Cerrar Sesión"
                     mensaje="¿Estás seguro de que quieres cerrar sesión?"
@@ -1051,6 +1137,7 @@ export default function JefePage() {
                     onConfirmar={() => { setConfirmLogout(false); handleLogout(); }}
                     onCerrar={() => setConfirmLogout(false)} colorBoton="bg-red-600 hover:bg-red-700" />
             )}
+            {/* Modal de alerta genérico para errores de red o validación */}
             {alerta && <ModalAlerta mensaje={alerta} onCerrar={() => setAlerta(null)} />}
         </div>
     );

@@ -1,8 +1,7 @@
-// app/api/usuarios/existe-email/route.ts
-
 import { NextRequest, NextResponse } from 'next/server';
 import { neon } from "@neondatabase/serverless";
 
+// Comprueba si un email está registrado y devuelve los datos del usuario junto con su tipo (cliente o empleado)
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -25,7 +24,7 @@ export async function GET(request: NextRequest) {
         email, 
         telefono, 
         tipo_cliente,
-        role   -- <-- Añadimos esta columna por si usas 'role' para empleados
+        role
       FROM usuarios 
       WHERE email = ${email}
       LIMIT 1
@@ -37,14 +36,15 @@ export async function GET(request: NextRequest) {
 
     const usuario = result[0];
 
-    // Lógica mejorada para detectar empleados
-    const esEmpleado = 
-      usuario.tipo_cliente === 'empleado' || 
-      usuario.role?.toLowerCase() === 'empleado' || 
-      usuario.role?.toLowerCase() === 'admin' || 
+    // Considera empleado cualquier usuario con role empleado, admin o jefe;
+    // todo lo demás se trata como cliente
+    const esEmpleado =
+      usuario.tipo_cliente === 'empleado' ||
+      usuario.role?.toLowerCase() === 'empleado' ||
+      usuario.role?.toLowerCase() === 'admin' ||
       usuario.role?.toLowerCase() === 'jefe';
 
-    const esCliente = !esEmpleado;   // Todo lo que no sea empleado es cliente
+    const esCliente = !esEmpleado;
 
     return NextResponse.json({
       existe: true,
@@ -54,10 +54,10 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error("❌ Error verificando email:", error);
-    return NextResponse.json({ 
+    console.error("Error verificando email:", error);
+    return NextResponse.json({
       error: "Error interno del servidor",
-      detalle: error.message 
+      detalle: error.message
     }, { status: 500 });
   }
 }

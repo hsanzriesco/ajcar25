@@ -4,6 +4,8 @@ import bcrypt from "bcryptjs";
 
 export const dynamic = "force-dynamic";
 
+// Devuelve todos los datos necesarios para el panel de jefe en una sola llamada:
+// empleados, clientes, presupuestos, facturas, artículos, estadísticas globales y rendimiento por empleado
 export async function GET(req: NextRequest) {
   try {
     const sql = neon(process.env.DATABASE_URL!);
@@ -26,6 +28,7 @@ export async function GET(req: NextRequest) {
       SELECT * FROM presupuestos_pedidos ORDER BY creado_en DESC
     `;
 
+    // JOIN con usuarios para incluir el nombre del empleado que emitió cada factura
     const facturas = await sql`
       SELECT 
         f.*,
@@ -42,6 +45,7 @@ export async function GET(req: NextRequest) {
       ORDER BY descripcion ASC
     `;
 
+    // KPIs de ingresos: total histórico e ingresos del mes en curso
     const totalIngresosResult = await sql`
       SELECT COALESCE(SUM(total), 0) AS total FROM facturas
     `;
@@ -55,7 +59,8 @@ export async function GET(req: NextRequest) {
       SELECT estado, COUNT(*) AS cantidad FROM presupuestos_pedidos GROUP BY estado
     `;
 
-    // Estadísticas por empleado + objetivo del mes actual
+    // Estadísticas de rendimiento por empleado: facturas totales, importe total,
+    // importe facturado en el mes actual y objetivo mensual definido por el jefe
     const statsEmpleados = await sql`
       SELECT 
         u.id,
@@ -106,7 +111,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST — crear empleado con matrícula aleatoria de 6 dígitos
+// Crea un nuevo empleado con matrícula numérica aleatoria única de 6 dígitos
 export async function POST(req: NextRequest) {
   try {
     const sql = neon(process.env.DATABASE_URL!);
@@ -121,6 +126,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Ya existe un usuario con ese email" }, { status: 400 });
     }
 
+    // Genera una matrícula única comprobando colisiones; máximo 10 intentos
     let matricula = "";
     let intentos = 0;
     do {
@@ -130,6 +136,7 @@ export async function POST(req: NextRequest) {
       intentos++;
     } while (intentos < 10);
 
+    // Si no se proporciona contraseña se usa la clave por defecto del sistema
     const passwordFinal = password || "Ajcar25&";
     const hash = await bcrypt.hash(passwordFinal, 10);
 
@@ -147,14 +154,15 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// PATCH — editar empleado, cambiar estado presupuesto, denegar/restaurar cliente, actualizar stock, actualizar objetivo
+// Endpoint multipropósito: edita empleado, cambia estado de presupuesto, gestiona acceso de cliente,
+// actualiza stock o guarda el objetivo mensual según el campo "tipo" del body
 export async function PATCH(req: NextRequest) {
   try {
     const sql = neon(process.env.DATABASE_URL!);
     const body = await req.json();
     const { tipo, empleado_id, nombre, apellido1, apellido2, email, telefono, password, presupuesto_id, estado, cliente_id, esta_activo, motivo_baja, articulo_id, stock_nuevo, objetivo } = body;
 
-    // Editar empleado
+    // Actualiza solo los campos del empleado que vienen en el body
     if (tipo === "empleado" && empleado_id) {
       if (nombre !== undefined) await sql`UPDATE usuarios SET nombre = ${nombre} WHERE id = ${empleado_id}`;
       if (apellido1 !== undefined) await sql`UPDATE usuarios SET apellido1 = ${apellido1} WHERE id = ${empleado_id}`;
@@ -168,7 +176,7 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ success: true });
     }
 
-    // Denegar o restaurar acceso de cliente
+    // Activa o bloquea el acceso de un cliente; al bloquear guarda el motivo de baja
     if (tipo === "cliente" && cliente_id) {
       await sql`
         UPDATE usuarios 
@@ -179,7 +187,7 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ success: true });
     }
 
-    // Actualizar stock de artículo
+    // Establece el stock de un artículo al valor exacto indicado (no incremento)
     if (tipo === "stock" && articulo_id !== undefined && stock_nuevo !== undefined) {
       if (Number(stock_nuevo) < 0) {
         return NextResponse.json({ error: "El stock no puede ser negativo" }, { status: 400 });
@@ -193,7 +201,7 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ success: true, articulo: result[0] });
     }
 
-    // Actualizar objetivo mensual de un empleado
+    // Guarda o sobreescribe el objetivo mensual del empleado para el mes y año actuales
     if (tipo === "objetivo" && empleado_id && objetivo !== undefined) {
       const mes = new Date().getMonth() + 1;
       const anio = new Date().getFullYear();
@@ -206,7 +214,7 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ success: true });
     }
 
-    // Cambiar estado de presupuesto
+    // Cambio directo de estado de un presupuesto (sin tipo específico)
     if (presupuesto_id && estado !== undefined) {
       await sql`UPDATE presupuestos_pedidos SET estado = ${estado} WHERE id = ${presupuesto_id}`;
       return NextResponse.json({ success: true });
@@ -220,7 +228,7 @@ export async function PATCH(req: NextRequest) {
   }
 }
 
-// DELETE — eliminar empleado
+// Elimina un empleado de la BD; el filtro por role evita borrar clientes o administradores
 export async function DELETE(req: NextRequest) {
   try {
     const sql = neon(process.env.DATABASE_URL!);

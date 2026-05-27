@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { sql } from "../../../lib/db";
 import bcrypt from "bcryptjs";
 
+// Registra un nuevo cliente (particular o empresa) verificando que no exista previamente
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -18,8 +19,7 @@ export async function POST(req: Request) {
       telefono 
     } = body;
 
-    // 1. Verificar si el usuario ya existe (Email o DNI/CIF)
-    // Esto evita duplicados antes de intentar la inserción
+    // Comprueba duplicados por email o DNI/CIF antes de intentar la inserción
     const existingUser = await sql`
       SELECT id FROM usuarios 
       WHERE email = ${email} OR documento_identidad = ${dni} 
@@ -33,11 +33,9 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2. Encriptar contraseña (Coste de hash: 10)
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 3. Insertar en Neon incluyendo la nueva columna 'role'
-    // Importante: El orden de las columnas debe coincidir exactamente con los VALUES
+    // Los campos nombre/apellidos se rellenan solo para particulares; empresa usa nombreEmpresa y direccion_fiscal
     await sql`
       INSERT INTO usuarios (
         tipo_cliente, 
@@ -69,9 +67,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: "¡Registro exitoso!" }, { status: 201 });
 
   } catch (error) {
-    // Logueamos el error en la terminal para poder depurar
     console.error("Error en el registro:", error);
-    
     return NextResponse.json(
       { message: "Error interno en el servidor al procesar el registro" }, 
       { status: 500 }

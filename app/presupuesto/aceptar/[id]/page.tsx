@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { CheckCircle, Loader2, XCircle, X, AlertTriangle, Check } from "lucide-react";
 
+// Modal de confirmación específico para el rechazo del presupuesto
+// Solo se usa en este contexto, por lo que no necesita props de texto dinámico
 const ModalConfirmar = ({ onConfirmar, onCerrar }: { onConfirmar: () => void; onCerrar: () => void }) => (
   <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
     <div className="bg-[#161b24] border border-white/10 rounded-[30px] p-6 sm:p-10 w-full max-w-sm">
@@ -30,14 +32,23 @@ const ModalConfirmar = ({ onConfirmar, onCerrar }: { onConfirmar: () => void; on
 export default function PaginaAceptarPresupuesto() {
   const params = useParams();
   const id = params?.id;
+
+  // Estado de la pantalla: loading inicial, vista de decisión, éxito, rechazado o error
   const [status, setStatus] = useState<"loading" | "success" | "error" | "rejected" | "view">("loading");
+
+  // Indica que hay una petición en curso para deshabilitar los botones durante el proceso
   const [verificando, setVerificando] = useState(false);
+
+  // Controla la visibilidad del modal de confirmación de rechazo
   const [confirmRechazar, setConfirmRechazar] = useState(false);
 
+  // Cuando el ID está disponible en la URL, pasa a la vista de decisión
   useEffect(() => {
     if (id) setStatus("view");
   }, [id]);
 
+  // Obtiene el presupuesto actual y aplica el nuevo estado (aceptado o rechazado) via PATCH
+  // Si se acepta, envía los artículos actuales para reservar el stock; si se rechaza, los vacía
   const procesarAccion = async (nuevoEstado: "Aceptado por el cliente" | "Rechazado") => {
     if (!id) return;
     setVerificando(true);
@@ -67,7 +78,7 @@ export default function PaginaAceptarPresupuesto() {
     <div className="min-h-screen bg-[#0f1218] flex items-center justify-center p-4 font-sans text-white">
       <div className="max-w-md w-full bg-[#161b24] p-6 sm:p-10 rounded-[28px] sm:rounded-3xl border border-white/10 shadow-2xl text-center">
 
-        {/* Logo */}
+        {/* Logo con fallback en texto si la imagen no carga */}
         <div className="flex justify-center mb-6 sm:mb-8">
           <img src="/imagenes/logo_ajcar25.png" alt="AJCAR 25"
             className="w-12 h-12 rounded-2xl object-contain"
@@ -82,7 +93,7 @@ export default function PaginaAceptarPresupuesto() {
           />
         </div>
 
-        {/* VISTA INICIAL */}
+        {/* VISTA INICIAL: dos botones para aceptar o solicitar el rechazo del presupuesto */}
         {status === "view" && (
           <div className="space-y-5 sm:space-y-6">
             <h1 className="text-lg sm:text-xl font-bold uppercase tracking-widest">Revisión de Presupuesto</h1>
@@ -98,6 +109,7 @@ export default function PaginaAceptarPresupuesto() {
                 {verificando ? <Loader2 className="animate-spin" size={18} /> : <CheckCircle size={18} />}
                 Aceptar Presupuesto
               </button>
+              {/* El rechazo abre primero el modal de confirmación antes de ejecutar el PATCH */}
               <button
                 onClick={() => setConfirmRechazar(true)}
                 disabled={verificando}
@@ -109,7 +121,7 @@ export default function PaginaAceptarPresupuesto() {
           </div>
         )}
 
-        {/* ÉXITO */}
+        {/* PANTALLA DE ÉXITO: se muestra tras aceptar; confirma que el material ha sido reservado */}
         {status === "success" && (
           <div className="space-y-4 animate-in fade-in zoom-in">
             <CheckCircle className="text-green-500 mx-auto" size={56} />
@@ -118,7 +130,7 @@ export default function PaginaAceptarPresupuesto() {
           </div>
         )}
 
-        {/* RECHAZADO */}
+        {/* PANTALLA DE RECHAZO: se muestra tras confirmar el rechazo en el modal */}
         {status === "rejected" && (
           <div className="space-y-4 animate-in fade-in zoom-in">
             <XCircle className="text-red-500 mx-auto" size={56} />
@@ -127,7 +139,7 @@ export default function PaginaAceptarPresupuesto() {
           </div>
         )}
 
-        {/* ERROR */}
+        {/* PANTALLA DE ERROR: se muestra si el PATCH falla o el presupuesto no se puede obtener */}
         {status === "error" && (
           <div className="space-y-4">
             <XCircle className="text-red-500 mx-auto" size={56} />
@@ -141,7 +153,7 @@ export default function PaginaAceptarPresupuesto() {
         </footer>
       </div>
 
-      {/* Modal confirmar rechazo */}
+      {/* Modal de confirmación de rechazo: al confirmar cierra el modal y ejecuta el PATCH */}
       {confirmRechazar && (
         <ModalConfirmar
           onConfirmar={() => { setConfirmRechazar(false); procesarAccion("Rechazado"); }}

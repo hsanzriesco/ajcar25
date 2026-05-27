@@ -1,14 +1,16 @@
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 
+// Devuelve un único artículo buscando por código (insensible a mayúsculas y espacios)
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ codigo: string }> } // Lo definimos como Promise
+  { params }: { params: Promise<{ codigo: string }> }
 ) {
   try {
-    const { codigo } = await params; // Esperamos a los parámetros
+    const { codigo } = await params;
     const sql = neon(process.env.DATABASE_URL!);
 
+    // Busca el artículo normalizando el código antes de comparar
     const articulos = await sql`
       SELECT id, codigo, descripcion, precio_unitario, stock 
       FROM articulos 

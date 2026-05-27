@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 
-/* =========================
-   OBTENER PRESUPUESTO
-========================= */
-
+// Devuelve un presupuesto completo por su ID
 export async function GET(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -38,10 +35,10 @@ export async function GET(
   }
 }
 
-/* =========================
-   ACTUALIZAR PRESUPUESTO (PATCH)
-========================= */
-
+// Actualiza el estado de un presupuesto con lógica diferenciada según el nuevo estado:
+// - Aceptado: reserva el stock de los artículos
+// - Cancelado: requiere motivo y lo guarda junto al estado
+// - Resto: actualiza solo el estado
 export async function PATCH(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -53,9 +50,8 @@ export async function PATCH(
 
     const sql = neon(process.env.DATABASE_URL!);
 
-    // ====================== LÓGICA PARA ACEPTADO POR EL CLIENTE ======================
+    // Al aceptar el presupuesto, descuenta el stock disponible y aumenta el reservado por cada artículo
     if (estado === "Aceptado por el cliente" && articulos && articulos.length > 0) {
-      // Actualizamos el stock de cada artículo
       for (const item of articulos) {
         await sql`
           UPDATE articulos 
@@ -67,7 +63,7 @@ export async function PATCH(
       }
     }
 
-    // ====================== LÓGICA PARA CANCELACIÓN ======================
+    // Al cancelar, el motivo es obligatorio y se persiste junto al nuevo estado
     if (estado === "Cancelado") {
       if (!motivo_cancelacion || motivo_cancelacion.trim() === "") {
         return NextResponse.json(
@@ -76,7 +72,6 @@ export async function PATCH(
         );
       }
 
-      // Actualizamos estado + motivo de cancelación
       const resultado = await sql`
         UPDATE presupuestos_pedidos
         SET 
@@ -96,8 +91,7 @@ export async function PATCH(
       return NextResponse.json(resultado[0]);
     }
 
-    // ====================== ACTUALIZACIÓN NORMAL (otros estados) ======================
-    // Actualizamos solo el estado
+    // Cualquier otro cambio de estado actualiza únicamente el campo estado
     const resultado = await sql`
       UPDATE presupuestos_pedidos
       SET estado = ${estado} 

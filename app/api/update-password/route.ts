@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import bcrypt from "bcryptjs";
 
+// Valida que la contraseña cumpla los requisitos de seguridad; devuelve el mensaje de error o null si es válida
 const validarPassword = (password: string): string | null => {
   if (!password || password.length < 6) return "La contraseña debe tener al menos 6 caracteres.";
   if (!/[a-z]/.test(password)) return "La contraseña debe tener al menos una letra minúscula.";
@@ -11,6 +12,7 @@ const validarPassword = (password: string): string | null => {
   return null;
 };
 
+// Verifica el token de restablecimiento, valida la nueva contraseña, la hashea y elimina el token usado
 export async function POST(req: Request) {
   try {
     const { token, password } = await req.json();
@@ -19,7 +21,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Datos insuficientes" }, { status: 400 });
     }
 
-    // ✅ Validación igual que en el panel cliente
+    // Aplica los mismos requisitos de seguridad que el panel de cliente
     const errorPassword = validarPassword(password);
     if (errorPassword) {
       return NextResponse.json({ message: errorPassword }, { status: 400 });
@@ -27,7 +29,7 @@ export async function POST(req: Request) {
 
     const sql = neon(process.env.DATABASE_URL!);
 
-    // 1. Verificar si el token existe y no ha caducado
+    // Verifica que el token exista y no haya caducado para obtener el email asociado
     const resetRequest = await sql`
       SELECT email FROM password_reset_tokens 
       WHERE token = ${token} AND expires_at > NOW() 
@@ -43,18 +45,17 @@ export async function POST(req: Request) {
 
     const email = resetRequest[0].email;
 
-    // 2. Encriptar la nueva contraseña
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // 3. Actualizar en la tabla usuarios
+    // Actualiza el hash de la contraseña del usuario
     await sql`
       UPDATE usuarios 
       SET password_hash = ${hashedPassword} 
       WHERE email = ${email}
     `;
 
-    // 4. Borrar el token usado
+    // Elimina el token para que no pueda reutilizarse
     await sql`DELETE FROM password_reset_tokens WHERE email = ${email}`;
 
     return NextResponse.json({ message: "Contraseña actualizada con éxito" }, { status: 200 });
