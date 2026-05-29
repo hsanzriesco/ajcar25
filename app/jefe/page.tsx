@@ -890,7 +890,7 @@ export default function JefePage() {
                                     <p className="text-gray-500 text-xs uppercase tracking-widest mb-2">Cambiar estado</p>
                                     <select value={p.estado} onChange={(e) => pedirConfirmacionEstado(p.id, e.target.value, p.estado, p.vehiculo)}
                                         className="w-full bg-[#0f0f12] border border-white/10 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500 [&>option]:bg-[#1a1a1f] [&>option]:text-white">
-                                        <option value="pendiente">Pendiente</option>
+                                        <option value="Pendiente">Pendiente</option>
                                         <option value="En Taller">En Taller</option>
                                         <option value="Facturado">Facturado</option>
                                         <option value="Cancelado">Cancelado</option>
