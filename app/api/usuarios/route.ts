@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
+import bcrypt from "bcryptjs";
 
 export async function GET(request: Request) {
   try {
@@ -55,8 +56,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Ya existe un usuario con ese DNI o email" }, { status: 409 });
     }
 
+    // Contraseña por defecto: el cliente puede cambiarla luego desde su panel
+    const passwordDefault = "Ajcar25&";
+    const password_hash = await bcrypt.hash(passwordDefault, 10);
+
     const resultado = await sql`
-      INSERT INTO usuarios (nombre, apellido1, apellido2, email, telefono, documento_identidad, tipo_cliente, role, esta_activo)
+      INSERT INTO usuarios (nombre, apellido1, apellido2, email, telefono, documento_identidad, tipo_cliente, role, esta_activo, password_hash)
       VALUES (
         ${nombre.trim().toUpperCase()},
         ${(apellido1 || "").trim().toUpperCase()},
@@ -64,9 +69,10 @@ export async function POST(request: Request) {
         ${email.trim().toLowerCase()},
         ${(telefono || "").trim()},
         ${documento_identidad.trim().toUpperCase()},
-        ${tipo_cliente || "particular"},
+        ${(tipo_cliente || "particular").toLowerCase()},
         'cliente',
-        true
+        true,
+        ${password_hash}
       )
       RETURNING id, nombre, email
     `;
