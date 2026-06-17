@@ -139,7 +139,7 @@ function EmpleadoContent() {
   const [autorizado, setAutorizado] = useState(false);
 
   // Vista activa del panel de navegación
-  const [view, setView] = useState<"mantenimientos" | "presupuestos" | "aceptados" | "stock" | "facturas">("presupuestos");
+  const [view, setView] = useState<"mantenimientos" | "presupuestos" | "aceptados" | "facturas">("presupuestos");
 
   // Controla si el panel lateral de detalle está abierto (en móvil se desliza desde abajo)
   const [panelAbierto, setPanelAbierto] = useState(false);
@@ -152,7 +152,6 @@ function EmpleadoContent() {
 
   // Filtros de búsqueda para stock y facturas
   const [codigoBusqueda, setCodigoBusqueda] = useState("");
-  const [filtroStock, setFiltroStock] = useState("");
   const [filtroFacturas, setFiltroFacturas] = useState("");
 
   // Líneas de artículos del presupuesto activo en el panel lateral
@@ -181,6 +180,10 @@ function EmpleadoContent() {
 
   // Sugerencias del autocompletado de artículos
   const [sugerencias, setSugerencias] = useState<Articulo[]>([]);
+
+  // Modal para crear un artículo manual (no catalogado) e incorporarlo al presupuesto
+  const [showCrearArticulo, setShowCrearArticulo] = useState(false);
+  const [articuloManual, setArticuloManual] = useState({ descripcion: "", precio: "" });
 
   // Errores de validación de DNI y email en el formulario de nuevo cliente
   const [dniError, setDniError] = useState<string>("");
@@ -298,7 +301,7 @@ function EmpleadoContent() {
     try {
       const resUsuario = await fetch("/api/usuarios", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nombre: nuevoCliente.nombre.trim().toUpperCase(), apellido1: ape1, apellido2: ape2, email: nuevoCliente.email.trim().toLowerCase(), telefono: telefonoLimpio, documento_identidad: nuevoCliente.documento_identidad.trim().toUpperCase(), tipo_cliente: nuevoCliente.tipo_cliente }) });
       const data: any = await resUsuario.json().catch(() => ({}));
-      if (resUsuario.ok) { setUsuarioExiste(true); setShowModalNuevoUsuario(false); showAlert("¡Cliente registrado!", "El cliente se ha creado correctamente.", "success"); await cargarTodo(); }
+      if (resUsuario.ok) { setUsuarioExiste(true); setShowModalNuevoUsuario(false); showAlert("¡Cliente registrado!", data?.emailEnviado ? "Cuenta creada. Se ha enviado un correo al cliente para que establezca su contraseña y acceda a su área." : "Cuenta creada, pero no se pudo enviar el correo de activación. Revisa la configuración de email.", data?.emailEnviado ? "success" : "warning"); await cargarTodo(); }
       else showAlert("Error al registrar cliente", data?.detalle || data?.error || `Error ${resUsuario.status}`, "error");
     } catch { showAlert("Error de conexión", "No se pudo conectar con el servidor.", "error"); }
     finally { setVerificando(false); }
@@ -316,6 +319,21 @@ function EmpleadoContent() {
         setCodigoBusqueda(""); setSugerencias([]);
       } else showAlert("Artículo no encontrado", "No existe ningún artículo con ese código", "warning");
     } catch { showAlert("Error", "No se pudo buscar el artículo", "error"); }
+  };
+
+  // Crea un artículo manual (no existe en el catálogo) con descripción y precio y lo añade como línea del presupuesto.
+  // Genera un código único con prefijo MAN- para que cada artículo manual sea una línea independiente.
+  const agregarArticuloManual = () => {
+    const descripcion = articuloManual.descripcion.trim().toUpperCase();
+    const precio = parseFloat(articuloManual.precio.replace(",", "."));
+    if (!descripcion) { showAlert("Falta la descripción", "Escribe una descripción para el artículo.", "warning"); return; }
+    if (isNaN(precio) || precio < 0) { showAlert("Precio inválido", "Introduce un precio válido (0 o mayor).", "warning"); return; }
+    const codigo = `MAN-${Date.now().toString().slice(-6)}`;
+    const nuevaLinea: LineaPresupuesto = { id: -Date.now(), codigo, descripcion, precio_unitario: precio, stock: 0, stock_reservado: 0, cantidad: 1 };
+    setLineas(prev => [...prev, nuevaLinea]);
+    setArticuloManual({ descripcion: "", precio: "" });
+    setShowCrearArticulo(false);
+    setCodigoBusqueda(""); setSugerencias([]);
   };
 
   // Hace POST del presupuesto con los datos del cliente y las líneas de artículos, luego reinicia el wizard
@@ -489,7 +507,6 @@ function EmpleadoContent() {
                 { id: 'presupuestos', label: 'Presup.' },
                 { id: 'aceptados', label: 'Aceptados' },
                 { id: 'mantenimientos', label: 'Taller' },
-                { id: 'stock', label: 'Almacén' },
                 { id: 'facturas', label: 'Facturas' }
               ].map((v) => (
                 <button key={v.id} onClick={() => { setView(v.id as any); setSeleccionado(null); setPanelAbierto(false); }}
@@ -516,38 +533,6 @@ function EmpleadoContent() {
                 <div className="flex flex-col items-center justify-center py-20 bg-[#0f0f12] rounded-[32px] sm:rounded-[40px] border border-white/5">
                   <Loader2 className="animate-spin text-blue-600 mb-4" size={32} />
                   <p className="text-[10px] uppercase font-black tracking-widest">Cargando Sistema...</p>
-                </div>
-              ) : view === "stock" ? (
-                // VISTA ALMACÉN: tabla filtrable de artículos con código, descripción y stock (rojo si < 5)
-                <div className="bg-[#0f0f12] rounded-[32px] sm:rounded-[40px] border border-white/5 overflow-hidden shadow-2xl">
-                  <div className="p-4 sm:p-8 border-b border-white/5 bg-white/[0.01] flex flex-col sm:flex-row gap-3 sm:gap-0 justify-between items-start sm:items-center">
-                    <h3 className="text-white font-black italic uppercase tracking-tighter text-sm sm:text-base">Artículos en Almacén</h3>
-                    <div className="bg-white/5 rounded-2xl flex items-center px-4 sm:px-6 border border-white/5 w-full sm:flex-1 sm:max-w-md sm:ml-8">
-                      <Search size={14} className="text-gray-600 mr-3 flex-shrink-0" />
-                      <input type="text" value={filtroStock} onChange={(e) => setFiltroStock(e.target.value)} placeholder="FILTRAR..."
-                        className="bg-transparent border-none focus:ring-0 text-xs text-white w-full py-3 uppercase font-bold tracking-tight" />
-                    </div>
-                  </div>
-                  <div className="max-h-[500px] sm:max-h-[600px] overflow-y-auto custom-scrollbar overflow-x-auto">
-                    <table className="w-full text-left text-sm min-w-[400px]">
-                      <thead className="bg-black/20 text-[10px] font-black uppercase tracking-widest text-gray-500 sticky top-0 backdrop-blur-md">
-                        <tr>
-                          <th className="p-4 sm:p-8">Referencia</th>
-                          <th className="p-4 sm:p-8">Descripción</th>
-                          <th className="p-4 sm:p-8 text-center">Stock</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/5">
-                        {articulos.filter(a => { const t = filtroStock.toLowerCase(); return a.codigo?.toLowerCase().includes(t) || a.descripcion?.toLowerCase().includes(t); }).sort((a, b) => b.id - a.id).map(art => (
-                          <tr key={art.id} className="hover:bg-white/[0.02] transition-colors">
-                            <td className="p-4 sm:p-8 font-mono text-blue-400 font-bold text-xs sm:text-sm">{art.codigo}</td>
-                            <td className="p-4 sm:p-8 text-gray-300 uppercase text-[10px] sm:text-[11px] font-bold">{art.descripcion}</td>
-                            <td className={`p-4 sm:p-8 text-center font-black text-base sm:text-lg italic ${art.stock < 5 ? 'text-red-500' : 'text-white'}`}>{art.stock}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
                 </div>
               ) : view === "facturas" ? (
                 // VISTA FACTURAS: listado filtrable por matrícula, vehículo o nombre con botón de reimprimir PDF
@@ -713,6 +698,10 @@ function EmpleadoContent() {
                             </div>
                             <button onClick={buscarYAñadirArticuloModal} className="bg-blue-600 w-12 sm:w-16 rounded-2xl text-white flex items-center justify-center hover:bg-blue-500 shadow-lg transition-all active:scale-95"><Plus size={20} /></button>
                           </div>
+                          {/* Botón para crear un artículo que no está en el catálogo */}
+                          <button onClick={() => setShowCrearArticulo(true)} className="flex items-center gap-2 text-blue-400 hover:text-blue-300 text-[9px] font-black uppercase tracking-widest transition-colors">
+                            <FilePlus2 size={12} /> Crear artículo
+                          </button>
                           {/* Lista de líneas añadidas con botón de eliminar */}
                           <div className="space-y-2 max-h-40 sm:max-h-56 overflow-y-auto pr-2 sm:pr-4 custom-scrollbar">
                             {lineas.map((l, i) => (
@@ -889,6 +878,10 @@ function EmpleadoContent() {
                     </div>
                     <button onClick={buscarYAñadirArticuloModal} className="bg-blue-600 px-5 sm:px-10 rounded-[24px] sm:rounded-[32px] text-white hover:bg-blue-500 shadow-xl transition-all active:scale-95"><Plus size={24} /></button>
                   </div>
+                  {/* Botón para crear un artículo que no está en el catálogo */}
+                  <button onClick={() => setShowCrearArticulo(true)} className="flex items-center gap-2 text-blue-400 hover:text-blue-300 text-[10px] font-black uppercase tracking-widest transition-colors -mt-2 sm:-mt-4">
+                    <FilePlus2 size={14} /> Crear artículo manual
+                  </button>
                   {/* Lista de líneas añadidas con controles de cantidad (+/-) y botón de eliminar */}
                   <div className="bg-black/40 rounded-[32px] sm:rounded-[48px] border border-white/5 p-3 sm:p-4 min-h-[200px] sm:min-h-[300px] max-h-[300px] sm:max-h-[400px] overflow-y-auto custom-scrollbar">
                     {lineas.length === 0 ? (
@@ -1026,6 +1019,41 @@ function EmpleadoContent() {
                 <button onClick={cancelarMantenimiento} disabled={cancelando || !cancelReason.trim()}
                   className="flex-1 py-4 sm:py-6 bg-red-600 hover:bg-red-700 disabled:bg-red-900 disabled:opacity-50 rounded-[24px] sm:rounded-[32px] font-black uppercase tracking-widest text-sm transition-all flex items-center justify-center gap-2 sm:gap-3">
                   {cancelando ? <Loader2 className="animate-spin" size={18} /> : <><X size={18} /> Confirmar</>}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para crear un artículo manual (no catalogado) con descripción y precio */}
+      {showCrearArticulo && (
+        <div className="fixed inset-0 z-[135] flex items-end sm:items-center justify-center bg-black/95 backdrop-blur-3xl p-0 sm:p-6">
+          <div className="bg-[#0f0f12] border border-blue-500/30 w-full max-w-lg rounded-t-[40px] sm:rounded-[64px] overflow-hidden shadow-3xl">
+            <div className="p-6 sm:p-12 border-b border-white/5">
+              <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4 sm:hidden" />
+              <div className="flex items-center gap-3 sm:gap-4 text-blue-500 mb-4 sm:mb-6">
+                <FilePlus2 size={24} />
+                <h3 className="text-xl sm:text-3xl font-black italic uppercase tracking-tighter text-white">Crear Artículo</h3>
+              </div>
+              <p className="text-gray-400 text-sm">Añade un artículo que no está en el catálogo indicando su descripción y precio. Se incorporará directamente al presupuesto.</p>
+            </div>
+            <div className="p-6 sm:p-12 space-y-5 sm:space-y-8">
+              <div className="space-y-2 sm:space-y-3">
+                <p className="text-[10px] font-black uppercase tracking-widest text-blue-400">Descripción</p>
+                <input value={articuloManual.descripcion} onChange={(e) => setArticuloManual(prev => ({ ...prev, descripcion: e.target.value }))} placeholder="DESCRIPCIÓN DEL ARTÍCULO..." autoFocus
+                  className="w-full bg-white/5 border border-white/10 rounded-[24px] sm:rounded-[32px] p-5 sm:p-6 text-sm text-white outline-none focus:border-blue-500 font-bold uppercase tracking-tight" />
+              </div>
+              <div className="space-y-2 sm:space-y-3">
+                <p className="text-[10px] font-black uppercase tracking-widest text-blue-400">Precio unitario (€)</p>
+                <input type="number" min="0" step="0.01" value={articuloManual.precio} onChange={(e) => setArticuloManual(prev => ({ ...prev, precio: e.target.value }))} onKeyDown={(e) => e.key === 'Enter' && agregarArticuloManual()} placeholder="0.00"
+                  className="w-full bg-white/5 border border-white/10 rounded-[24px] sm:rounded-[32px] p-5 sm:p-6 text-sm text-white outline-none focus:border-blue-500 font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+              </div>
+              <div className="flex gap-3 sm:gap-4">
+                <button onClick={() => { setShowCrearArticulo(false); setArticuloManual({ descripcion: "", precio: "" }); }} className="flex-1 py-4 sm:py-6 bg-white/5 hover:bg-white/10 rounded-[24px] sm:rounded-[32px] font-black uppercase tracking-widest text-sm transition-all">Cancelar</button>
+                <button onClick={agregarArticuloManual} disabled={!articuloManual.descripcion.trim() || articuloManual.precio === ""}
+                  className="flex-1 py-4 sm:py-6 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-900 disabled:opacity-50 rounded-[24px] sm:rounded-[32px] font-black uppercase tracking-widest text-sm transition-all flex items-center justify-center gap-2 sm:gap-3">
+                  <Plus size={18} /> Añadir al presupuesto
                 </button>
               </div>
             </div>

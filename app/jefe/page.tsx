@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import {
     LogOut, Users, FileText, TrendingUp, Wrench, Car,
     Euro, Plus, Pencil, Trash2, X, Check, Eye, EyeOff,
-    ShieldOff, ShieldCheck, Download, Package, Search, Trophy, Target, PackagePlus, AlertTriangle
+    ShieldOff, ShieldCheck, Download, Search, AlertTriangle
 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -29,14 +29,6 @@ interface Factura {
     vehiculo: string; matricula?: string | null; total: number; fecha_emision: string; articulos?: any;
     empleado_nombre: string | null; empleado_apellido1: string | null;
 }
-interface Articulo {
-    id: number; codigo: string; descripcion: string;
-    precio_unitario: number; stock: number; stock_reservado: number;
-}
-interface StatsEmpleado {
-    id: string; nombre: string; apellido1: string; matricula: string | null;
-    total_facturas: number; total_facturado: number; facturado_mes: number; objetivo_mes: number;
-}
 interface Stats {
     totalIngresos: number; ingresosMes: number; totalClientes: number;
     totalEmpleados: number; totalPresupuestos: number; totalFacturas: number;
@@ -46,17 +38,12 @@ interface FormEmpleado {
     nombre: string; apellido1: string; apellido2: string;
     email: string; telefono: string; password: string;
 }
-interface EntradaStock {
-    articulo_id: number; cantidad: number;
-}
 
 // Valores iniciales del formulario de empleado
 const FORM_VACIO: FormEmpleado = {
     nombre: "", apellido1: "", apellido2: "", email: "", telefono: "", password: "Ajcar25&"
 };
 
-// Mes actual formateado para el encabezado de rendimiento
-const mesActual = new Date().toLocaleString("es-ES", { month: "long", year: "numeric" });
 
 // Badge de color para el estado de un presupuesto
 const BadgeEstado = ({ estado }: { estado: string }) => {
@@ -248,79 +235,6 @@ const ModalDenegarAcceso = ({ cliente, onConfirmar, onCerrar, guardando }: {
     );
 };
 
-// Modal de entrada masiva de stock: buscador, lista de artículos con input de cantidad por cada uno
-// El botón de confirmar se habilita solo cuando al menos un artículo tiene cantidad > 0
-const ModalEntradaStock = ({ articulos, onCerrar, onConfirmar, guardando }: {
-    articulos: Articulo[]; onCerrar: () => void;
-    onConfirmar: (entradas: EntradaStock[]) => void; guardando: boolean;
-}) => {
-    const [filtro, setFiltro] = useState("");
-    const [cantidades, setCantidades] = useState<Record<number, string>>({});
-    const articulosFiltrados = articulos.filter(a => {
-        const t = filtro.toLowerCase();
-        return a.codigo.toLowerCase().includes(t) || a.descripcion.toLowerCase().includes(t);
-    });
-
-    // Convierte el mapa de cantidades en el array de entradas válidas (cantidad > 0)
-    const entradas = Object.entries(cantidades).map(([id, cant]) => ({ articulo_id: Number(id), cantidad: parseInt(cant) || 0 })).filter(e => e.cantidad > 0);
-    const totalArticulos = entradas.length;
-    return (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-            <div className="bg-[#0f0f12] border border-white/10 rounded-t-[40px] sm:rounded-[40px] p-6 sm:p-10 w-full max-w-2xl max-h-[90vh] flex flex-col">
-                <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4 sm:hidden flex-shrink-0" />
-                <div className="flex justify-between items-center mb-5 sm:mb-6 flex-shrink-0">
-                    <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 sm:w-10 sm:h-10 bg-green-600/20 rounded-xl flex items-center justify-center"><PackagePlus size={18} className="text-green-400" /></div>
-                        <div>
-                            <h3 className="text-xl sm:text-2xl font-black text-white">Entrada de Stock</h3>
-                            <p className="text-gray-500 text-xs mt-0.5 hidden sm:block">Indica cuántas unidades añadir a cada artículo</p>
-                        </div>
-                    </div>
-                    <button onClick={onCerrar} className="w-9 h-9 bg-white/5 hover:bg-white/10 text-gray-400 rounded-xl flex items-center justify-center transition-all flex-shrink-0"><X size={18} /></button>
-                </div>
-                <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-4 py-2 mb-4 flex-shrink-0">
-                    <Search size={15} className="text-gray-500 flex-shrink-0" />
-                    <input type="text" value={filtro} onChange={(e) => setFiltro(e.target.value)} placeholder="Buscar artículo..."
-                        className="bg-transparent text-white text-sm focus:outline-none w-full placeholder:text-gray-600" />
-                </div>
-                {/* Lista filtrada de artículos con resaltado verde cuando tienen cantidad asignada */}
-                <div className="overflow-y-auto flex-1 space-y-2 pr-1">
-                    {articulosFiltrados.map((art) => (
-                        <div key={art.id} className={`flex items-center justify-between gap-3 sm:gap-4 px-3 sm:px-5 py-3 sm:py-4 rounded-2xl border transition-all ${cantidades[art.id] && parseInt(cantidades[art.id]) > 0 ? "bg-green-500/5 border-green-500/20" : "bg-white/[0.02] border-white/5"}`}>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-white font-medium text-xs sm:text-sm truncate">{art.descripcion}</p>
-                                <div className="flex items-center gap-2 sm:gap-3 mt-0.5">
-                                    <span className="text-blue-400 font-mono text-xs">{art.codigo}</span>
-                                    <span className="text-gray-600 text-xs hidden sm:inline">Stock: <span className={`font-bold ${art.stock === 0 ? "text-red-400" : art.stock < 5 ? "text-yellow-400" : "text-gray-400"}`}>{art.stock}</span></span>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-                                <input type="number" min="0" value={cantidades[art.id] || ""} onChange={(e) => setCantidades(prev => ({ ...prev, [art.id]: e.target.value }))} placeholder="0"
-                                    className="w-14 sm:w-20 bg-white/5 border border-white/10 focus:border-green-500/50 text-white text-center rounded-xl px-2 py-2 text-sm font-bold focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-colors" />
-                                <span className="text-gray-600 text-xs">uds.</span>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-                <div className="flex-shrink-0 mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-white/5">
-                    {/* Resumen de artículos con entrada pendiente antes de confirmar */}
-                    {totalArticulos > 0 && (
-                        <div className="mb-3 sm:mb-4 bg-green-500/10 border border-green-500/20 rounded-2xl px-4 py-3">
-                            <p className="text-green-400 text-sm font-bold">{totalArticulos} artículo{totalArticulos > 1 ? "s" : ""} con entrada de stock</p>
-                        </div>
-                    )}
-                    <div className="flex gap-3">
-                        <button onClick={onCerrar} className="flex-1 bg-white/5 hover:bg-white/10 text-gray-400 py-3 rounded-xl font-bold transition-all">Cancelar</button>
-                        <button onClick={() => onConfirmar(entradas)} disabled={guardando || totalArticulos === 0}
-                            className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2">
-                            <PackagePlus size={16} /> {guardando ? "Guardando..." : "Añadir al stock"}
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
 
 export default function JefePage() {
     // Datos cargados desde /api/jefe
@@ -328,14 +242,12 @@ export default function JefePage() {
     const [clientes, setClientes] = useState<Cliente[]>([]);
     const [presupuestos, setPresupuestos] = useState<Presupuesto[]>([]);
     const [facturas, setFacturas] = useState<Factura[]>([]);
-    const [articulos, setArticulos] = useState<Articulo[]>([]);
-    const [statsEmpleados, setStatsEmpleados] = useState<StatsEmpleado[]>([]);
     const [stats, setStats] = useState<Stats | null>(null);
 
     // Control de carga, autorización y vista activa
     const [loading, setLoading] = useState(true);
     const [autorizado, setAutorizado] = useState(false);
-    const [view, setView] = useState<"dashboard" | "empleados" | "presupuestos" | "clientes" | "facturas" | "stock" | "rendimiento">("dashboard");
+    const [view, setView] = useState<"dashboard" | "empleados" | "presupuestos" | "clientes" | "facturas">("dashboard");
 
     // Estados del modal de empleado: apertura, modo edición, ID en edición, formulario y errores
     const [modalEmpleadoAbierto, setModalEmpleadoAbierto] = useState(false);
@@ -349,21 +261,9 @@ export default function JefePage() {
     const [clienteDenegar, setClienteDenegar] = useState<Cliente | null>(null);
     const [guardandoAcceso, setGuardandoAcceso] = useState(false);
 
-    // Filtros y edición inline de stock
-    const [filtroStock, setFiltroStock] = useState("");
     const [filtroFacturas, setFiltroFacturas] = useState("");
-    const [editandoStock, setEditandoStock] = useState<number | null>(null);
-    const [valorStockEdit, setValorStockEdit] = useState<number>(0);
-    const [guardandoStock, setGuardandoStock] = useState(false);
 
-    // Modal de entrada masiva de stock
-    const [modalEntradaStockAbierto, setModalEntradaStockAbierto] = useState(false);
-    const [guardandoEntrada, setGuardandoEntrada] = useState(false);
 
-    // Edición inline de objetivo mensual de empleado
-    const [editandoObjetivo, setEditandoObjetivo] = useState<string | null>(null);
-    const [valorObjetivoEdit, setValorObjetivoEdit] = useState<string>("");
-    const [guardandoObjetivo, setGuardandoObjetivo] = useState(false);
 
     // Modales de confirmación para cambio de estado, eliminación y restauración
     const [confirmEstado, setConfirmEstado] = useState<{ presupuesto_id: string; estadoNuevo: string; estadoActual: string; vehiculo: string } | null>(null);
@@ -398,8 +298,6 @@ export default function JefePage() {
                 setClientes(data.clientes || []);
                 setPresupuestos(data.presupuestos || []);
                 setFacturas(data.facturas || []);
-                setArticulos(data.articulos || []);
-                setStatsEmpleados(data.statsEmpleados || []);
                 setStats(data.stats || null);
             } catch { }
         }, 15000);
@@ -415,7 +313,6 @@ export default function JefePage() {
             const data = await res.json();
             setEmpleados(data.empleados || []); setClientes(data.clientes || []);
             setPresupuestos(data.presupuestos || []); setFacturas(data.facturas || []);
-            setArticulos(data.articulos || []); setStatsEmpleados(data.statsEmpleados || []);
             setStats(data.stats || null);
         } catch (error) { console.error("Error cargando datos:", error); }
         finally { setLoading(false); }
@@ -424,48 +321,8 @@ export default function JefePage() {
     // Limpia la sesión y redirige al login
     const handleLogout = () => { sessionStorage.clear(); router.push("/login"); };
 
-    // Suma las cantidades de cada entrada al stock actual y actualiza la API en paralelo
-    const confirmarEntradaStock = async (entradas: EntradaStock[]) => {
-        if (entradas.length === 0) return;
-        setGuardandoEntrada(true);
-        try {
-            await Promise.all(entradas.map(({ articulo_id, cantidad }) => {
-                const artActual = articulos.find(a => a.id === articulo_id);
-                const stockNuevo = (artActual?.stock || 0) + cantidad;
-                return fetch("/api/jefe", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tipo: "stock", articulo_id, stock_nuevo: stockNuevo }) });
-            }));
-            setArticulos(prev => prev.map(a => { const entrada = entradas.find(e => e.articulo_id === a.id); return entrada ? { ...a, stock: a.stock + entrada.cantidad } : a; }));
-            setModalEntradaStockAbierto(false);
-        } catch { mostrarAlerta("Error de conexión."); }
-        finally { setGuardandoEntrada(false); }
-    };
 
-    // Valida y guarda el objetivo mensual de facturación de un empleado
-    const guardarObjetivo = async (empleado_id: string) => {
-        const valor = parseFloat(valorObjetivoEdit);
-        if (isNaN(valor) || valor < 0) { mostrarAlerta("Introduce un valor válido."); return; }
-        setGuardandoObjetivo(true);
-        try {
-            const res = await fetch("/api/jefe", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tipo: "objetivo", empleado_id, objetivo: valor }) });
-            if (!res.ok) { mostrarAlerta("No se pudo guardar el objetivo."); return; }
-            setStatsEmpleados(prev => prev.map(e => e.id === empleado_id ? { ...e, objetivo_mes: valor } : e));
-            setEditandoObjetivo(null); setValorObjetivoEdit("");
-        } catch { mostrarAlerta("Error de conexión."); }
-        finally { setGuardandoObjetivo(false); }
-    };
 
-    // Valida que el stock no sea negativo y actualiza el valor en la API
-    const actualizarStock = async (articulo_id: number, stock_nuevo: number) => {
-        if (stock_nuevo < 0) { mostrarAlerta("El stock no puede ser negativo."); return; }
-        setGuardandoStock(true);
-        try {
-            const res = await fetch("/api/jefe", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tipo: "stock", articulo_id, stock_nuevo }) });
-            if (!res.ok) { mostrarAlerta("No se pudo actualizar el stock."); return; }
-            setArticulos(prev => prev.map(a => a.id === articulo_id ? { ...a, stock: stock_nuevo } : a));
-            setEditandoStock(null);
-        } catch { mostrarAlerta("Error de conexión."); }
-        finally { setGuardandoStock(false); }
-    };
 
     // Genera el PDF de una factura con jsPDF: cabecera oscura, datos del cliente, tabla de artículos y pie de total
     // Si abrirEnVentana es true lo muestra en nueva pestaña; si no, lo descarga directamente
@@ -617,8 +474,6 @@ export default function JefePage() {
         finally { setGuardandoEstado(false); }
     };
 
-    // Valor máximo de facturación para escalar las barras del ranking de rendimiento
-    const maxFacturado = Math.max(...statsEmpleados.map(e => Number(e.total_facturado)), 1);
 
     // Pantalla de espera mientras se verifica la autorización
     if (!autorizado) return (
@@ -663,8 +518,6 @@ export default function JefePage() {
                         { key: "presupuestos", label: "Presupuestos" },
                         { key: "clientes", label: "Clientes" },
                         { key: "facturas", label: "Facturas" },
-                        { key: "stock", label: "Stock" },
-                        { key: "rendimiento", label: "Rendimiento" },
                     ] as { key: typeof view, label: string }[]).map((tab) => (
                         <button key={tab.key} onClick={() => setView(tab.key)}
                             className={`flex-1 sm:flex-none px-3 sm:px-6 py-2 sm:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold transition-all ${view === tab.key ? "bg-blue-600 text-white shadow-lg" : "text-gray-400 hover:bg-white/5 hover:text-white"}`}>
@@ -716,116 +569,6 @@ export default function JefePage() {
                     </div>
                 )}
 
-                {/* VISTA RENDIMIENTO: objetivos mensuales con barra de progreso y ranking de facturación total */}
-                {view === "rendimiento" && (
-                    <div className="space-y-6 sm:space-y-8">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 sm:mb-6">
-                            <h2 className="text-2xl sm:text-4xl font-black text-white">Rendimiento de Empleados</h2>
-                            <span className="text-gray-500 text-sm capitalize">{mesActual}</span>
-                        </div>
-                        {statsEmpleados.length > 0 ? (
-                            <>
-                                <div className="bg-[#0f0f12] rounded-[24px] sm:rounded-[40px] p-6 sm:p-10 border border-white/5">
-                                    <div className="flex items-center gap-3 mb-6 sm:mb-8">
-                                        <Target size={22} className="text-blue-400" />
-                                        <h3 className="text-xl sm:text-2xl font-black text-white">Objetivos del Mes</h3>
-                                    </div>
-                                    <div className="space-y-4 sm:space-y-6">
-                                        {statsEmpleados.map((emp) => {
-                                            const facturado = Number(emp.facturado_mes);
-                                            const objetivo = Number(emp.objetivo_mes);
-                                            const porcentaje = objetivo > 0 ? Math.min((facturado / objetivo) * 100, 100) : 0;
-                                            const superado = objetivo > 0 && facturado >= objetivo;
-                                            return (
-                                                <div key={emp.id} className={`bg-white/[0.02] border rounded-2xl px-4 sm:px-6 py-4 sm:py-5 transition-all ${superado ? "border-green-500/30 bg-green-500/5" : "border-white/5"}`}>
-                                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
-                                                        <div className="flex items-center gap-3 flex-wrap">
-                                                            <div className="w-9 h-9 sm:w-10 sm:h-10 bg-blue-600/20 rounded-xl flex items-center justify-center text-blue-400 font-black">{(emp.nombre || "?")[0].toUpperCase()}</div>
-                                                            <div>
-                                                                <p className="text-white font-bold text-sm">{emp.nombre} {emp.apellido1 || ""}</p>
-                                                                {emp.matricula && <p className="text-gray-600 text-xs font-mono">{emp.matricula}</p>}
-                                                            </div>
-                                                            {superado && <span className="text-xs bg-green-500/20 text-green-400 border border-green-500/30 px-2 sm:px-3 py-1 rounded-full font-bold">✓ Objetivo</span>}
-                                                        </div>
-                                                        <div className="text-left sm:text-right">
-                                                            <p className="text-blue-400 font-bold text-sm">{facturado.toFixed(2)} € <span className="text-gray-600 font-normal text-xs">facturado</span></p>
-                                                            {editandoObjetivo === emp.id ? (
-                                                                // Modo edición inline del objetivo: Enter para guardar, Escape para cancelar
-                                                                <div className="flex items-center gap-2 mt-1">
-                                                                    <div className="relative">
-                                                                        <input type="number" min="0" value={valorObjetivoEdit} onChange={(e) => setValorObjetivoEdit(e.target.value)}
-                                                                            onKeyDown={(e) => { if (e.key === "Enter") guardarObjetivo(emp.id); if (e.key === "Escape") setEditandoObjetivo(null); }}
-                                                                            placeholder="0.00" autoFocus
-                                                                            className="w-28 sm:w-32 bg-white/5 border border-blue-500/50 text-white text-center rounded-xl px-3 py-2 text-sm font-bold focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
-                                                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs pointer-events-none">€</span>
-                                                                    </div>
-                                                                    <button onClick={() => guardarObjetivo(emp.id)} disabled={guardandoObjetivo} className="w-8 h-8 bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center justify-center transition-all"><Check size={14} /></button>
-                                                                    <button onClick={() => { setEditandoObjetivo(null); setValorObjetivoEdit(""); }} className="w-8 h-8 bg-white/5 hover:bg-white/10 text-gray-400 rounded-xl flex items-center justify-center transition-all"><X size={14} /></button>
-                                                                </div>
-                                                            ) : (
-                                                                <div className="flex items-center gap-2 mt-1">
-                                                                    <p className="text-gray-500 text-xs">Objetivo: <span className="text-white font-bold">{objetivo > 0 ? `${objetivo.toFixed(2)} €` : "Sin definir"}</span></p>
-                                                                    <button onClick={() => { setEditandoObjetivo(emp.id); setValorObjetivoEdit(objetivo > 0 ? objetivo.toString() : ""); }} className="w-6 h-6 bg-white/5 hover:bg-blue-500/20 text-gray-500 hover:text-blue-400 rounded-lg flex items-center justify-center transition-all"><Pencil size={11} /></button>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    {/* Barra de progreso: verde si supera el objetivo, azul si está en curso */}
-                                                    <div className="w-full bg-white/5 rounded-full h-2 sm:h-2.5 mt-2">
-                                                        <div className={`h-2 sm:h-2.5 rounded-full transition-all duration-700 ${superado ? "bg-green-500" : objetivo > 0 ? "bg-blue-500" : "bg-white/10"}`} style={{ width: `${porcentaje}%` }} />
-                                                    </div>
-                                                    {objetivo > 0 && <p className="text-xs text-gray-600 mt-1.5 text-right">{porcentaje.toFixed(0)}% del objetivo</p>}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-
-                                {/* Ranking de empleados por facturación total con medallas para los tres primeros */}
-                                <div className="bg-[#0f0f12] rounded-[24px] sm:rounded-[40px] p-6 sm:p-10 border border-white/5">
-                                    <div className="flex items-center gap-3 mb-6 sm:mb-8">
-                                        <Trophy size={22} className="text-yellow-400" />
-                                        <h3 className="text-xl sm:text-2xl font-black text-white">Ranking por Facturación</h3>
-                                    </div>
-                                    <div className="space-y-3 sm:space-y-4">
-                                        {statsEmpleados.map((emp, idx) => {
-                                            const porcentaje = (Number(emp.total_facturado) / maxFacturado) * 100;
-                                            const barColors = ["bg-yellow-500", "bg-gray-400", "bg-amber-700"];
-                                            const barColor = idx < 3 ? barColors[idx] : "bg-blue-600";
-                                            return (
-                                                <div key={emp.id} className="bg-white/[0.02] border border-white/5 rounded-2xl px-4 sm:px-6 py-4 sm:py-5 hover:border-white/10 transition-all">
-                                                    <div className="flex items-center justify-between mb-3 gap-3">
-                                                        <div className="flex items-center gap-3 min-w-0">
-                                                            <span className="text-xl sm:text-2xl flex-shrink-0">{idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`}</span>
-                                                            <div className="min-w-0">
-                                                                <p className="text-white font-bold text-sm truncate">{emp.nombre} {emp.apellido1 || ""}</p>
-                                                                {emp.matricula && <p className="text-gray-600 text-xs font-mono">{emp.matricula}</p>}
-                                                            </div>
-                                                        </div>
-                                                        <div className="text-right flex-shrink-0">
-                                                            <p className="text-green-400 font-black text-base sm:text-xl">{Number(emp.total_facturado).toFixed(2)} €</p>
-                                                            <p className="text-gray-500 text-xs">{emp.total_facturas} facturas</p>
-                                                        </div>
-                                                    </div>
-                                                    {/* Barra proporcional al empleado con mayor facturación */}
-                                                    <div className="w-full bg-white/5 rounded-full h-2">
-                                                        <div className={`${barColor} h-2 rounded-full transition-all duration-700`} style={{ width: `${porcentaje}%` }} />
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            </>
-                        ) : (
-                            <div className="bg-[#0f0f12] rounded-[24px] sm:rounded-[40px] p-12 sm:p-20 text-center border border-white/5">
-                                <Trophy size={60} className="mx-auto mb-6 text-gray-600" />
-                                <p className="text-xl sm:text-2xl font-bold text-white mb-3">No hay datos de rendimiento aún</p>
-                                <p className="text-gray-500 text-sm">Cuando los empleados generen facturas aparecerán sus estadísticas aquí.</p>
-                            </div>
-                        )}
-                    </div>
-                )}
 
                 {/* VISTA EMPLEADOS: listado con matrícula, estado activo/inactivo y botones de editar y eliminar */}
                 {view === "empleados" && (
@@ -1020,66 +763,6 @@ export default function JefePage() {
                     </div>
                 )}
 
-                {/* VISTA STOCK: tabla filtrable con edición inline de stock y botón de entrada masiva */}
-                {view === "stock" && (
-                    <div className="space-y-4 sm:space-y-6">
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-10">
-                            <h2 className="text-2xl sm:text-4xl font-black text-white">Stock <span className="text-gray-500 text-lg sm:text-2xl font-normal">({articulos.length})</span></h2>
-                            <div className="flex items-center gap-2 sm:gap-3 flex-wrap w-full sm:w-auto">
-                                <button onClick={() => setModalEntradaStockAbierto(true)} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 sm:px-5 py-2 sm:py-2.5 rounded-2xl font-bold text-sm transition-all">
-                                    <PackagePlus size={15} /> Entrada
-                                </button>
-                                <div className="flex items-center gap-2 sm:gap-3 bg-white/5 border border-white/10 rounded-2xl px-3 sm:px-4 py-2 flex-1 sm:w-72">
-                                    <Search size={15} className="text-gray-500 flex-shrink-0" />
-                                    <input type="text" value={filtroStock} onChange={(e) => setFiltroStock(e.target.value)} placeholder="Buscar artículo..."
-                                        className="bg-transparent text-white text-sm focus:outline-none w-full placeholder:text-gray-600" />
-                                </div>
-                            </div>
-                        </div>
-                        {articulos.filter(a => { const t = filtroStock.toLowerCase(); return a.codigo.toLowerCase().includes(t) || a.descripcion.toLowerCase().includes(t); }).length > 0 ? (
-                            <div className="bg-[#0f0f12] rounded-[24px] sm:rounded-[40px] border border-white/5 overflow-hidden overflow-x-auto">
-                                <div className="grid grid-cols-12 gap-2 sm:gap-4 px-4 sm:px-8 py-3 sm:py-4 bg-white/[0.02] border-b border-white/5 text-xs font-black uppercase tracking-widest text-gray-500 min-w-[400px]">
-                                    <div className="col-span-3 sm:col-span-2">Código</div>
-                                    <div className="col-span-5">Descripción</div>
-                                    <div className="col-span-2 text-right hidden sm:block">Precio</div>
-                                    <div className="col-span-4 sm:col-span-3 text-center">Stock</div>
-                                </div>
-                                <div className="min-w-[400px]">
-                                    {articulos.filter(a => { const t = filtroStock.toLowerCase(); return a.codigo.toLowerCase().includes(t) || a.descripcion.toLowerCase().includes(t); }).map((art) => (
-                                        <div key={art.id} className="grid grid-cols-12 gap-2 sm:gap-4 px-4 sm:px-8 py-3 sm:py-5 border-b border-white/5 hover:bg-white/[0.02] transition-colors items-center">
-                                            <div className="col-span-3 sm:col-span-2"><span className="text-blue-400 font-mono text-xs sm:text-sm font-bold">{art.codigo}</span></div>
-                                            <div className="col-span-5"><p className="text-white text-xs sm:text-sm font-medium truncate">{art.descripcion}</p></div>
-                                            <div className="col-span-2 text-right hidden sm:block"><span className="text-gray-400 text-sm">{Number(art.precio_unitario).toFixed(2)}€</span></div>
-                                            <div className="col-span-4 sm:col-span-3 flex items-center justify-center gap-1 sm:gap-3">
-                                                {editandoStock === art.id ? (
-                                                    // Modo edición inline de stock: controles +/- y botones de confirmar/cancelar
-                                                    <>
-                                                        <button onClick={() => { const v = Math.max(0, valorStockEdit - 1); setValorStockEdit(v); }} className="w-7 h-7 sm:w-8 sm:h-8 bg-white/5 hover:bg-red-500/20 text-red-400 rounded-xl flex items-center justify-center font-black text-lg transition-all">−</button>
-                                                        <input type="number" min="0" value={valorStockEdit} onChange={(e) => setValorStockEdit(Math.max(0, parseInt(e.target.value) || 0))} className="w-12 sm:w-16 bg-white/5 border border-blue-500/50 text-white text-center rounded-xl px-1 sm:px-2 py-1 text-sm font-bold focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
-                                                        <button onClick={() => { const v = valorStockEdit + 1; setValorStockEdit(v); }} className="w-7 h-7 sm:w-8 sm:h-8 bg-white/5 hover:bg-green-500/20 text-green-400 rounded-xl flex items-center justify-center font-black text-lg transition-all">+</button>
-                                                        <button onClick={() => actualizarStock(art.id, valorStockEdit)} disabled={guardandoStock} className="w-7 h-7 sm:w-8 sm:h-8 bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center justify-center transition-all flex-shrink-0"><Check size={12} /></button>
-                                                        <button onClick={() => setEditandoStock(null)} className="w-7 h-7 sm:w-8 sm:h-8 bg-white/5 hover:bg-white/10 text-gray-400 rounded-xl flex items-center justify-center transition-all flex-shrink-0"><X size={12} /></button>
-                                                    </>
-                                                ) : (
-                                                    // Modo lectura: stock en rojo si es 0, amarillo si < 5, blanco si hay suficiente
-                                                    <>
-                                                        <span className={`text-xl sm:text-2xl font-black ${art.stock === 0 ? "text-red-400" : art.stock < 5 ? "text-yellow-400" : "text-white"}`}>{art.stock}</span>
-                                                        <button onClick={() => { setEditandoStock(art.id); setValorStockEdit(art.stock); }} className="w-7 h-7 sm:w-8 sm:h-8 bg-white/5 hover:bg-blue-500/20 text-gray-500 hover:text-blue-400 rounded-xl flex items-center justify-center transition-all"><Pencil size={12} /></button>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="bg-[#0f0f12] rounded-[24px] sm:rounded-[40px] p-12 sm:p-20 text-center border border-white/5">
-                                <Package size={60} className="mx-auto mb-6 text-gray-600" />
-                                <p className="text-xl sm:text-2xl font-bold text-white mb-3">No se encontraron artículos</p>
-                            </div>
-                        )}
-                    </div>
-                )}
             </div>
 
             {/* MODALES GLOBALES */}
@@ -1093,11 +776,6 @@ export default function JefePage() {
             {clienteDenegar && (
                 <ModalDenegarAcceso cliente={clienteDenegar} onConfirmar={denegarAcceso}
                     onCerrar={() => setClienteDenegar(null)} guardando={guardandoAcceso} />
-            )}
-            {/* Modal de entrada masiva de stock */}
-            {modalEntradaStockAbierto && (
-                <ModalEntradaStock articulos={articulos} onCerrar={() => setModalEntradaStockAbierto(false)}
-                    onConfirmar={confirmarEntradaStock} guardando={guardandoEntrada} />
             )}
             {/* Confirmación de cambio de estado de un presupuesto */}
             {confirmEstado && (

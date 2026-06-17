@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 export const dynamic = "force-dynamic";
 
 // Devuelve todos los datos necesarios para el panel de jefe en una sola llamada:
-// empleados, clientes, presupuestos, facturas, artículos, estadísticas globales y rendimiento por empleado
+// empleados, clientes, presupuestos, facturas y estadísticas globales
 export async function GET(req: NextRequest) {
   try {
     const sql = neon(process.env.DATABASE_URL!);
@@ -39,12 +39,6 @@ export async function GET(req: NextRequest) {
       ORDER BY f.fecha_emision DESC
     `;
 
-    const articulos = await sql`
-      SELECT id, codigo, descripcion, precio_unitario, stock, stock_reservado
-      FROM articulos
-      ORDER BY descripcion ASC
-    `;
-
     // KPIs de ingresos: total histórico e ingresos del mes en curso
     const totalIngresosResult = await sql`
       SELECT COALESCE(SUM(total), 0) AS total FROM facturas
@@ -59,41 +53,11 @@ export async function GET(req: NextRequest) {
       SELECT estado, COUNT(*) AS cantidad FROM presupuestos_pedidos GROUP BY estado
     `;
 
-    // Estadísticas de rendimiento por empleado: facturas totales, importe total,
-    // importe facturado en el mes actual y objetivo mensual definido por el jefe
-    const statsEmpleados = await sql`
-      SELECT 
-        u.id,
-        u.nombre,
-        u.apellido1,
-        u.matricula,
-        COUNT(f.id) AS total_facturas,
-        COALESCE(SUM(f.total), 0) AS total_facturado,
-        COALESCE(SUM(CASE 
-          WHEN DATE_TRUNC('month', f.fecha_emision) = DATE_TRUNC('month', NOW()) 
-          THEN f.total ELSE 0 
-        END), 0) AS facturado_mes,
-        COALESCE(
-          (SELECT o.objetivo FROM objetivos_empleados o 
-           WHERE o.empleado_id = u.id 
-           AND o.mes = EXTRACT(MONTH FROM NOW())
-           AND o.anio = EXTRACT(YEAR FROM NOW())
-           LIMIT 1), 0
-        ) AS objetivo_mes
-      FROM usuarios u
-      LEFT JOIN facturas f ON f.empleado_id = u.id
-      WHERE LOWER(u.role) = 'empleado'
-      GROUP BY u.id, u.nombre, u.apellido1, u.matricula
-      ORDER BY total_facturado DESC
-    `;
-
     return NextResponse.json({
       empleados,
       clientes,
       presupuestos,
       facturas,
-      articulos,
-      statsEmpleados,
       stats: {
         totalIngresos: Number(totalIngresosResult[0].total),
         ingresosMes: Number(ingresosMesResult[0].total),
@@ -154,13 +118,13 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Endpoint multipropósito: edita empleado, cambia estado de presupuesto, gestiona acceso de cliente,
-// actualiza stock o guarda el objetivo mensual según el campo "tipo" del body
+// Endpoint multipropósito: edita empleado, cambia estado de presupuesto o
+// gestiona el acceso de un cliente según el campo "tipo" del body
 export async function PATCH(req: NextRequest) {
   try {
     const sql = neon(process.env.DATABASE_URL!);
     const body = await req.json();
-    const { tipo, empleado_id, nombre, apellido1, apellido2, email, telefono, password, presupuesto_id, estado, cliente_id, esta_activo, motivo_baja, articulo_id, stock_nuevo, objetivo } = body;
+    const { tipo, empleado_id, nombre, apellido1, apellido2, email, telefono, password, presupuesto_id, estado, cliente_id, esta_activo, motivo_baja } = body;
 
     // Actualiza solo los campos del empleado que vienen en el body
     if (tipo === "empleado" && empleado_id) {
@@ -183,33 +147,6 @@ export async function PATCH(req: NextRequest) {
         SET esta_activo = ${esta_activo}, 
             motivo_baja = ${esta_activo ? null : motivo_baja}
         WHERE id = ${cliente_id}
-      `;
-      return NextResponse.json({ success: true });
-    }
-
-    // Establece el stock de un artículo al valor exacto indicado (no incremento)
-    if (tipo === "stock" && articulo_id !== undefined && stock_nuevo !== undefined) {
-      if (Number(stock_nuevo) < 0) {
-        return NextResponse.json({ error: "El stock no puede ser negativo" }, { status: 400 });
-      }
-      const result = await sql`
-        UPDATE articulos 
-        SET stock = ${Number(stock_nuevo)}
-        WHERE id = ${articulo_id}
-        RETURNING id, codigo, descripcion, stock
-      `;
-      return NextResponse.json({ success: true, articulo: result[0] });
-    }
-
-    // Guarda o sobreescribe el objetivo mensual del empleado para el mes y año actuales
-    if (tipo === "objetivo" && empleado_id && objetivo !== undefined) {
-      const mes = new Date().getMonth() + 1;
-      const anio = new Date().getFullYear();
-      await sql`
-        INSERT INTO objetivos_empleados (empleado_id, mes, anio, objetivo)
-        VALUES (${empleado_id}, ${mes}, ${anio}, ${Number(objetivo)})
-        ON CONFLICT (empleado_id, mes, anio)
-        DO UPDATE SET objetivo = ${Number(objetivo)}
       `;
       return NextResponse.json({ success: true });
     }
